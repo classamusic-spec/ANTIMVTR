@@ -132,3 +132,40 @@ public:
 };
 
 static CoreTests coreTests;
+
+#include "core/RealtimeHandoff.h"
+
+class HandoffTests : public juce::UnitTest
+{
+public:
+    HandoffTests() : juce::UnitTest ("Realtime handoff", "core") {}
+
+    void runTest() override
+    {
+        beginTest ("RealtimeHandoff delivers the newest object and recycles old ones");
+        {
+            struct Payload { int id; };
+            RealtimeHandoff<Payload> handoff;
+            expect (handoff.acquire() == nullptr);
+            handoff.publish (std::make_unique<Payload> (Payload { 1 }));
+            expect (handoff.hasPending());
+            const auto* a = handoff.acquire();
+            expect (a != nullptr && a->id == 1);
+            expect (handoff.acquire() == a);            // unchanged without a new publish
+            handoff.publish (std::make_unique<Payload> (Payload { 2 }));
+            handoff.publish (std::make_unique<Payload> (Payload { 3 }));   // supersedes 2 before the audio thread sees it
+            const auto* b = handoff.acquire();
+            expect (b != nullptr && b->id == 3);
+            handoff.collectGarbage();                   // frees object 1
+            for (int i = 0; i < 200; ++i)               // many swaps without collection must not crash
+            {
+                handoff.publish (std::make_unique<Payload> (Payload { 10 + i }));
+                handoff.acquire();
+            }
+            handoff.collectGarbage();
+            expect (handoff.acquire()->id == 209);
+        }
+    }
+};
+
+static HandoffTests handoffTests;

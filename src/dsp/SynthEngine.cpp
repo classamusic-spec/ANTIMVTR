@@ -32,6 +32,12 @@ void SynthEngine::reset()
     diag.events.push (EngineEventType::EngineReset, Subsystem::Unknown, -1, 0, 0.0f, sampleTime);
 }
 
+void SynthEngine::messageThreadMaintenance()
+{
+    fracture.messageThreadMaintenance();
+    space.messageThreadMaintenance();
+}
+
 void SynthEngine::applyGlobalSettings (const ParamValues& params)
 {
     static constexpr int voiceChoices[] = { 8, 16, 32, 64 };

@@ -16,7 +16,8 @@ namespace am
     is not the engine.
 */
 class AntiMatrProcessor final : public juce::AudioProcessor,
-                                public juce::ChangeBroadcaster
+                                public juce::ChangeBroadcaster,
+                                private juce::Timer
 {
 public:
     AntiMatrProcessor();
@@ -89,6 +90,7 @@ public:
     int lastEditorHeight = kDefaultHeight;
 
 private:
+    void timerCallback() override { synth.messageThreadMaintenance(); }
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void snapshotParameters (ParamValues& out) const noexcept;
     void markPreset (const juce::String& name, const juce::StringArray& tags, int index);

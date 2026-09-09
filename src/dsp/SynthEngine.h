@@ -45,6 +45,13 @@ public:
     ControlGraph& control() noexcept { return controlGraph; }
     VoiceManager& voiceManager() noexcept { return voices; }
 
+    /** Message-thread maintenance (garbage collection of handed-off data). Called periodically by the processor. */
+    void messageThreadMaintenance();
+
+    FractureEngine& fractureEngine() noexcept { return fracture; }
+    SpaceEngine&    spaceEngine() noexcept    { return space; }
+    MasterSection&  masterSection() noexcept  { return master; }
+
     int activeVoices() const noexcept { return voices.activeVoiceCount(); }
     double sampleRate() const noexcept { return sr; }
     Quality quality() const noexcept { return currentQuality; }

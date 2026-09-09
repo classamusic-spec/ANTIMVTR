@@ -22,9 +22,13 @@ AntiMatrProcessor::AntiMatrProcessor()
     ParameterRegistry::fillDefaults (blockParams);
     abStates[0] = abStates[1] = PresetManager::initPatch();
     markPreset ("Init", { "basic" }, 0);
+    startTimer (500);
 }
 
-AntiMatrProcessor::~AntiMatrProcessor() = default;
+AntiMatrProcessor::~AntiMatrProcessor()
+{
+    stopTimer();
+}
 
 //==============================================================================
 juce::AudioProcessorValueTreeState::ParameterLayout AntiMatrProcessor::createParameterLayout()

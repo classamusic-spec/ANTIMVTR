@@ -29,11 +29,13 @@ class SafetyMonitor;
     Modes: SPECTRAL (static), RHYTHMIC (sequencer-gated), TRANSIENT (onset
     triggered) and EVOLVE (settings drift between random targets).
 
-    Latency is constant at `fftSize()` samples whether the effect is on or off;
-    the dry path runs through a matched delay so toggling `fracture.on` never
-    jumps time and never changes the host's reported latency. With
-    `fracture.on = 0` (or `fracture.amount * fracture.mix = 0`) the output is a
-    bit-exact copy of the input delayed by `latencySamples()`.
+    Latency is *dynamic*: zero while the effect is disengaged (`fracture.on = 0`
+    or `fracture.amount * fracture.mix = 0`), where the output is a bit-exact
+    copy of the input; `fftSize()` samples while engaged, with the dry path
+    running through a matched delay so wet and dry stay time-aligned.
+    `latencySamples()` always reports the truth and `latencyChanged()` lets the
+    principal forward it to the host. The two dry taps are crossfaded over ~20 ms
+    when the effect engages, so toggling never clicks.
 */
 class FractureEngine
 {
@@ -58,7 +60,16 @@ public:
     void reset();
     void process (float* l, float* r, int n, const RenderContext& ctx);
 
-    int   latencySamples() const noexcept { return latency; }
+    /** Latency the engine is adding right now: 0 when disengaged, `fftSize()` when engaged. */
+    int   latencySamples() const noexcept { return reportedLatency.load (std::memory_order_relaxed); }
+
+    /** The latency the engine reaches when engaged (== `fftSize()`). Constant after prepare(). */
+    int   maxLatencySamples() const noexcept { return latency; }
+
+    /** True once after `latencySamples()` changed — poll from the message thread and
+        forward the new value to the host with `setLatencySamples()`. */
+    bool  latencyChanged() noexcept { return latencyDirty.exchange (false, std::memory_order_acq_rel); }
+
     float activity() const noexcept       { return activityValue.load (std::memory_order_relaxed); }
     int   fftSize() const noexcept        { return stft.size(); }
     int   hopSize() const noexcept        { return stft.hop(); }
@@ -142,7 +153,7 @@ private:
     // --- dry path -------------------------------------------------------
     std::vector<float> dryLine[2], inScratch[2], wetScratch[2];
     int dryMask = 0, dryWrite = 0;
-    OnePoleSmoother blendSmooth;
+    OnePoleSmoother blendSmooth, tapSmooth;
 
     // --- misc -----------------------------------------------------------
     Rng rng { 11 };
@@ -159,6 +170,8 @@ private:
     SafetyMonitor* safety = nullptr;   ///< borrowed from the render context each block
 
     std::atomic<bool>  retrigRequest { false };
+    std::atomic<bool>  latencyDirty { false };
+    std::atomic<int>   reportedLatency { 0 };
     std::atomic<float> activityValue { 0.0f };
     std::atomic<int>   actFragments { 16 }, actStep { 0 };
     std::array<std::atomic<float>, kMaxFractureFragments> actGain {}, actEnergy {};

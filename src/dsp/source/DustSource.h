@@ -92,17 +92,23 @@ private:
         Rng   rng { 1 };
     };
 
-    /** Seeded random shape of one FROZEN partial; mapped to Hz/amplitude every block. */
+    /**
+        One FROZEN partial. The seeded fields describe its shape; the running
+        state is a quadrature (sin/cos) rotator, which is roughly twice as cheap
+        as two windowed table lookups and hands the right channel an arbitrary
+        phase offset for free: sin(p + d) = sin p cos d + cos p sin d.
+    */
     struct Partial
     {
         float octave = 0.0f;    ///< random offset in octaves around the cluster centre
         float ampRand = 1.0f;
         float pan = 0.0f;
-        float phase = 0.0f;     ///< running phase, 0..1
-        float rOffset = 0.0f;   ///< right-channel phase offset for decorrelation
+        float rRand = 0.0f;     ///< random right-channel phase offset, 0..1 cycles
         float driftRate = 0.1f;
         float driftPhase = 0.0f;
-        float inc = 0.0f, gainL = 0.0f, gainR = 0.0f;
+        float c = 1.0f, s = 0.0f;       ///< rotating unit vector
+        float dCos = 1.0f, dSin = 0.0f; ///< per-sample rotation
+        float gainL = 0.0f, gainRc = 0.0f, gainRs = 0.0f;
     };
 
     /** Duty-cycle occupancy used to make `density` audible on the continuous noises. */
@@ -139,6 +145,8 @@ private:
 
     void renderColoured (float* l, float* r, int n);
     void renderFiltered (float* l, float* r, int n);
+    void updateFilteredBand();
+    void updateFrozen();
     void renderCrackle  (float* l, float* r, int n);
     void renderImpulse  (float* l, float* r, int n);
     void renderCloud    (float* l, float* r, int n);
@@ -167,6 +175,11 @@ private:
     excitation::DcBlocker        dcL, dcR;
     DutyGate gate;
     float gateSegment = 400.0f;
+
+    // Control-rate updates. A fixed sample period (not the host block) keeps the
+    // time-driven parts of DUST identical whatever buffer size the host uses.
+    static constexpr int kControlSamples = 256;
+    int  controlCountdown = 0;
 
     // FILTERED wander ---------------------------------------------------------
     float wanderValue = 0.0f, wanderTarget = 0.0f, wanderPhase = 0.0f;

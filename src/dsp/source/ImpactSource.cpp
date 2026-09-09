@@ -159,7 +159,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             s.lp.setCutoff (cut);
             s.tilt.set (1200.0f, (bright - 0.5f) * 2.0f);
             s.spike = true;
-            gain = s.lp.impulsePeakGain();
+            gain = s.lp.impulsePeakGain() * 1.2f;
             tau = juce::jmax (0.0004f, 4.0f / (2.0f * (float) kPi * s.lp.getCutoff()));
             s.attackInc = 1.0f;                 // the low-pass itself limits the slew
             break;
@@ -170,7 +170,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             tau = expMap (p.length, 0.0002f, 0.02f);
             const float centre = juce::jlimit (60.0f, nyquist, expMap (bright, 400.0f, 12000.0f));
             s.svf.set (centre, 0.6f + p.hardness * 4.0f);
-            gain = s.svf.bandpassNoiseGain() * 1.9f;
+            gain = s.svf.bandpassNoiseGain() * 2.6f;
             s.noiseAmt = 1.0f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0003 * (1.0 - 0.9 * (double) p.hardness)));
             break;
@@ -181,7 +181,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             tau = expMap (p.length, 0.001f, 0.05f);
             const float cut = juce::jlimit (100.0f, nyquist, (float) p.freq * expMap (bright, 3.0f, 80.0f));
             s.lp.setCutoff (cut);
-            gain = s.lp.impulseGain() * 1.8f;
+            gain = s.lp.impulseGain() * 1.9f;
             s.noiseAmt = 1.0f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0004));
             break;
@@ -192,7 +192,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             tau = expMap (p.length, 0.005f, 1.5f);
             const float cut = juce::jlimit (80.0f, nyquist, expMap (bright, 300.0f, 16000.0f));
             s.svf.set (cut, 0.7f + p.hardness * 2.5f);
-            gain = s.svf.lowpassNoiseGain() * 1.7f;
+            gain = s.svf.lowpassNoiseGain() * 1.9f;
             s.noiseAmt = 1.0f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0015 * (1.0 - 0.92 * (double) p.hardness)));
             break;
@@ -215,14 +215,14 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
                                           : 0.0f;
                 const float pTau = juce::jmax (0.002f, tau / (1.0f + (float) k * 0.55f));
                 s.mDec[k]   = std::exp (-1.0f / (float) juce::jmax (2.0, (double) pTau * sr));
-                sumSq += s.mAmp[k] * s.mAmp[k];
+                sumSq += s.mAmp[k];
             }
-            const float norm = 1.0f / std::sqrt (juce::jmax (1.0e-6f, sumSq));
+            const float norm = 1.0f / juce::jmax (1.0e-6f, sumSq);   // bounds the peak of the partial sum
             for (auto& a : s.mAmp) a *= norm;
             s.clickAmt = 0.35f * p.hardness;
             s.lp.setCutoff (juce::jlimit (200.0f, nyquist, expMap (bright, 2000.0f, 14000.0f)));
             s.decayClick = std::exp (-1.0f / (float) juce::jmax (2.0, 0.0015 * sr));
-            gain = 1.5f;
+            gain = 1.35f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0002));
             break;
         }
@@ -235,7 +235,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             s.clickAmt = 0.5f * p.hardness;
             s.lp.setCutoff (juce::jlimit (200.0f, nyquist, expMap (bright, 1500.0f, 12000.0f)));
             s.decayClick = std::exp (-1.0f / (float) juce::jmax (2.0, 0.0015 * sr));
-            gain = 1.0f;
+            gain = 1.2f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0002));
             break;
         }
@@ -251,7 +251,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             s.clickAmt = 0.55f * bright;
             s.lp.setCutoff (juce::jlimit (200.0f, nyquist, expMap (bright, 500.0f, 8000.0f)));
             s.decayClick = std::exp (-1.0f / (float) juce::jmax (2.0, 0.004 * sr));
-            gain = 1.0f;
+            gain = 1.1f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0003));
             break;
         }

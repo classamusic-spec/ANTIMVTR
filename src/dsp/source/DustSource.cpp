@@ -52,6 +52,7 @@ void DustSource::reset()
     gate.reset();
     clearEvents();
     wanderValue = wanderTarget = wanderPhase = 0.0f;
+    controlCountdown = 0;
     lastEnergy = 0.0f;
     lastSeedParam = -1;
 }
@@ -86,12 +87,18 @@ void DustSource::initPartials()
         q.octave     = rng.nextBipolar();
         q.ampRand    = rng.nextFloat();
         q.pan        = rng.nextBipolar();
-        q.phase      = rng.nextFloat();
-        q.rOffset    = rng.nextFloat();
+        q.rRand      = rng.nextFloat();
         q.driftRate  = 0.03f + 0.32f * rng.nextFloat();
         q.driftPhase = rng.nextFloat();
-        q.inc = q.gainL = q.gainR = 0.0f;
+
+        const float phase0 = rng.nextFloat();
+        q.c = Tables::sineAt (wrap01 (phase0 + 0.25f));
+        q.s = Tables::sineAt (phase0);
+        q.dCos = 1.0f;
+        q.dSin = 0.0f;
+        q.gainL = q.gainRc = q.gainRs = 0.0f;
     }
+    controlCountdown = 0;
 }
 
 void DustSource::noteOn (const NoteState& note, const ParamValues& params)
@@ -194,17 +201,17 @@ void DustSource::renderColoured (float* l, float* r, int n)
     }
 }
 
-void DustSource::renderFiltered (float* l, float* r, int n)
+void DustSource::updateFilteredBand()
 {
     // Slow random wander of the band centre: rate from `grain`, depth from `jitter`.
     const float rate = expMap (p.grain, 0.15f, 25.0f);
-    wanderPhase += (float) ((double) n * (double) rate / sr);
+    wanderPhase += (float) ((double) kControlSamples * (double) rate / sr);
     while (wanderPhase >= 1.0f)
     {
         wanderPhase -= 1.0f;
         wanderTarget = shapeRng.nextBipolar();
     }
-    const float smooth = 1.0f - std::exp (- (float) n / (float) (sr * 0.05));
+    const float smooth = 1.0f - std::exp (- (float) kControlSamples / (float) (sr * 0.05));
     wanderValue += (wanderTarget - wanderValue) * smooth;
 
     const float harmonic = 1.0f + p.position * 7.0f;
@@ -213,10 +220,19 @@ void DustSource::renderFiltered (float* l, float* r, int n)
     const float q = expMap (p.color, 0.7f, 40.0f);
     bandL.set (centre, q);
     bandR.set (centre, q);
-    const float g = bandL.bandpassNoiseGain() * 0.30f;
+}
 
+void DustSource::renderFiltered (float* l, float* r, int n)
+{
     for (int i = 0; i < n; ++i)
     {
+        if (--controlCountdown <= 0)
+        {
+            updateFilteredBand();
+            controlCountdown = kControlSamples;
+        }
+        const float g = bandL.bandpassNoiseGain() * 0.21f;
+
         float wl, wr;
         nextNoise (wl, wr);
         wl = bandL.bandpass (wl) * g;
@@ -229,8 +245,8 @@ void DustSource::renderFiltered (float* l, float* r, int n)
 
 void DustSource::renderCrackle (float* l, float* r, int n)
 {
-    const float rate    = expMap (p.density, 0.5f, 1500.0f);          // events / second
-    const float burst   = expMap (p.grain, 0.00015f, 0.06f);          // seconds
+    const float rate    = expMap (p.density, 1.0f, 2000.0f);          // events / second
+    const float burst   = expMap (p.grain, 0.0003f, 0.08f);           // seconds
     const float tauSec  = juce::jmax (2.0e-5f, burst * 0.35f);
     const float decay   = std::exp (-1.0f / (float) juce::jmax (2.0, (double) tauSec * sr));
     const float attack  = 1.0f - std::exp (-1.0f / (float) juce::jmax (2.0, (double) tauSec * sr * 0.12));
@@ -242,7 +258,7 @@ void DustSource::renderCrackle (float* l, float* r, int n)
 
     // RMS-ish normalisation, but capped so isolated crackles keep their crest factor.
     const float occ = std::sqrt (juce::jmax (1.0e-5f, rate * tauSec * 0.5f));
-    const float norm = juce::jlimit (0.08f, 1.1f, 0.30f / occ);
+    const float norm = juce::jlimit (0.08f, 1.25f, 0.30f / occ);
 
     for (int i = 0; i < n; ++i)
     {
@@ -297,8 +313,8 @@ void DustSource::renderImpulse (float* l, float* r, int n)
     tiltR.set (1200.0f, tilt);
 
     const float effRate = (float) ((double) perCycle * p.freq);
-    const float norm = juce::jlimit (0.10f, 0.90f,
-                                     0.30f / std::sqrt (juce::jmax (1.0e-4f, effRate * (float) len / (float) sr * 0.19f)));
+    const float norm = juce::jlimit (0.10f, 1.0f,
+                                     0.34f / std::sqrt (juce::jmax (1.0e-4f, effRate * (float) len / (float) sr * 0.19f)));
 
     for (int i = 0; i < n; ++i)
     {
@@ -352,8 +368,8 @@ void DustSource::renderCloud (float* l, float* r, int n)
 
     // Tonal grains sum coherently when jitter is low; noise grains always sum in power.
     const float incoherent = juce::jmin (1.0f, p.jitter * 3.0f);
-    const float toneNorm  = 0.45f * std::pow (overlap, -(1.0f - 0.5f * incoherent));
-    const float noiseNorm = 0.45f * std::pow (overlap, -0.5f);
+    const float toneNorm  = 0.60f * std::pow (overlap, -(1.0f - 0.5f * incoherent));
+    const float noiseNorm = 0.60f * std::pow (overlap, -0.5f);
 
     const float toneAmt  = std::cos (p.color * (float) kPi * 0.5f);
     const float noiseAmt = std::sin (p.color * (float) kPi * 0.5f) * 1.22f;
@@ -420,7 +436,7 @@ void DustSource::renderCloud (float* l, float* r, int n)
     }
 }
 
-void DustSource::renderFrozen (float* l, float* r, int n)
+void DustSource::updateFrozen()
 {
     numPartials = juce::jlimit (24, kMaxPartials, 24 + (int) std::lround (p.density * 40.0f));
 
@@ -428,44 +444,67 @@ void DustSource::renderFrozen (float* l, float* r, int n)
     const float spreadOct = 0.25f + p.grain * 3.0f;
     const float tiltExp = 1.0f - p.color * 2.0f;
     const float driftDepth = p.jitter * 0.02f;
-    const bool  wide = p.stereo > 0.02f;
     const float nyquist = (float) (sr * 0.45);
 
+    float amps[kMaxPartials];
     float sumSq = 0.0f;
     for (int k = 0; k < numPartials; ++k)
     {
+        const float oct = partials[(size_t) k].octave * spreadOct;
+        const float a = (0.35f + 0.65f * partials[(size_t) k].ampRand) * fastPow2 (-tiltExp * oct);
+        amps[k] = a;
+        sumSq += a * a;
+    }
+    const float norm = 0.26f / std::sqrt (juce::jmax (1.0e-6f, 0.5f * sumSq));
+
+    for (int k = 0; k < numPartials; ++k)
+    {
         auto& q = partials[(size_t) k];
-        q.driftPhase = wrap01 (q.driftPhase + (float) ((double) n * (double) q.driftRate / sr));
+        q.driftPhase = wrap01 (q.driftPhase + (float) ((double) kControlSamples * (double) q.driftRate / sr));
+
         const float oct = q.octave * spreadOct;
         const float f = centre * fastPow2 (oct) * (1.0f + driftDepth * fastSin01 (q.driftPhase));
-        q.inc = juce::jlimit (0.0f, nyquist, f) / (float) sr;
-        const float amp = (0.35f + 0.65f * q.ampRand) * fastPow2 (-tiltExp * oct);
-        q.gainL = amp;
-        sumSq += amp * amp;
-    }
+        const float inc = juce::jlimit (0.0f, nyquist, f) / (float) sr;
+        const float w = (float) kTwoPi * inc;
+        q.dCos = std::cos (w);
+        q.dSin = std::sin (w);
 
-    const float k = 0.30f / std::sqrt (juce::jmax (1.0e-6f, 0.5f * sumSq));
-    for (int i = 0; i < numPartials; ++i)
-    {
-        auto& q = partials[(size_t) i];
-        const float amp = q.gainL * k;
+        // Keep the rotator on the unit circle (first order inverse square root).
+        const float len = q.c * q.c + q.s * q.s;
+        const float fix = 1.5f - 0.5f * juce::jlimit (0.0f, 2.9f, len);
+        q.c *= fix;
+        q.s *= fix;
+
+        const float amp = amps[k] * norm;
         float gl, gr;
         panGains (q.pan * p.spread, gl, gr);
-        q.gainL = amp * gl;
-        q.gainR = amp * gr;
+        const float delta = q.rRand * p.stereo;
+        q.gainL  = amp * gl;
+        q.gainRc = amp * gr * Tables::sineAt (wrap01 (delta + 0.25f));
+        q.gainRs = amp * gr * Tables::sineAt (wrap01 (delta));
     }
+}
 
+void DustSource::renderFrozen (float* l, float* r, int n)
+{
     for (int i = 0; i < n; ++i)
     {
-        float sumL = 0.0f, sumR = 0.0f;
-        for (int q = 0; q < numPartials; ++q)
+        if (--controlCountdown <= 0)
         {
-            auto& pt = partials[(size_t) q];
-            const float s = Tables::sineAt (pt.phase);
-            sumL += s * pt.gainL;
-            sumR += (wide ? Tables::sineAt (wrap01 (pt.phase + pt.rOffset)) : s) * pt.gainR;
-            pt.phase += pt.inc;
-            if (pt.phase >= 1.0f) pt.phase -= 1.0f;
+            updateFrozen();
+            controlCountdown = kControlSamples;
+        }
+
+        float sumL = 0.0f, sumR = 0.0f;
+        for (int k = 0; k < numPartials; ++k)
+        {
+            auto& q = partials[(size_t) k];
+            const float ns = q.s * q.dCos + q.c * q.dSin;
+            const float nc = q.c * q.dCos - q.s * q.dSin;
+            q.s = ns;
+            q.c = nc;
+            sumL += ns * q.gainL;
+            sumR += ns * q.gainRc + nc * q.gainRs;
         }
         l[i] = sumL;
         r[i] = sumR;

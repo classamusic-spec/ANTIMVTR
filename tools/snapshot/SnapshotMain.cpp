@@ -2,7 +2,7 @@
     AntiMatrSnapshot — renders the real editor to a PNG for visual review.
 
     Usage (run under xvfb-run on headless Linux):
-      AntiMatrSnapshot --out shot.png [--width 1600 --height 1000] [--wait 800]
+      AntiMatrSnapshot --out shot.png [--width 1600 --height 1000] [--wait 800] [--set id=value ...] [--labtab N]
                        [--page 0..7] [--note 60] [--preset "Void Bloom"]
 
     The processor runs offline on the message thread so taps, meters and the
@@ -13,6 +13,7 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include "plugin/AntiMatrProcessor.h"
 #include "plugin/AntiMatrEditor.h"
+#include "dev/dsplab/DSPLabView.h"
 
 namespace
 {
@@ -61,11 +62,32 @@ public:
             const int idx = processor->presets().findFactory (optionValue (args, "--preset"));
             if (idx >= 0) processor->loadFactoryPreset (idx);
         }
+        // --set id=value pairs (applied through the host parameter tree)
+        for (int i = 0; i < args.size(); ++i)
+        {
+            if (args[i].text == "--set" && i + 1 < args.size())
+            {
+                const auto kv = args[i + 1].text;
+                const auto id = kv.upToFirstOccurrenceOf ("=", false, false);
+                const float value = kv.fromFirstOccurrenceOf ("=", false, false).getFloatValue();
+                if (auto* p = processor->parameters().getParameter (id))
+                    p->setValueNotifyingHost (p->convertTo0to1 (value));
+                else
+                    std::cerr << "Unknown parameter: " << id << std::endl;
+            }
+        }
+
         processor->prepareToPlay (48000.0, 512);
         if (note > 0) processor->keyboardState().noteOn (1, note, 0.8f);
 
         editor.reset (processor->createEditorIfNeeded());
-        if (auto* e = dynamic_cast<am::AntiMatrEditor*> (editor.get())) e->showPage (page);
+        if (auto* e = dynamic_cast<am::AntiMatrEditor*> (editor.get()))
+        {
+            e->showPage (page);
+            if (hasOption (args, "--labtab"))
+                if (auto* lab = dynamic_cast<am::dev::DSPLabView*> (e->labViewComponent()))
+                    lab->selectTab (optionValue (args, "--labtab").getIntValue());
+        }
 
         window = std::make_unique<juce::DocumentWindow> ("ANTI-MATR", juce::Colours::black, juce::DocumentWindow::allButtons);
         window->setUsingNativeTitleBar (false);

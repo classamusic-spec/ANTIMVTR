@@ -26,6 +26,10 @@ public:
 
     void showPage (int index);
     int  currentPage() const noexcept { return page; }
+    int  numPages() const noexcept { return 1 + (int) pages.size() + (labView != nullptr ? 1 : 0); }
+
+    /** The DSP LAB view (dev builds only, else nullptr). */
+    juce::Component* labViewComponent() noexcept { return labView.get(); }
 
     static constexpr int kMinWidth  = 1100;
     static constexpr int kMinHeight = 690;

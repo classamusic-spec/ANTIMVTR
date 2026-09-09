@@ -32,6 +32,10 @@ public:
     /** Builds the diagnostic report (plain JSON) — no user audio is included. */
     juce::String buildReport() const;
 
+    /** Selects a DSP LAB tab (also used by the snapshot tool). */
+    void selectTab (int index);
+    int  numTabs() const noexcept { return tabs.getNumTabs(); }
+
 private:
     class SignalInspector;
     class NodeInspector;
@@ -39,7 +43,6 @@ private:
 
     void timerCallback() override;
     void refreshTables();
-    void selectTab (int index);
 
     AntiMatrProcessor& processor;
     DiagnosticSnapshot snapshot;

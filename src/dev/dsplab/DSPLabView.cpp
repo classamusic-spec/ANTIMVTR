@@ -307,6 +307,8 @@ void DSPLabView::parentHierarchyChanged()
 
 void DSPLabView::selectTab (int index)
 {
+    index = juce::jlimit (0, juce::jmax (0, tabs.getNumTabs() - 1), index);
+    if (tabs.getCurrentTabIndex() != index) tabs.setCurrentTabIndex (index, juce::dontSendNotification);
     currentTab = index;
     const bool matter = index == 2 || index == 3;
     nodes->setVisible (matter || index == 0);

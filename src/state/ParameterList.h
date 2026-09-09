@@ -175,6 +175,7 @@
     AM_UNI    (X, shapeStereo,    "shape.stereo",    "Stereo",  Shape, 0.6f, Shape) \
     AM_INT    (X, shapeSeed,      "shape.seed",      "Topology Seed", Shape, 0.0f, 9999.0f, 7.0f, "", false, Chaos) \
     AM_UNI    (X, shapeExcite,    "shape.excite",    "Excite",  Shape, 0.5f, Shape) \
+    AM_UNI    (X, shapeStrike,    "shape.strike",    "Strike",  Shape, 0.35f, Shape) \
     /* ---------------------------------------------------------------- EVOLVE */ \
     AM_UNI    (X, evolveBend,     "evolve.bend",     "Bend",    Evolve, 0.0f, Evolve) \
     AM_UNI    (X, evolveMelt,     "evolve.melt",     "Melt",    Evolve, 0.0f, Evolve) \

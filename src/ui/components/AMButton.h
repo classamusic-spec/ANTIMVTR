@@ -58,7 +58,8 @@ private:
     Segmented two-or-more state switch (SIMPLE / ADVANCED, OFF / ON, A / B).
     The lit thumb glides between cells. Emits onChange (index).
 */
-class AMSegment : public juce::Component
+class AMSegment : public juce::Component,
+                  public juce::SettableTooltipClient
 {
 public:
     explicit AMSegment (juce::StringArray items, juce::Colour accent = Theme::cyan);

@@ -87,7 +87,7 @@ void SpaceArt::nebula (juce::Graphics& g, juce::Rectangle<float> a, float phase,
             const float u = (float) i / 70.0f;
             const float ang = u * 4.6f + (float) arm * juce::MathConstants<float>::pi + phase * 0.12f;
             const float rad = R * (0.06f + 0.92f * u);
-            const float jitter = rng.nextBipolar() * R * 0.05f * u;
+            const float jitter = (rng.nextFloat() * 2.0f - 1.0f) * R * 0.05f * u;
             const juce::Point<float> p (c.x + std::cos (ang) * rad + jitter, c.y + std::sin (ang) * rad * 0.62f + jitter);
             const float s = (0.8f + 2.2f * rng.nextFloat()) * (1.0f - 0.5f * u);
             const auto col = (i % 3 == 0) ? Theme::magenta : (i % 3 == 1 ? Theme::violet : Theme::cyan);

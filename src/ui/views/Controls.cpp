@@ -62,7 +62,7 @@ BoundControl::BoundControl (juce::AudioProcessorValueTreeState& apvts, Param p, 
         if (d.min < 0.0f && d.max > 0.0f) k->setBipolar (true);
         comp = std::move (k);
     }
-    comp->setTooltip (paramTooltip (p));
+    if (auto* tc = dynamic_cast<juce::SettableTooltipClient*> (comp.get())) tc->setTooltip (paramTooltip (p));
 }
 
 void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Component*> comps, int rows)

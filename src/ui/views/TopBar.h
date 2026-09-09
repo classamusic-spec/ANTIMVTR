@@ -69,6 +69,7 @@ private:
     AMSlider output { "Output", Theme::ivory };
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputAttachment;
     juce::Rectangle<int> swirlArea;
+    int captionWidth = 180;
     int page = 0;
     bool lab = false;
 };

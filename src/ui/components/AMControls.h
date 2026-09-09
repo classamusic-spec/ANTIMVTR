@@ -7,7 +7,8 @@ namespace am::ui
 {
 
 /** Compact labelled on/off pill (ON glows in the accent). */
-class AMToggle : public juce::Component
+class AMToggle : public juce::Component,
+                 public juce::SettableTooltipClient
 {
 public:
     explicit AMToggle (const juce::String& label, juce::Colour accent = Theme::cyan);
@@ -35,7 +36,8 @@ private:
     Choice stepper: ‹ VALUE › pill with the parameter name above. Clicking
     the chevrons steps, clicking the value opens a popup with every choice.
 */
-class AMChoice : public juce::Component
+class AMChoice : public juce::Component,
+                 public juce::SettableTooltipClient
 {
 public:
     AMChoice (const juce::String& label, juce::StringArray choices, juce::Colour accent = Theme::cyan);

@@ -13,6 +13,7 @@ namespace am::ui
     carries a glowing accent ring. Selection and hover transitions are eased.
 */
 class AMSourceSelector : public juce::Component,
+                         public juce::SettableTooltipClient,
                          private juce::Timer
 {
 public:

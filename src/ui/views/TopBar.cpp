@@ -253,21 +253,23 @@ void NavBar::resized()
     const int pad = juce::jmax (10, getWidth() / 64);
     area.reduce (pad, juce::jmax (4, getHeight() / 12));
 
-    auto right = area.removeFromRight (juce::jlimit (300, 460, getWidth() * 29 / 100));
+    const float capH = juce::jlimit (7.5f, 9.5f, (float) getHeight() * 0.11f);
+    captionWidth = juce::roundToInt (draw::trackedTextWidth (Theme::captionFont (capH), "FOR A MORE STRANGE TOMORROW")) + 6;
+    auto right = area.removeFromRight (juce::jlimit (240, 420, getWidth() * 24 / 100) + captionWidth);
     const int rowH = juce::jlimit (22, 30, getHeight() / 3);
     auto row = right.withSizeKeepingCentre (right.getWidth(), rowH);
-    row.removeFromRight (juce::jlimit (120, 190, right.getWidth() * 42 / 100));   // brand caption
-    const int abW = juce::jlimit (64, 90, row.getWidth() / 4);
+    row.removeFromRight (captionWidth + pad / 2);   // brand caption
+    const int abW = juce::jlimit (60, 84, row.getWidth() / 4);
     ab.setBounds (row.removeFromLeft (abW));
-    row.removeFromLeft (pad);
+    row.removeFromLeft (pad / 2);
     swirlArea = row.removeFromLeft (rowH);
     output.setBounds (row.reduced (2, 0));
 
-    area.removeFromLeft (juce::jlimit (60, 120, getWidth() * 6 / 100));   // version caption
-    auto tabArea = area.withWidth (juce::jmin (area.getWidth(), juce::jlimit (560, 900, getWidth() * 56 / 100)));
-    tabArea.setX (getWidth() / 2 - tabArea.getWidth() / 2 - getWidth() / 40);
-    const int w = tabArea.getWidth() / (int) tabs.size();
-    for (auto& t : tabs) t->setBounds (tabArea.removeFromLeft (w));
+    area.removeFromLeft (juce::jlimit (50, 90, getWidth() * 5 / 100));   // version caption
+    area.removeFromRight (pad);
+    const int tabW = juce::jlimit (56, 112, area.getWidth() / (int) tabs.size());
+    auto tabArea = area.withSizeKeepingCentre (tabW * (int) tabs.size(), area.getHeight());
+    for (auto& t : tabs) t->setBounds (tabArea.removeFromLeft (tabW));
 }
 
 void NavBar::paint (juce::Graphics& g)
@@ -285,7 +287,7 @@ void NavBar::paint (juce::Graphics& g)
     // output swirl icon
     Icons::draw (g, Icon::Swirl, swirlArea.toFloat().reduced (swirlArea.getHeight() * 0.18f), Theme::textSecondary, 0.8f);
 
-    auto brand = b.withLeft (b.getRight() - 200.0f).withTrimmedRight ((float) pad);
+    auto brand = b.withLeft (b.getRight() - (float) captionWidth - (float) pad).withTrimmedRight ((float) pad);
     draw::trackedText (g, "INSTRUMENTS", brand.withHeight (b.getHeight() * 0.5f), juce::Justification::bottomRight, Theme::captionFont (h), Theme::textDim);
     draw::trackedText (g, "FOR A MORE STRANGE TOMORROW", brand.withTop (b.getCentreY()), juce::Justification::topRight, Theme::captionFont (h), Theme::textDim);
 }

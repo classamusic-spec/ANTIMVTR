@@ -11,7 +11,8 @@ namespace am::ui
     Tab: icon + label (navigation style) or label-only strip. The selected
     tab carries a glowing accent underline; hover and selection are eased.
 */
-class AMTab : public juce::Component
+class AMTab : public juce::Component,
+              public juce::SettableTooltipClient
 {
 public:
     enum class Style { Nav, Strip };

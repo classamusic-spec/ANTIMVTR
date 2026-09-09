@@ -67,7 +67,7 @@ void AMSourceSelector::drawThumbnail (juce::Graphics& g, const Item& item, juce:
     draw::softLight (g, c, r * 1.1f, item.accent, 0.06f + 0.14f * on);
 
     const juce::Colour accent = item.accent;
-    const float a = 0.42f + 0.58f * on;
+    const float a = 0.58f + 0.42f * on;
     const float t = phase * (0.35f + 0.65f * on) + (float) index * 1.7f;
     const float e = 0.6f + 0.4f * energy * on;
 
@@ -97,14 +97,14 @@ void AMSourceSelector::drawThumbnail (juce::Graphics& g, const Item& item, juce:
         case Icon::Dust:
         {
             juce::Random rng (1234 + index);
-            draw::softLight (g, c, r * 0.6f, accent, 0.2f * a);
+            draw::softLight (g, c, r * 0.7f, accent, 0.3f * a);
             for (int i = 0; i < 64; ++i)
             {
                 const float ang = rng.nextFloat() * juce::MathConstants<float>::twoPi;
                 const float rad = std::pow (rng.nextFloat(), 0.7f) * r * 0.92f;
                 const float drift = std::sin (t * 0.8f + (float) i) * r * 0.03f;
                 const float flicker = 0.35f + 0.65f * (0.5f + 0.5f * std::sin (t * 2.2f + (float) i * 1.9f));
-                const float s = 0.7f + 1.7f * rng.nextFloat() * rng.nextFloat();
+                const float s = 1.0f + 2.0f * rng.nextFloat() * rng.nextFloat();
                 const auto col = (i % 5 == 0) ? Theme::textPrimary : accent;
                 g.setColour (col.withAlpha (a * flicker * (0.35f + 0.65f * (1.0f - rad / r))));
                 g.fillEllipse (c.x + std::cos (ang) * rad + drift - s * 0.5f, c.y + std::sin (ang) * rad - drift - s * 0.5f, s, s);

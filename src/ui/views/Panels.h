@@ -60,7 +60,8 @@ public:
     void resized() override;
 
     /** Operator tile: line icon, label and a thin amount bar. Shared with the Evolve page. */
-    class OperatorCell : public juce::Component
+    class OperatorCell : public juce::Component,
+                         public juce::SettableTooltipClient
     {
     public:
         OperatorCell (const juce::String& label, Icon icon);
@@ -126,7 +127,8 @@ public:
     void resized() override;
 
     /** "‹ NEBULA ›" picker beside a procedural environment thumbnail. Shared with the Space page. */
-    class SpacePicker : public juce::Component
+    class SpacePicker : public juce::Component,
+                        public juce::SettableTooltipClient
     {
     public:
         SpacePicker();

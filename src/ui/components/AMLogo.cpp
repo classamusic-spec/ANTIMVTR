@@ -52,7 +52,8 @@ void AMLogo::drawWordmark (juce::Graphics& g, juce::Rectangle<float> b, float en
     const juce::Point<float> dot (glyphArea.getX() + glyphArea.getWidth() * 0.16f, glyphArea.getBottom() + dotR * 2.6f);
     draw::glowDot (g, dot, dotR, Theme::cyan, 0.6f + 0.4f * energy);
 
-    draw::trackedText (g, rest, titleArea.withLeft (glyphArea.getRight() + gap), juce::Justification::centredLeft, font, Theme::textPrimary);
+    const float trailing = font.getExtraKerningFactor() * font.getHeight() + 2.0f;
+    draw::trackedText (g, rest, titleArea.withLeft (glyphArea.getRight() + gap).withWidth (restW + trailing), juce::Justification::centredLeft, font, Theme::textPrimary);
 
     if (withTagline)
     {

@@ -117,7 +117,7 @@ inline void sphere (juce::Graphics& g, juce::Rectangle<float> circle, float lit 
     if (r < 1.0f) return;
 
     // body: light from the top-left
-    juce::ColourGradient body (Theme::knobBase.brighter (0.55f + 0.25f * lit), c.x - r * 0.35f, c.y - r * 0.4f,
+    juce::ColourGradient body (Theme::knobBase.brighter (0.4f + 0.25f * lit), c.x - r * 0.35f, c.y - r * 0.4f,
                                juce::Colour (0xff08080c), c.x + r * 0.6f, c.y + r * 0.7f, true);
     g.setGradientFill (body);
     g.fillEllipse (circle);

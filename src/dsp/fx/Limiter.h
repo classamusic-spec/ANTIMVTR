@@ -18,6 +18,8 @@ class Limiter
 {
 public:
     static constexpr float kCeiling = 0.94f;
+    static constexpr float kKneeRatio = 0.85f;
+    static constexpr float kKnee = kCeiling * kKneeRatio;
 
     void prepare (double sampleRate, int /*maxBlockSize*/)
     {
@@ -42,12 +44,12 @@ public:
         {
             const float peak = std::max (std::abs (l[i]), std::abs (r[i]));
             float target = 1.0f;
-            if (peak > kCeiling * 0.75f)
+            if (peak > kKnee)
             {
-                // Soft knee from 75% of the ceiling, hard from the ceiling up.
-                const float over = peak / (kCeiling * 0.75f);
-                target = over <= 1.0f ? 1.0f : (kCeiling * 0.75f * (1.0f + 0.333f * fastTanh (over - 1.0f))) / peak;
-                target = clampf (target, 0.02f, 1.0f);
+                // Soft knee from -1.4 dB, asymptotically approaching the ceiling.
+                const float over = peak / kKnee;
+                const float limited = kKnee * (1.0f + (1.0f / kKneeRatio - 1.0f) * fastTanh (over - 1.0f));
+                target = clampf (limited / peak, 0.02f, 1.0f);
             }
 
             if (target < gain)

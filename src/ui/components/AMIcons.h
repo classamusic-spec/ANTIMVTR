@@ -14,7 +14,8 @@ enum class Icon
     Wave, Dust, Impact, Sample, Gesture,
     Bend, Melt, Tear, Magnet, Gravity, Scatter, Freeze, Crush,
     Main, Source, Shape, Evolve, Fracture, Space, Mod, Lab,
-    Settings, ChevronLeft, ChevronRight, Sparkle, Copy
+    Settings, ChevronLeft, ChevronRight, Sparkle, Copy,
+    Swirl, Search, Close, Shuffle, Dna, Lfo, Env, Chaos, Macro, Grid, Check, Plus, Browse, Play
 };
 
 struct Icons

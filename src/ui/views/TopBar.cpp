@@ -1,4 +1,5 @@
 #include "TopBar.h"
+#include "PresetBrowser.h"
 
 namespace am::ui
 {
@@ -13,11 +14,22 @@ TopBar::TopBar (AntiMatrProcessor& p) : processor (p)
     addAndMakeVisible (mutate);
     addAndMakeVisible (settings);
 
+    prev.setOutlined (true);
+    next.setOutlined (true);
+    prev.setAccent (Theme::textSecondary);
+    next.setAccent (Theme::textSecondary);
+    prev.setTooltip ("Previous preset");
+    next.setTooltip ("Next preset");
+    browse.setTooltip ("Open the preset browser");
+    random.setTooltip ("Generate a new random patch");
+    mutate.setTooltip ("Mutate the current patch (Subtle / Evolve / Extreme)");
+    settings.setTooltip ("Voices, quality, voice mode");
+
     prev.onClick    = [this] { processor.loadNextPreset (-1); };
     next.onClick    = [this] { processor.loadNextPreset (1); };
     random.onClick  = [this] { processor.randomizePatch(); };
     mutate.onClick  = [this] { showMutateMenu(); };
-    browse.onClick  = [this] { if (onBrowse) onBrowse(); else showBrowseMenu(); };
+    browse.onClick  = [this] { if (onBrowse) onBrowse(); else openBrowser(); };
     settings.onClick = [this] { if (onSettings) onSettings(); else showSettingsMenu(); };
 
     mutate.setAccent (Theme::violet);
@@ -31,13 +43,39 @@ TopBar::TopBar (AntiMatrProcessor& p) : processor (p)
 TopBar::~TopBar()
 {
     processor.removeChangeListener (this);
+    closeBrowser();
+}
+
+bool TopBar::isBrowserOpen() const noexcept { return browser != nullptr && browser->isVisible(); }
+
+void TopBar::openBrowser()
+{
+    auto* host = getParentComponent();
+    if (host == nullptr) { showBrowseMenu(); return; }
+    if (browser == nullptr)
+    {
+        browser = std::make_unique<PresetBrowser> (processor);
+        browser->onClose = [this] { closeBrowser(); };
+    }
+    host->addAndMakeVisible (*browser);
+    browser->setBounds (host->getLocalBounds());
+    browser->toFront (true);
+    browser->grabKeyboardFocus();
+    browse.setToggleState (true, juce::dontSendNotification);
+}
+
+void TopBar::closeBrowser()
+{
+    if (browser == nullptr) return;
+    if (auto* host = browser->getParentComponent()) host->removeChildComponent (browser.get());
+    browser->setVisible (false);
+    browse.setToggleState (false, juce::dontSendNotification);
 }
 
 void TopBar::timerCallback()
 {
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
     logo.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 4.0f));
-    logo.repaint();
 }
 
 void TopBar::showMutateMenu()
@@ -105,40 +143,57 @@ void TopBar::resized()
 {
     auto area = getLocalBounds();
     const int h = getHeight();
-    const int pad = juce::jmax (8, getWidth() / 70);
+    const int pad = juce::jmax (10, getWidth() / 64);
     area.reduce (pad, 0);
 
-    logo.setBounds (area.removeFromLeft (juce::jlimit (240, 460, getWidth() * 28 / 100)).reduced (0, h / 6));
+    logo.setBounds (area.removeFromLeft (juce::jlimit (200, 320, getWidth() * 19 / 100)).reduced (0, h / 5));
 
-    auto right = area.removeFromRight (juce::jlimit (260, 420, getWidth() * 27 / 100));
+    auto right = area.removeFromRight (juce::jlimit (250, 400, getWidth() * 26 / 100));
     const int btnH = juce::jlimit (24, 40, h / 2);
     auto rightRow = right.withSizeKeepingCentre (right.getWidth(), btnH);
     settings.setBounds (rightRow.removeFromRight (btnH));
-    rightRow.removeFromRight (pad);
+    rightRow.removeFromRight (pad / 2);
     const int btnW = rightRow.getWidth() / 3;
     browse.setBounds (rightRow.removeFromLeft (btnW));
     random.setBounds (rightRow.removeFromLeft (btnW));
     mutate.setBounds (rightRow.removeFromLeft (btnW));
 
-    auto centre = area.withSizeKeepingCentre (juce::jmin (area.getWidth() - pad * 2, juce::jlimit (300, 460, getWidth() * 28 / 100)), btnH + 4);
-    centre.setY (h / 2 - (btnH + 4) / 2 - h / 10);
+    const int pillH = juce::jlimit (28, 42, h * 42 / 100);
+    auto centre = area.withSizeKeepingCentre (juce::jmin (area.getWidth() - pad * 2, juce::jlimit (300, 460, getWidth() * 28 / 100)), pillH);
+    centre.setY (h / 2 - pillH / 2 - h / 9);
     presetArea = centre;
-    prev.setBounds (centre.removeFromLeft (btnH));
-    next.setBounds (centre.removeFromRight (btnH));
+    const int chev = pillH - 8;
+    prev.setBounds (centre.removeFromLeft (pillH).withSizeKeepingCentre (chev, chev));
+    next.setBounds (centre.removeFromRight (pillH).withSizeKeepingCentre (chev, chev));
+    if (browser != nullptr && browser->getParentComponent() != nullptr)
+        browser->setBounds (browser->getParentComponent()->getLocalBounds());
 }
 
 void TopBar::paint (juce::Graphics& g)
 {
+    const auto b = getLocalBounds().toFloat();
+    // faint separator beneath the bar
+    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.05f), b.getCentreX(), 0.0f, false);
+    sep.addColour (1.0, juce::Colours::transparentWhite);
+    g.setGradientFill (sep);
+    g.fillRect (b.withTop (b.getBottom() - 1.0f));
+
     // Preset pill
     auto pill = presetArea.toFloat();
     const float corner = pill.getHeight() * 0.5f;
-    g.setColour (Theme::panelInset);
+    g.setColour (Theme::panelEdge.withAlpha (0.8f));
+    g.drawRoundedRectangle (pill.expanded (0.5f), corner + 0.5f, 1.0f);
+    juce::ColourGradient fill (Theme::panelTop, pill.getX(), pill.getY(), Theme::panelInset, pill.getX(), pill.getBottom(), false);
+    g.setGradientFill (fill);
     g.fillRoundedRectangle (pill, corner);
+    g.setColour (juce::Colours::white.withAlpha (0.05f));
+    g.drawLine (pill.getX() + corner, pill.getY() + 1.0f, pill.getRight() - corner, pill.getY() + 1.0f, 1.0f);
     g.setColour (Theme::border);
     g.drawRoundedRectangle (pill.reduced (0.5f), corner, 1.0f);
 
-    const float h = juce::jlimit (10.0f, 14.5f, pill.getHeight() * 0.38f);
-    draw::trackedText (g, processor.currentPresetName().toUpperCase(), pill.reduced (pill.getHeight(), 0.0f), juce::Justification::centred, Theme::labelFont (h), Theme::textPrimary);
+    const float h = juce::jlimit (10.0f, 14.0f, pill.getHeight() * 0.36f);
+    draw::trackedText (g, processor.currentPresetName().toUpperCase(), pill.reduced (pill.getHeight() + 4.0f, 0.0f), juce::Justification::centred,
+                       Theme::displayFont (h, 0.2f), Theme::textPrimary);
 
     // Tags line
     auto tags = processor.currentPresetTags();
@@ -146,8 +201,8 @@ void TopBar::paint (juce::Graphics& g)
     {
         juce::String line;
         for (int i = 0; i < tags.size(); ++i) { if (i > 0) line << juce::String::fromUTF8 ("   \xC2\xB7   "); line << tags[i].toUpperCase(); }
-        auto tagArea = pill.withY (pill.getBottom() + 2.0f).withHeight (h * 1.6f);
-        draw::trackedText (g, line, tagArea, juce::Justification::centred, Theme::captionFont (juce::jmax (7.5f, h * 0.72f)), Theme::textSecondary);
+        auto tagArea = pill.withY (pill.getBottom() + 3.0f).withHeight (h * 1.6f);
+        draw::trackedText (g, line, tagArea, juce::Justification::centred, Theme::captionFont (juce::jmax (7.5f, h * 0.68f)), Theme::textSecondary);
     }
 }
 
@@ -160,14 +215,14 @@ NavBar::NavBar (AntiMatrProcessor& p, bool showLab) : processor (p), lab (showLa
     auto names = pageNames();
     for (int i = 0; i < names.size(); ++i)
     {
-        auto t = std::make_unique<Tab> (names[i], icons[i]);
+        auto t = std::make_unique<AMTab> (names[i], icons[i], Theme::blue);
         t->onClick = [this, i] { setPage (i); if (onPageChange) onPageChange (i); };
         addAndMakeVisible (*t);
         tabs.push_back (std::move (t));
     }
     if (lab)
     {
-        auto t = std::make_unique<Tab> ("Lab", Icon::Lab);
+        auto t = std::make_unique<AMTab> ("Lab", Icon::Lab, Theme::amber);
         const int idx = (int) tabs.size();
         t->onClick = [this, idx] { setPage (idx); if (onPageChange) onPageChange (idx); };
         addAndMakeVisible (*t);
@@ -176,51 +231,41 @@ NavBar::NavBar (AntiMatrProcessor& p, bool showLab) : processor (p), lab (showLa
     addAndMakeVisible (ab);
     ab.setSelected (processor.currentABSlot(), juce::dontSendNotification);
     ab.onChange = [this] (int i) { processor.selectABSlot (i); if (onABChange) onABChange (i); };
+
+    output.setShowLabel (false);
+    output.setShowValue (false);
+    output.setTooltip ("Output level");
+    outputAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (processor.parameters(), ParameterRegistry::get (Param::masterGain).id, output);
+    output.setDoubleClickReturnValue (true, ParameterRegistry::get (Param::masterGain).defaultValue);
+    addAndMakeVisible (output);
     setPage (0);
 }
 
 void NavBar::setPage (int index)
 {
     page = juce::jlimit (0, (int) tabs.size() - 1, index);
-    for (int i = 0; i < (int) tabs.size(); ++i) { tabs[(size_t) i]->selected = (i == page); tabs[(size_t) i]->repaint(); }
-}
-
-void NavBar::Tab::paint (juce::Graphics& g)
-{
-    const auto b = getLocalBounds().toFloat();
-    if (selected)
-    {
-        juce::ColourGradient grad (Theme::blue.withAlpha (0.16f), b.getX(), b.getBottom(), Theme::blue.withAlpha (0.0f), b.getX(), b.getY(), false);
-        g.setGradientFill (grad);
-        g.fillRect (b);
-        juce::Path line; line.startNewSubPath (b.getX() + 6.0f, b.getBottom() - 1.5f); line.lineTo (b.getRight() - 6.0f, b.getBottom() - 1.5f);
-        draw::glowPath (g, line, Theme::blue, 1.5f, 8.0f, 0.8f);
-    }
-    g.setColour (Theme::borderSoft);
-    g.drawLine (b.getRight(), b.getY() + b.getHeight() * 0.2f, b.getRight(), b.getBottom() - b.getHeight() * 0.2f, 1.0f);
-
-    const float labelH = juce::jlimit (9.0f, 12.0f, b.getHeight() * 0.16f);
-    auto iconArea = b.withTrimmedBottom (labelH * 2.2f).reduced (0.0f, b.getHeight() * 0.16f);
-    const float d = juce::jmin (iconArea.getWidth(), iconArea.getHeight());
-    iconArea = iconArea.withSizeKeepingCentre (d, d);
-    const auto col = selected ? Theme::textPrimary : (hover ? Theme::textSecondary.brighter (0.5f) : Theme::textSecondary);
-    if (selected) draw::glowEllipse (g, iconArea, Theme::blue, d * 0.5f, 0.5f);
-    Icons::draw (g, icon, iconArea, col, 0.8f);
-    draw::trackedText (g, name.toUpperCase(), b.withTop (iconArea.getBottom() + 2.0f), juce::Justification::centredTop, Theme::labelFont (labelH), col);
+    for (int i = 0; i < (int) tabs.size(); ++i) tabs[(size_t) i]->setSelected (i == page);
 }
 
 void NavBar::resized()
 {
     auto area = getLocalBounds();
-    const int pad = juce::jmax (8, getWidth() / 70);
-    area.reduce (pad, juce::jmax (4, getHeight() / 10));
+    const int pad = juce::jmax (10, getWidth() / 64);
+    area.reduce (pad, juce::jmax (4, getHeight() / 12));
 
-    auto right = area.removeFromRight (juce::jlimit (220, 380, getWidth() * 24 / 100));
-    const int abH = juce::jlimit (22, 30, getHeight() / 3);
-    ab.setBounds (right.removeFromLeft (juce::jlimit (70, 96, right.getWidth() / 4)).withSizeKeepingCentre (juce::jlimit (70, 96, right.getWidth() / 4), abH));
+    auto right = area.removeFromRight (juce::jlimit (300, 460, getWidth() * 29 / 100));
+    const int rowH = juce::jlimit (22, 30, getHeight() / 3);
+    auto row = right.withSizeKeepingCentre (right.getWidth(), rowH);
+    row.removeFromRight (juce::jlimit (120, 190, right.getWidth() * 42 / 100));   // brand caption
+    const int abW = juce::jlimit (64, 90, row.getWidth() / 4);
+    ab.setBounds (row.removeFromLeft (abW));
+    row.removeFromLeft (pad);
+    swirlArea = row.removeFromLeft (rowH);
+    output.setBounds (row.reduced (2, 0));
 
-    auto tabArea = area.withWidth (juce::jmin (area.getWidth(), juce::jlimit (600, 980, getWidth() * 60 / 100)));
-    tabArea.setX (area.getX() + (area.getWidth() - tabArea.getWidth()) / 2 - pad);
+    area.removeFromLeft (juce::jlimit (60, 120, getWidth() * 6 / 100));   // version caption
+    auto tabArea = area.withWidth (juce::jmin (area.getWidth(), juce::jlimit (560, 900, getWidth() * 56 / 100)));
+    tabArea.setX (getWidth() / 2 - tabArea.getWidth() / 2 - getWidth() / 40);
     const int w = tabArea.getWidth() / (int) tabs.size();
     for (auto& t : tabs) t->setBounds (tabArea.removeFromLeft (w));
 }
@@ -228,14 +273,19 @@ void NavBar::resized()
 void NavBar::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
-    g.setColour (Theme::border);
-    g.drawLine (b.getX() + 8.0f, b.getY(), b.getRight() - 8.0f, b.getY(), 1.0f);
+    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.07f), b.getCentreX(), 0.0f, false);
+    sep.addColour (1.0, juce::Colours::transparentWhite);
+    g.setGradientFill (sep);
+    g.fillRect (b.withHeight (1.0f));
 
     const float h = juce::jlimit (7.5f, 9.5f, b.getHeight() * 0.11f);
-    const int pad = juce::jmax (8, getWidth() / 70);
+    const int pad = juce::jmax (10, getWidth() / 64);
     draw::trackedText (g, "V" + juce::String (ANTIMATR_VERSION_STRING), b.withWidth (120.0f).withTrimmedLeft ((float) pad), juce::Justification::centredLeft, Theme::captionFont (h), Theme::textDim);
 
-    auto brand = b.withLeft (b.getRight() - 190.0f).withTrimmedRight ((float) pad);
+    // output swirl icon
+    Icons::draw (g, Icon::Swirl, swirlArea.toFloat().reduced (swirlArea.getHeight() * 0.18f), Theme::textSecondary, 0.8f);
+
+    auto brand = b.withLeft (b.getRight() - 200.0f).withTrimmedRight ((float) pad);
     draw::trackedText (g, "INSTRUMENTS", brand.withHeight (b.getHeight() * 0.5f), juce::Justification::bottomRight, Theme::captionFont (h), Theme::textDim);
     draw::trackedText (g, "FOR A MORE STRANGE TOMORROW", brand.withTop (b.getCentreY()), juce::Justification::topRight, Theme::captionFont (h), Theme::textDim);
 }

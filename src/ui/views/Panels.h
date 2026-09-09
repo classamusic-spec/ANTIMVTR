@@ -1,28 +1,13 @@
 #pragma once
 
-#include "ui/components/AMPanel.h"
-#include "ui/components/AMKnob.h"
-#include "ui/components/AMButton.h"
+#include "Controls.h"
 #include "ui/components/AMSourceSelector.h"
 #include "ui/components/AMWaveView.h"
+#include "ui/components/AMSpaceArt.h"
 #include "ui/visualizers/SpectrumAnalyzer.h"
-#include "plugin/AntiMatrProcessor.h"
 
 namespace am::ui
 {
-
-using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-
-/** Helper: creates a knob bound to a parameter. */
-struct BoundKnob
-{
-    BoundKnob (juce::AudioProcessorValueTreeState& apvts, Param p, juce::Colour accent, const juce::String& labelOverride = {});
-    AMKnob knob;
-    std::unique_ptr<SliderAttachment> attachment;
-};
-
-/** Lays out knobs evenly in a row (or grid with `rows`). */
-void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Component*> knobs, int rows = 1);
 
 //==============================================================================
 /** SOURCE — choose your energy. */
@@ -30,6 +15,7 @@ class SourcePanel : public AMPanel, private juce::Timer
 {
 public:
     explicit SourcePanel (AntiMatrProcessor& p);
+    ~SourcePanel() override { stopTimer(); }
     void resized() override;
 
 private:
@@ -47,17 +33,20 @@ private:
 
 //==============================================================================
 /** SHAPE — turn matter into sound. */
-class ShapePanel : public AMPanel
+class ShapePanel : public AMPanel, private juce::Timer
 {
 public:
     explicit ShapePanel (AntiMatrProcessor& p);
+    ~ShapePanel() override { stopTimer(); }
     void resized() override;
 
 private:
+    void timerCallback() override;
     void setAdvanced (bool advanced);
     AntiMatrProcessor& processor;
     AMSegment mode { { "Simple", "Advanced" }, Theme::cyan };
-    std::vector<std::unique_ptr<BoundKnob>> simpleKnobs, advancedKnobs;
+    std::vector<std::unique_ptr<BoundKnob>> simpleKnobs;
+    std::vector<std::unique_ptr<BoundControl>> advancedControls;
     bool advanced = false;
 };
 
@@ -67,28 +56,35 @@ class EvolvePanel : public AMPanel, private juce::Timer
 {
 public:
     explicit EvolvePanel (AntiMatrProcessor& p);
+    ~EvolvePanel() override { stopTimer(); }
     void resized() override;
 
-private:
+    /** Operator tile: line icon, label and a thin amount bar. Shared with the Evolve page. */
     class OperatorCell : public juce::Component
     {
     public:
-        OperatorCell (const juce::String& label, Icon icon) : name (label), glyph (icon) { setWantsKeyboardFocus (false); }
+        OperatorCell (const juce::String& label, Icon icon);
         void paint (juce::Graphics& g) override;
         void mouseDown (const juce::MouseEvent&) override { if (onClick) onClick(); }
-        void mouseEnter (const juce::MouseEvent&) override { hover = true; repaint(); }
-        void mouseExit (const juce::MouseEvent&) override { hover = false; repaint(); }
+        void mouseEnter (const juce::MouseEvent&) override { anim.animate (hover, 1.0f); }
+        void mouseExit (const juce::MouseEvent&) override { anim.animate (hover, 0.0f); }
+        void setSelected (bool on);
+        void setAmount (float a) { if (std::abs (a - amount) > 0.01f) { amount = a; repaint(); } }
         std::function<void()> onClick;
-        bool selected = false;
-        float amount = 0.0f;
-        bool hover = false;
+    private:
         juce::String name;
         Icon glyph;
+        bool selected = false;
+        float amount = 0.0f;
+        Eased hover, lit;
+        Animator anim { *this, { &hover, &lit } };
     };
 
+    static Param operatorParam (int index);
+
+private:
     void timerCallback() override;
     void selectOperator (int index, bool fromParameter);
-    static Param operatorParam (int index);
 
     AntiMatrProcessor& processor;
     std::array<std::unique_ptr<OperatorCell>, 4> cells;
@@ -105,6 +101,7 @@ class FracturePanel : public AMPanel, private juce::Timer
 {
 public:
     explicit FracturePanel (AntiMatrProcessor& p);
+    ~FracturePanel() override { stopTimer(); }
     void resized() override;
 
 private:
@@ -125,21 +122,33 @@ class SpacePanel : public AMPanel, private juce::Timer
 {
 public:
     explicit SpacePanel (AntiMatrProcessor& p);
+    ~SpacePanel() override { stopTimer(); }
     void resized() override;
 
-private:
+    /** "‹ NEBULA ›" picker beside a procedural environment thumbnail. Shared with the Space page. */
     class SpacePicker : public juce::Component
     {
     public:
         SpacePicker();
         void paint (juce::Graphics& g) override;
         void mouseDown (const juce::MouseEvent& e) override;
+        void mouseMove (const juce::MouseEvent& e) override;
+        void mouseExit (const juce::MouseEvent&) override { hoverZone = 0; repaint(); }
         std::function<void (int)> onArrow;
+        std::function<void (int)> onSelect;   ///< direct choice from the popup
+        /** Art on the right (default) or art filling the whole component with the name overlaid. */
+        void setArtOnly (bool b) { artOnly = b; repaint(); }
         int type = 0;
         float phase = 0.0f;
         float activity = 0.0f;
+    private:
+        int zoneAt (juce::Point<int> p) const;
+        juce::Rectangle<float> nameBounds() const;
+        int hoverZone = 0;
+        bool artOnly = false;
     };
 
+private:
     void timerCallback() override;
     AntiMatrProcessor& processor;
     SpacePicker picker;

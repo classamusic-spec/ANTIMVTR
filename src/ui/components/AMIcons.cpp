@@ -207,6 +207,109 @@ juce::Path Icons::path (Icon icon)
             p.addRectangle (0.15f, 0.15f, 0.5f, 0.5f);
             p.addRectangle (0.35f, 0.35f, 0.5f, 0.5f);
             break;
+
+        case Icon::Swirl:
+        {
+            // a small galaxy swirl: two spiral arms
+            for (int arm = 0; arm < 2; ++arm)
+            {
+                for (int i = 0; i <= 24; ++i)
+                {
+                    const float u = (float) i / 24.0f;
+                    const float a = u * 4.2f + (float) arm * juce::MathConstants<float>::pi;
+                    const float r = 0.05f + 0.42f * u;
+                    juce::Point<float> pt (0.5f + std::cos (a) * r, 0.5f + std::sin (a) * r * 0.75f);
+                    if (i == 0) p.startNewSubPath (pt); else p.lineTo (pt);
+                }
+            }
+            break;
+        }
+
+        case Icon::Search:
+            p.addEllipse (0.12f, 0.12f, 0.56f, 0.56f);
+            p.startNewSubPath (0.62f, 0.62f); p.lineTo (0.9f, 0.9f);
+            break;
+
+        case Icon::Close:
+            p.startNewSubPath (0.2f, 0.2f); p.lineTo (0.8f, 0.8f);
+            p.startNewSubPath (0.8f, 0.2f); p.lineTo (0.2f, 0.8f);
+            break;
+
+        case Icon::Shuffle:
+            p.startNewSubPath (0.08f, 0.3f); p.lineTo (0.3f, 0.3f); p.lineTo (0.65f, 0.7f); p.lineTo (0.9f, 0.7f);
+            p.startNewSubPath (0.08f, 0.7f); p.lineTo (0.3f, 0.7f); p.lineTo (0.65f, 0.3f); p.lineTo (0.9f, 0.3f);
+            p.startNewSubPath (0.8f, 0.2f); p.lineTo (0.92f, 0.3f); p.lineTo (0.8f, 0.4f);
+            p.startNewSubPath (0.8f, 0.6f); p.lineTo (0.92f, 0.7f); p.lineTo (0.8f, 0.8f);
+            break;
+
+        case Icon::Dna:
+        {
+            for (int s = 0; s < 2; ++s)
+            {
+                for (int i = 0; i <= 24; ++i)
+                {
+                    const float u = (float) i / 24.0f;
+                    const float x = 0.5f + 0.28f * std::sin (u * juce::MathConstants<float>::twoPi + (float) s * juce::MathConstants<float>::pi);
+                    juce::Point<float> pt (x, 0.08f + 0.84f * u);
+                    if (i == 0) p.startNewSubPath (pt); else p.lineTo (pt);
+                }
+            }
+            for (int i = 1; i < 6; ++i)
+            {
+                const float u = (float) i / 6.0f;
+                const float dx = 0.28f * std::sin (u * juce::MathConstants<float>::twoPi);
+                p.startNewSubPath (0.5f - dx, 0.08f + 0.84f * u); p.lineTo (0.5f + dx, 0.08f + 0.84f * u);
+            }
+            break;
+        }
+
+        case Icon::Lfo:
+            p = sineWave (1.0f, 0.3f);
+            break;
+
+        case Icon::Env:
+            p.startNewSubPath (0.05f, 0.9f); p.lineTo (0.25f, 0.15f); p.lineTo (0.45f, 0.5f); p.lineTo (0.7f, 0.5f); p.lineTo (0.95f, 0.9f);
+            break;
+
+        case Icon::Chaos:
+        {
+            juce::Random rng (5);
+            p.startNewSubPath (0.05f, 0.5f);
+            for (int i = 1; i <= 10; ++i)
+                p.lineTo (0.05f + 0.9f * (float) i / 10.0f, 0.15f + 0.7f * rng.nextFloat());
+            break;
+        }
+
+        case Icon::Macro:
+            p.addEllipse (0.15f, 0.15f, 0.7f, 0.7f);
+            p.startNewSubPath (0.5f, 0.5f); p.lineTo (0.72f, 0.28f);
+            p.addEllipse (0.44f, 0.44f, 0.12f, 0.12f);
+            break;
+
+        case Icon::Grid:
+            for (int i = 0; i < 2; ++i)
+                for (int j = 0; j < 2; ++j)
+                    p.addRoundedRectangle (0.12f + (float) i * 0.42f, 0.12f + (float) j * 0.42f, 0.34f, 0.34f, 0.05f);
+            break;
+
+        case Icon::Check:
+            p.startNewSubPath (0.15f, 0.55f); p.lineTo (0.4f, 0.8f); p.lineTo (0.85f, 0.25f);
+            break;
+
+        case Icon::Plus:
+            p.startNewSubPath (0.5f, 0.15f); p.lineTo (0.5f, 0.85f);
+            p.startNewSubPath (0.15f, 0.5f); p.lineTo (0.85f, 0.5f);
+            break;
+
+        case Icon::Browse:
+            p.addRoundedRectangle (0.12f, 0.18f, 0.76f, 0.64f, 0.06f);
+            p.startNewSubPath (0.12f, 0.36f); p.lineTo (0.88f, 0.36f);
+            p.startNewSubPath (0.32f, 0.36f); p.lineTo (0.32f, 0.82f);
+            break;
+
+        case Icon::Play:
+            p.startNewSubPath (0.25f, 0.12f); p.lineTo (0.85f, 0.5f); p.lineTo (0.25f, 0.88f); p.closeSubPath();
+            break;
     }
     return p;
 }
@@ -219,7 +322,7 @@ void Icons::draw (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, j
     p.applyTransform (juce::AffineTransform::scale (size, size).translated (square.getX(), square.getY()));
 
     const bool filled = (icon == Icon::Dust || icon == Icon::Sample || icon == Icon::Scatter || icon == Icon::Crush
-                         || icon == Icon::Sparkle);
+                         || icon == Icon::Sparkle || icon == Icon::Play);
     g.setColour (colour);
     if (filled)
         g.fillPath (p);

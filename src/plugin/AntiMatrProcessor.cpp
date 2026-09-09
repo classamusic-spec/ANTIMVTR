@@ -1,0 +1,288 @@
+#include "AntiMatrProcessor.h"
+#include "AntiMatrEditor.h"
+#include "state/StateManager.h"
+
+namespace am
+{
+
+namespace
+{
+    const juce::Identifier kParametersType ("PARAMETERS");
+}
+
+AntiMatrProcessor::AntiMatrProcessor()
+    : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+      apvts (*this, nullptr, kParametersType, createParameterLayout())
+{
+    jassert (ParameterRegistry::validate().isEmpty());
+
+    for (const auto& d : ParameterRegistry::all())
+        rawValues[(size_t) paramIndex (d.param)] = apvts.getRawParameterValue (d.id);
+
+    ParameterRegistry::fillDefaults (blockParams);
+    abStates[0] = abStates[1] = PresetManager::initPatch();
+    markPreset ("Init", { "basic" }, 0);
+}
+
+AntiMatrProcessor::~AntiMatrProcessor() = default;
+
+//==============================================================================
+juce::AudioProcessorValueTreeState::ParameterLayout AntiMatrProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    for (const auto& d : ParameterRegistry::all())
+    {
+        const juce::ParameterID pid (d.id, 1);
+        const ParamDesc* desc = &d;
+
+        switch (d.kind)
+        {
+            case ParamKind::Float:
+            {
+                juce::NormalisableRange<float> range (d.min, d.max, 0.0f, d.skew);
+                auto attrs = juce::AudioParameterFloatAttributes()
+                                .withLabel (d.unit)
+                                .withStringFromValueFunction ([desc] (float v, int) { return desc->formatValue (v); });
+                layout.add (std::make_unique<juce::AudioParameterFloat> (pid, d.name, range, d.defaultValue, attrs));
+                break;
+            }
+            case ParamKind::Int:
+            {
+                auto attrs = juce::AudioParameterIntAttributes().withLabel (d.unit);
+                layout.add (std::make_unique<juce::AudioParameterInt> (pid, d.name, (int) d.min, (int) d.max, (int) d.defaultValue, attrs));
+                break;
+            }
+            case ParamKind::Bool:
+            {
+                layout.add (std::make_unique<juce::AudioParameterBool> (pid, d.name, d.defaultValue >= 0.5f));
+                break;
+            }
+            case ParamKind::Choice:
+            {
+                juce::StringArray items;
+                items.addTokens (juce::String (d.choices), "|", "");
+                layout.add (std::make_unique<juce::AudioParameterChoice> (pid, d.name, items, (int) d.defaultValue));
+                break;
+            }
+        }
+    }
+    return layout;
+}
+
+void AntiMatrProcessor::snapshotParameters (ParamValues& out) const noexcept
+{
+    for (size_t i = 0; i < (size_t) kNumParams; ++i)
+        out[i] = rawValues[i] != nullptr ? rawValues[i]->load (std::memory_order_relaxed) : out[i];
+}
+
+ParamValues AntiMatrProcessor::currentParamValues() const
+{
+    ParamValues v {};
+    ParameterRegistry::fillDefaults (v);
+    snapshotParameters (v);
+    return v;
+}
+
+//==============================================================================
+void AntiMatrProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+{
+    synth.prepare (sampleRate, samplesPerBlock);
+    snapshotParameters (blockParams);
+    synth.control().resetTo (blockParams);
+    reportedLatency = synth.latencySamples();
+    setLatencySamples (reportedLatency);
+}
+
+void AntiMatrProcessor::releaseResources()
+{
+}
+
+bool AntiMatrProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+{
+    const auto& out = layouts.getMainOutputChannelSet();
+    return out == juce::AudioChannelSet::stereo() || out == juce::AudioChannelSet::mono();
+}
+
+void AntiMatrProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+{
+    juce::ScopedNoDenormals noDenormals;
+
+    keyboard.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
+
+    snapshotParameters (blockParams);
+
+    TransportInfo transport;
+    if (auto* ph = getPlayHead())
+    {
+        if (const auto pos = ph->getPosition())
+        {
+            if (const auto bpm = pos->getBpm()) transport.bpm = *bpm;
+            if (const auto ppq = pos->getPpqPosition()) transport.ppqPosition = *ppq;
+            if (const auto sig = pos->getTimeSignature()) { transport.timeSigNum = sig->numerator; transport.timeSigDen = sig->denominator; }
+            transport.isPlaying = pos->getIsPlaying();
+        }
+    }
+
+    // Render into a stereo view of the buffer; mono hosts receive the left channel.
+    if (buffer.getNumChannels() >= 2)
+    {
+        synth.process (buffer, midi, blockParams, transport);
+    }
+    else if (buffer.getNumChannels() == 1)
+    {
+        juce::AudioBuffer<float> stereo (2, buffer.getNumSamples());
+        synth.process (stereo, midi, blockParams, transport);
+        buffer.copyFrom (0, 0, stereo, 0, 0, buffer.getNumSamples());
+        buffer.addFrom (0, 0, stereo, 1, 0, buffer.getNumSamples());
+        buffer.applyGain (0.5f);
+    }
+
+    midi.clear();
+
+    const int latency = synth.latencySamples();
+    if (latency != reportedLatency)
+    {
+        reportedLatency = latency;
+        setLatencySamples (latency);
+    }
+}
+
+//==============================================================================
+juce::AudioProcessorEditor* AntiMatrProcessor::createEditor()
+{
+    return new AntiMatrEditor (*this);
+}
+
+//==============================================================================
+int AntiMatrProcessor::getNumPrograms() { return std::max (1, presetManager.numFactoryPresets()); }
+int AntiMatrProcessor::getCurrentProgram() { return currentPreset; }
+void AntiMatrProcessor::setCurrentProgram (int index) { loadFactoryPreset (index); }
+const juce::String AntiMatrProcessor::getProgramName (int index)
+{
+    return index >= 0 && index < presetManager.numFactoryPresets() ? presetManager.factoryPreset (index).name : juce::String ("Init");
+}
+
+//==============================================================================
+PatchState AntiMatrProcessor::currentPatch() const
+{
+    PatchState s = extraState;
+    s.params = currentParamValues();
+    s.meta.name = presetName;
+    s.meta.tags = presetTags;
+    s.meta.pluginVersion = ANTIMATR_VERSION_STRING;
+    return s;
+}
+
+void AntiMatrProcessor::markPreset (const juce::String& name, const juce::StringArray& tags, int index)
+{
+    presetName = name;
+    presetTags = tags;
+    currentPreset = index;
+}
+
+void AntiMatrProcessor::loadPatch (const PatchState& patch, bool notifyPresetChange)
+{
+    extraState = patch;
+    apvts.replaceState (StateManager::toParameterTree (patch.params, kParametersType));
+    markPreset (patch.meta.name, patch.meta.tags, presetManager.findFactory (patch.meta.name));
+    diagnostics().events.push (EngineEventType::PresetLoaded, Subsystem::State, -1, (uint32_t) std::max (0, currentPreset), 0.0f,
+                               diagnostics().sampleClock.load());
+    if (notifyPresetChange)
+        sendChangeMessage();
+}
+
+void AntiMatrProcessor::loadFactoryPreset (int index)
+{
+    if (presetManager.numFactoryPresets() == 0) return;
+    index = ((index % presetManager.numFactoryPresets()) + presetManager.numFactoryPresets()) % presetManager.numFactoryPresets();
+    loadPatch (presetManager.buildFactory (index));
+    currentPreset = index;
+    updateHostDisplay (ChangeDetails().withProgramChanged (true));
+}
+
+void AntiMatrProcessor::loadNextPreset (int direction)
+{
+    loadFactoryPreset (currentPreset + (direction >= 0 ? 1 : -1));
+}
+
+void AntiMatrProcessor::loadRandomPreset()
+{
+    randomizePatch();
+}
+
+void AntiMatrProcessor::mutate (MutationStrength strength)
+{
+    PatchState s = currentPatch();
+    MutationEngine::mutate (s.params, strength, mutationSeed++);
+    s.meta.name = presetName.endsWith ("*") ? presetName : presetName + " *";
+    loadPatch (s);
+}
+
+void AntiMatrProcessor::randomizePatch()
+{
+    PatchState s = currentPatch();
+    MutationEngine::randomize (s.params, randomSeed++);
+    s.meta.name = "Random " + juce::String (randomSeed - 1000);
+    s.meta.tags = { "random" };
+    loadPatch (s);
+}
+
+void AntiMatrProcessor::selectABSlot (int slot)
+{
+    slot = juce::jlimit (0, 1, slot);
+    if (slot == abSlot) return;
+    abStates[abSlot] = currentPatch();
+    abSlot = slot;
+    loadPatch (abStates[abSlot]);
+}
+
+void AntiMatrProcessor::copyABToOther()
+{
+    abStates[1 - abSlot] = currentPatch();
+}
+
+//==============================================================================
+void AntiMatrProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    PatchState s = currentPatch();
+    auto* ui = new juce::DynamicObject();
+    ui->setProperty ("width", lastEditorWidth);
+    ui->setProperty ("height", lastEditorHeight);
+    ui->setProperty ("abSlot", abSlot);
+    s.ui = juce::var (ui);
+
+    // Embed the other A/B slot so a session reload keeps both.
+    auto* ab = new juce::DynamicObject();
+    ab->setProperty ("other", StateManager::toVar (abStates[1 - abSlot]));
+    s.ab = juce::var (ab);
+
+    destData = StateManager::toBinary (s);
+}
+
+void AntiMatrProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    PatchState s;
+    juce::String warnings;
+    if (! StateManager::fromBinary (data, (size_t) sizeInBytes, s, &warnings))
+        return;
+
+    if (auto* ui = s.ui.getDynamicObject())
+    {
+        lastEditorWidth  = juce::jmax (100, (int) ui->getProperty ("width"));
+        lastEditorHeight = juce::jmax (100, (int) ui->getProperty ("height"));
+        abSlot = juce::jlimit (0, 1, (int) ui->getProperty ("abSlot"));
+    }
+    if (auto* ab = s.ab.getDynamicObject())
+    {
+        PatchState other;
+        if (StateManager::fromVar (ab->getProperty ("other"), other))
+            abStates[1 - abSlot] = other;
+    }
+    s.ab = juce::var();
+    s.ui = juce::var();
+    loadPatch (s);
+    abStates[abSlot] = s;
+}
+
+} // namespace am

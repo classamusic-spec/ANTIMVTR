@@ -20,7 +20,7 @@ namespace
     /** Per-mode output gains: white/pink/brown/blue are matched to ~0.25 RMS at level 1. */
     constexpr float kWhiteGain = 0.43f;
     constexpr float kPinkGain  = 0.44f;
-    constexpr float kBrownGain = 0.44f;
+    constexpr float kBrownGain = 0.38f;
     constexpr float kBlueGain  = 0.52f;
 }
 
@@ -33,6 +33,7 @@ void DustSource::prepare (double sampleRate, int maxBlockSize)
 
     tiltL.prepare (sr);      tiltR.prepare (sr);
     bandL.prepare (sr);      bandR.prepare (sr);
+    bandL2.prepare (sr);     bandR2.prepare (sr);
     crackleLpL.prepare (sr); crackleLpR.prepare (sr);
     dcL.prepare (sr, 10.0f); dcR.prepare (sr, 10.0f);
     gate.maxRamp = (float) (sr * 0.002);
@@ -47,6 +48,7 @@ void DustSource::reset()
     diffL.reset();  diffR.reset();
     tiltL.reset();  tiltR.reset();
     bandL.reset();  bandR.reset();
+    bandL2.reset(); bandR2.reset();
     crackleLpL.reset(); crackleLpR.reset();
     dcL.reset();    dcR.reset();
     gate.reset();
@@ -220,6 +222,8 @@ void DustSource::updateFilteredBand()
     const float q = expMap (p.color, 0.7f, 40.0f);
     bandL.set (centre, q);
     bandR.set (centre, q);
+    bandL2.set (centre, q);
+    bandR2.set (centre, q);
 }
 
 void DustSource::renderFiltered (float* l, float* r, int n)
@@ -231,12 +235,14 @@ void DustSource::renderFiltered (float* l, float* r, int n)
             updateFilteredBand();
             controlCountdown = kControlSamples;
         }
-        const float g = bandL.bandpassNoiseGain() * 0.21f;
+        // Two cascaded band-passes: 12 dB/octave skirts read as a resonance
+        // rather than as tinted noise.
+        const float g = bandL.bandpassCascadeNoiseGain() * 0.24f;
 
         float wl, wr;
         nextNoise (wl, wr);
-        wl = bandL.bandpass (wl) * g;
-        wr = bandR.bandpass (wr) * g;
+        wl = bandL2.bandpass (bandL.bandpass (wl)) * g;
+        wr = bandR2.bandpass (bandR.bandpass (wr)) * g;
         const float occ = gate.next (gateRng, p.density, gateSegment, p.jitter);
         l[i] = wl * occ;
         r[i] = wr * occ;
@@ -361,8 +367,11 @@ void DustSource::renderImpulse (float* l, float* r, int n)
 
 void DustSource::renderCloud (float* l, float* r, int n)
 {
-    const float rate     = expMap (p.density, 1.0f, 160.0f);          // grains / second
     const float grainSec = 0.005f + p.grain * 0.195f;                 // 5 .. 200 ms
+    // Density is grains per second, capped so the pool always holds the cloud:
+    // a rate above kMaxGrains / grainSec could only be met by dropping grains.
+    const float rate     = juce::jmin (expMap (p.density, 2.0f, 400.0f),
+                                       (float) kMaxGrains * 0.9f / grainSec);
     const double meanInterval = juce::jmax (4.0, sr / (double) rate);
     const float overlap  = juce::jmax (1.0f, rate * grainSec);
 
@@ -535,7 +544,8 @@ void DustSource::finalise (float* l, float* r, int n, const RenderContext& ctx)
         dcL.reset(); dcR.reset();
         pinkL.reset(); pinkR.reset(); brownL.reset(); brownR.reset();
         diffL.reset(); diffR.reset(); tiltL.sanitise(); tiltR.sanitise();
-        bandL.reset(); bandR.reset(); crackleLpL.reset(); crackleLpR.reset();
+        bandL.reset(); bandR.reset(); bandL2.reset(); bandR2.reset();
+        crackleLpL.reset(); crackleLpR.reset();
         clearEvents();
         if (ctx.diagnostics != nullptr)
             ctx.diagnostics->safety.note (SafetyEvent::NaN, Subsystem::Source, -1, bad);

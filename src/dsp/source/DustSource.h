@@ -170,7 +170,7 @@ private:
     excitation::BrownFilter      brownL, brownR;
     excitation::DifferenceFilter diffL, diffR;
     excitation::TiltFilter       tiltL, tiltR;
-    excitation::Svf              bandL, bandR;
+    excitation::Svf              bandL, bandR, bandL2, bandR2;
     excitation::ExciterLowpass   crackleLpL, crackleLpR;
     excitation::DcBlocker        dcL, dcR;
     DutyGate gate;

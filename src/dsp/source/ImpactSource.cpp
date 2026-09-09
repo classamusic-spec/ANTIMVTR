@@ -170,7 +170,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             tau = expMap (p.length, 0.0002f, 0.02f);
             const float centre = juce::jlimit (60.0f, nyquist, expMap (bright, 400.0f, 12000.0f));
             s.svf.set (centre, 0.6f + p.hardness * 4.0f);
-            gain = s.svf.bandpassNoiseGain() * 2.6f;
+            gain = s.svf.bandpassNoiseGain() * 2.35f;
             s.noiseAmt = 1.0f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0003 * (1.0 - 0.9 * (double) p.hardness)));
             break;
@@ -192,7 +192,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             tau = expMap (p.length, 0.005f, 1.5f);
             const float cut = juce::jlimit (80.0f, nyquist, expMap (bright, 300.0f, 16000.0f));
             s.svf.set (cut, 0.7f + p.hardness * 2.5f);
-            gain = s.svf.lowpassNoiseGain() * 1.9f;
+            gain = s.svf.lowpassNoiseGain() * 1.08f;
             s.noiseAmt = 1.0f;
             s.attackInc = 1.0f / juce::jmax (2.0f, (float) (sr * 0.0015 * (1.0 - 0.92 * (double) p.hardness)));
             break;

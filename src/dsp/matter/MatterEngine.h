@@ -2,6 +2,12 @@
 
 #include "dsp/RenderContext.h"
 #include "dev/diagnostics/DiagnosticSnapshot.h"
+#include "core/RealtimeUtils.h"
+#include "MatterNode.h"
+#include "ModalResonator.h"
+#include "MaterialProfile.h"
+#include "MaterialMorpher.h"
+#include "MatterTopology.h"
 
 namespace am
 {
@@ -9,62 +15,46 @@ namespace am
 /**
     MATTER ENGINE — the technological centerpiece of ANTI-MATR.
 
-    Matter is a dynamic graph of resonating nodes excited by the Source. The
-    public Shape controls (Density, Form, Mass, Tension, Decay, Surface) and
-    the material models drive the node distribution, damping, weighting,
-    coupling and nonlinearity.
+    Matter is a dynamic graph of resonating nodes excited by the Source (and
+    by a velocity-scaled strike at note-on). The public Shape controls
+    (Density, Form, Mass, Tension, Decay, Surface) and the material models
+    drive the node distribution, damping, weighting, coupling and
+    nonlinearity through MaterialMorpher; MatterTopology builds clusters
+    and coupling edges; ModalBank renders the nodes.
 
-    This header defines the stable interface used by the voice, the Evolve
-    engine and the diagnostics. The Phase-0 implementation is a transparent
-    pass-through so the rest of the instrument can be validated; the real
-    modal graph is implemented in Phase 5/6 behind the same interface.
+    Per block: the node records (possibly modified by Evolve between
+    blocks) are turned into resonator coefficients (frequencies glide,
+    gains ramp), the block is rendered, node energies and safety are
+    updated, and the material baseline for the next block is recomputed
+    from the smoothed parameters (see MatterNode.h for the contract).
 */
 class MatterEngine
 {
 public:
-    /** One resonating node. Evolve operators manipulate these directly. */
-    struct Node
-    {
-        float frequency       = 0.0f;   ///< current resonant frequency (Hz)
-        float targetFrequency = 0.0f;   ///< frequency the material asks for (Hz), before Evolve
-        float ratio           = 1.0f;   ///< target frequency / fundamental
-        float weight          = 0.0f;   ///< amplitude weight 0..1 (0 = inactive)
-        float damping         = 0.0f;   ///< per-sample energy loss factor
-        float pan             = 0.0f;   ///< -1..1
-        float nonlinearity    = 0.0f;   ///< 0..1
-        float excitation      = 1.0f;   ///< how strongly the source excites this node
-        float energy          = 0.0f;   ///< running energy estimate for diagnostics
-        uint8_t cluster       = 0;
-        uint8_t couplingCount = 0;
-        bool  active          = false;
-        // Resonator state (2-pole / SVF style), maintained by the implementation.
-        float s1 = 0.0f, s2 = 0.0f;
-        float g = 0.0f, r = 0.0f;
-    };
+    using Node = MatterNode;
 
     void prepare (double sampleRate, int maxBlockSize);
     void reset();
 
-    /** Called when the voice starts: (re)builds the node distribution for the note. */
+    /** Called when the voice starts (or re-targets in legato): (re)builds the node distribution for the note. */
     void noteOn (const NoteState& note, const ParamValues& params, Quality quality);
     void noteOff();
 
     /**
         Processes one block. `excL/excR` is the source excitation; the Matter
-        response is written to `outL/outR` (overwrite). The implementation may
-        read `ctx` every block to follow Shape parameter changes smoothly.
+        response is written to `outL/outR` (overwrite). Shape parameters are
+        read from `ctx` every block and followed smoothly.
     */
     void process (const float* excL, const float* excR, float* outL, float* outR, int n,
                   const RenderContext& ctx, const NoteState& note);
 
-    /** Total stored energy (0..1-ish). Used to decide when a released voice can end. */
+    /** Output-referred stored energy (0..1-ish). Used to decide when a released voice can end. */
     float energy() const noexcept { return currentEnergy; }
-
     bool isActive() const noexcept { return currentEnergy > kSilenceThreshold; }
 
     int numNodes() const noexcept { return nodeCount; }
     int activeNodes() const noexcept;
-    int clusterCount() const noexcept { return clusters; }
+    int clusterCount() const noexcept { return topology.numClusters(); }
     uint32_t topologySeed() const noexcept { return seed; }
 
     Node& node (int i) noexcept { return nodes[(size_t) i]; }
@@ -79,14 +69,55 @@ public:
     /** Average and maximum coupling strength over all edges (0 if none). */
     void couplingStats (float& average, float& maximum) const noexcept;
 
+    // ---- introspection (tests, DSP LAB)
+    const MaterialProfile& material() const noexcept { return morpher.profile(); }
+    const MatterTopology& getTopology() const noexcept { return topology; }
+    float renderedFrequency (int i) const noexcept { return renderFreq[(size_t) i]; }
+    float lastCouplingScale() const noexcept { return bank.lastCouplingScale(); }
+
 private:
+    struct ShapeValues
+    {
+        MaterialMorpher::Input morph;
+        float coupling = 0.3f, strike = 0.35f, surface = 0.2f, mass = 0.4f;
+        int materialA = 0, materialB = 1, topologyType = 2;
+        uint32_t seed = 7;
+    };
+
+    static ShapeValues readShape (const ParamValues& p) noexcept;
+    void rebuildIfNeeded (const ShapeValues& v, int count) noexcept;
+    void computeNextTargets (const ShapeValues& v, const NoteState& note, float blockSeconds) noexcept;
+    void applyCoupling (const ShapeValues& v, float rMax) noexcept;
+    void buildStrike (const NoteState& note, const ShapeValues& v) noexcept;
+    void conditionExcitation (const float* excL, const float* excR, int n, const ShapeValues& v) noexcept;
+    void reportSafety (const RenderContext& ctx, SafetyEvent e, int count) noexcept;
+
     std::array<Node, kMaxMatterNodes> nodes {};
+    ModalBank bank;
+    MaterialMorpher morpher;
+    MatterTopology topology;
+
+    std::array<float, kMaxMatterNodes> renderFreq {}, amps {}, outGain {}, edgeJitter {};
+    std::array<float, kMaxMatterNodes> coupA {}, coupB {}, coupHub {};
+    std::array<ModalBank::ExtraEdge, ModalBank::kMaxExtraEdges> extraScaled {};
+
+    static constexpr int kStrikeBuf = 4096;
+    static constexpr int kOutDelay  = 32;          ///< fixed delay of the output used for the surface interaction
+    std::array<float, kStrikeBuf> strikeBuf {};
+    std::array<float, kMaxBlockSize> excBuf {}, strikeSig {};
+    std::array<float, kOutDelay> outRing {};
+    int strikePos = 0, strikeLen = 0, outRingPos = 0;
+
     int nodeCount = 0;
-    int clusters  = 0;
     uint32_t seed = 0;
+    int lastTopology = -1, lastQualityNodes = 0;
     float currentEnergy = 0.0f;
+    float lastEdgeScale = 0.0f;
     double sr = 48000.0;
-    bool gate = false;
+    float lpState = 0.0f;
+    bool gate = false, snapNext = true, everStarted = false;
+    Rng grainRng { 0x6A11u };
+    AntiDenormal antiDenormal;
 };
 
 } // namespace am

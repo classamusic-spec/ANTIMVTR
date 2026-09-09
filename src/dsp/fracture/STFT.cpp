@@ -21,8 +21,9 @@ void STFT::prepare (int fftSize)
         sumSquares += w * w;
     }
 
-    // Σ_k w²[n - k·hop] over the overlapping frames = (Σ w²) · hop / size.
-    const double colaSum = sumSquares * (double) hopSizeValue / (double) fftSizeValue;
+    // Σ_k w²[n - k·hop] over the overlapping frames = (Σ_n w²[n]) / hop
+    // (= 1.5 for a periodic Hann at 75 % overlap).
+    const double colaSum = sumSquares / (double) hopSizeValue;
     synthScale = (float) (1.0 / juce::jmax (1.0e-9, colaSum));
 
     for (int ch = 0; ch < 2; ++ch)

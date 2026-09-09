@@ -374,9 +374,8 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
         reset();
     }
 
-    float lo = 0.0f, hi = 0.0f;
-    juce::FloatVectorOperations::findMinAndMax (l, n, lo, hi);
-    lastEnergy = clamp01 (juce::jmax (std::abs (lo), std::abs (hi)));
+    const auto range = juce::FloatVectorOperations::findMinAndMax (l, n);
+    lastEnergy = clamp01 (juce::jmax (std::abs (range.getStart()), std::abs (range.getEnd())));
 }
 
 } // namespace am

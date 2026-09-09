@@ -88,6 +88,7 @@ ParamValues AntiMatrProcessor::currentParamValues() const
 void AntiMatrProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     synth.prepare (sampleRate, samplesPerBlock);
+    devMidi.reset (sampleRate);
     snapshotParameters (blockParams);
     synth.control().resetTo (blockParams);
     reportedLatency = synth.latencySamples();
@@ -109,6 +110,7 @@ void AntiMatrProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
 
     keyboard.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
+    devMidi.removeNextBlockOfMessages (midi, buffer.getNumSamples());
 
     snapshotParameters (blockParams);
 

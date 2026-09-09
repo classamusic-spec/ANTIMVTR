@@ -73,6 +73,12 @@ public:
     /** Copies node state into the diagnostics record. Returns number of nodes written. */
     int fillDiagnostics (NodeDiag* dest, int maxNodes) const noexcept;
 
+    /** Copies coupling edges into the diagnostics record. Returns number of edges written. */
+    int fillEdgeDiagnostics (EdgeDiag* dest, int maxEdges) const noexcept;
+
+    /** Average and maximum coupling strength over all edges (0 if none). */
+    void couplingStats (float& average, float& maximum) const noexcept;
+
 private:
     std::array<Node, kMaxMatterNodes> nodes {};
     int nodeCount = 0;

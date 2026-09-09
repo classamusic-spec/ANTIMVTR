@@ -22,6 +22,17 @@ struct NodeDiag
     uint8_t active          = 0;
 };
 
+/** One coupling edge of the Matter graph, published for the focus voice. */
+struct EdgeDiag
+{
+    uint8_t from     = 0;
+    uint8_t to       = 0;
+    uint8_t type     = 0;      ///< MatterEngine coupling type (implementation-defined enum)
+    float   strength = 0.0f;
+};
+
+constexpr int kMaxMatterEdges = 512;
+
 struct StageLevels
 {
     float rms  = 0.0f;
@@ -61,6 +72,9 @@ struct DiagnosticSnapshot
     uint8_t  materialB       = 0;
     float    materialBlend   = 0.0f;
     NodeDiag nodes[kMaxMatterNodes] {};
+    int      numEdges = 0;
+    EdgeDiag edges[kMaxMatterEdges] {};
+    float    fundamentalHz = 0.0f;    ///< frequency the focus voice is playing (after bend/glide)
 
     // Fracture
     int   fractureFFTSize = 0;

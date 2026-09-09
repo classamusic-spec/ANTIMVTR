@@ -71,6 +71,17 @@ int MatterEngine::activeNodes() const noexcept
     return a;
 }
 
+int MatterEngine::fillEdgeDiagnostics (EdgeDiag*, int) const noexcept
+{
+    return 0;   // Phase 0: no coupling graph yet
+}
+
+void MatterEngine::couplingStats (float& average, float& maximum) const noexcept
+{
+    average = 0.0f;
+    maximum = 0.0f;
+}
+
 int MatterEngine::fillDiagnostics (NodeDiag* dest, int maxNodes) const noexcept
 {
     const int count = std::min (nodeCount, maxNodes);

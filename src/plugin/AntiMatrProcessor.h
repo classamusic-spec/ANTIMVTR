@@ -54,6 +54,9 @@ public:
     PresetManager& presets() noexcept { return presetManager; }
     juce::MidiKeyboardState& keyboardState() noexcept { return keyboard; }
 
+    /** Thread-safe MIDI injection used by DSP LAB stress tests and tools (any thread). */
+    void injectMidi (const juce::MidiMessage& m) { devMidi.addMessageToQueue (m); }
+
     /** Current patch built from the live parameter values (message thread). */
     PatchState currentPatch() const;
 
@@ -96,6 +99,7 @@ private:
     SynthEngine synth;
     PresetManager presetManager;
     juce::MidiKeyboardState keyboard;
+    juce::MidiMessageCollector devMidi;
 
     ParamValues blockParams {};
     int currentPreset = 0;

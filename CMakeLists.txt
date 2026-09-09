@@ -93,6 +93,21 @@ set(ANTIMATR_UI_MODULES
     juce::juce_audio_utils)
 
 # ---------------------------------------------------------------------------
+# Optional embedded assets (fonts under assets/fonts, OFL licensed). The
+# instrument builds and runs without them; when present they are compiled in
+# as BinaryData and the theme picks them up (ANTIMATR_HAS_FONTS=1).
+# ---------------------------------------------------------------------------
+file(GLOB ANTIMATR_FONT_FILES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/*.ttf ${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/*.otf)
+set(ANTIMATR_ASSET_TARGETS "")
+set(ANTIMATR_ASSET_DEFINES ANTIMATR_HAS_FONTS=0)
+if (ANTIMATR_FONT_FILES)
+    juce_add_binary_data(AntiMatrAssets HEADER_NAME AntiMatrAssets.h NAMESPACE AntiMatrAssets SOURCES ${ANTIMATR_FONT_FILES})
+    set(ANTIMATR_ASSET_TARGETS AntiMatrAssets)
+    set(ANTIMATR_ASSET_DEFINES ANTIMATR_HAS_FONTS=1)
+    message(STATUS "ANTI-MATR: embedding fonts: ${ANTIMATR_FONT_FILES}")
+endif()
+
+# ---------------------------------------------------------------------------
 # Plugin
 # ---------------------------------------------------------------------------
 set(ANTIMATR_FORMATS VST3 Standalone)
@@ -128,6 +143,7 @@ target_include_directories(AntiMatr PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_compile_definitions(AntiMatr PUBLIC
     ${ANTIMATR_COMMON_DEFINES}
+    ${ANTIMATR_ASSET_DEFINES}
     JUCE_JACK=1
     JUCE_ALSA=1)
 
@@ -135,6 +151,7 @@ target_link_libraries(AntiMatr
     PRIVATE
         ${ANTIMATR_CORE_MODULES}
         ${ANTIMATR_UI_MODULES}
+        ${ANTIMATR_ASSET_TARGETS}
         antimatr_warnings
     PUBLIC
         juce::juce_recommended_config_flags
@@ -179,8 +196,8 @@ if (ANTIMATR_BUILD_TOOLS)
     target_sources(AntiMatrSnapshot PRIVATE
         ${ANTIMATR_CORE_SOURCES} ${ANTIMATR_UI_SOURCES} ${ANTIMATR_SNAPSHOT_PLUGIN_SOURCES} ${ANTIMATR_SNAPSHOT_SOURCES})
     target_include_directories(AntiMatrSnapshot PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_compile_definitions(AntiMatrSnapshot PRIVATE ${ANTIMATR_COMMON_DEFINES} ANTIMATR_SNAPSHOT_TOOL=1
+    target_compile_definitions(AntiMatrSnapshot PRIVATE ${ANTIMATR_COMMON_DEFINES} ${ANTIMATR_ASSET_DEFINES} ANTIMATR_SNAPSHOT_TOOL=1
         JUCE_JACK=0 JUCE_ALSA=0)
-    target_link_libraries(AntiMatrSnapshot PRIVATE ${ANTIMATR_CORE_MODULES} ${ANTIMATR_UI_MODULES} antimatr_warnings
+    target_link_libraries(AntiMatrSnapshot PRIVATE ${ANTIMATR_CORE_MODULES} ${ANTIMATR_UI_MODULES} ${ANTIMATR_ASSET_TARGETS} antimatr_warnings
         juce::juce_recommended_config_flags)
 endif()

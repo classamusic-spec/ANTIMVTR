@@ -104,10 +104,12 @@ private:
     static constexpr int kStrikeBuf = 4096;
     static constexpr int kOutDelay  = 32;          ///< fixed delay of the output used for the surface interaction
     std::array<float, kStrikeBuf> strikeBuf {};
-    std::array<float, kMaxBlockSize> excBuf {}, strikeSig {};
+    std::array<float, kMaxBlockSize> excBuf {}, transBuf {}, strikeSig {};
     std::array<float, kOutDelay> outRing {};
     int strikePos = 0, strikeLen = 0, strikePulseLen = 0, outRingPos = 0;
     float strikeNorm = 1.0f;          ///< coherence normalisation of the strike (see process())
+    float envFast = 0.0f, envSlow = 0.0f;   ///< excitation power followers behind the transient split
+    bool  transientActive = false;
 
     int nodeCount = 0;
     uint32_t seed = 0;

@@ -10,6 +10,22 @@ namespace
 {
     constexpr float kSourceGain  = 0.24f;   ///< sustained excitation into the nodes (before damping normalisation)
     constexpr float kStrikeGain  = 1.5f;   ///< strike pulse into the nodes
+    // A resonator answers a *sustained* drive at resonance with a build-up of roughly Q, but answers
+    // an *impulse* with roughly the impulse itself. One input gain cannot serve both: the excitation
+    // gain is normalised against Q so a bowed tone stays sane, and that same normalisation buries a
+    // mallet roll 30 dB down — measured, not guessed.
+    //
+    // The object already has an input that is calibrated for impulses: the strike. So rather than
+    // switching the excitation gain on some estimate of what the source is doing — which is a hidden
+    // dynamics processor, and gets it wrong on the attack of every sustained note — the excitation is
+    // *split*. Its steady part drives the Q-normalised excitation input as before, and its transient
+    // part is added to the strike input, where an impulse already lands at the right level. A steady
+    // tone contributes nothing to the strike input, so sustained sound is untouched.
+    constexpr float kEnvFastMs      = 2.0f;   ///< envelope detector attack
+    constexpr float kEnvFastRelMs   = 40.0f;  ///< ... and release: an envelope, not a rectified ripple
+    constexpr float kEnvSlowAtkMs   = 8.0f;   ///< the envelope's own local mean: rises within a note attack
+    constexpr float kEnvSlowRelMs   = 400.0f; ///< ... and falls slowly, so the gap in a roll stays a gap
+    constexpr float kTransientGain  = 0.005f; ///< transient content into the strike input
     constexpr float kStrikeRef   = 0.90f;  ///< coherent strike sum of the default object (density .5, excite .6, note 60); the strike is normalised towards it
     constexpr float kStrikeNormPower = 0.75f; ///< 0 = purely physical strike level, 1 = strike peak independent of the node structure
     constexpr float kOutputGain  = 1.0f;
@@ -64,6 +80,9 @@ void MatterEngine::reset()
     outRing.fill (0.0f);
     outRingPos = 0;
     lpState = 0.0f;
+    strikeNorm = 1.0f;
+    envFast = envSlow = 0.0f;
+    transientActive = false;
     lastTopology = -1;
     lastQualityNodes = 0;
     lastEdgeScale = 0.0f;
@@ -206,6 +225,16 @@ void MatterEngine::conditionExcitation (const float* excL, const float* excR, in
     const float interact  = surface * 0.8f;
     const float grain     = surface * P.grain * 0.06f;
 
+    // Transient extraction. The coefficients come from the sample rate alone, so the split does not
+    // depend on the host's block size: a per-block measurement of the same signal varies by 35 dB
+    // between a 32- and a 1024-sample buffer, which would make the instrument sound different in
+    // every host.
+    const auto coef = [this] (float ms) { return 1.0f - std::exp (-1000.0f / (float) (sr * ms)); };
+    const float fastAtk = coef (kEnvFastMs),    fastRel = coef (kEnvFastRelMs);
+    const float slowAtk = coef (kEnvSlowAtkMs), slowRel = coef (kEnvSlowRelMs);
+    float eF = envFast, eS = envSlow;
+    float transPeak = 0.0f;
+
     float lp = lpState;
     for (int t = 0; t < n; ++t)
     {
@@ -222,16 +251,22 @@ void MatterEngine::conditionExcitation (const float* excL, const float* excR, in
             u *= 1.0f + interact * fastTanh (3.0f * delayed);
             u += grain * grainRng.nextBipolar() * drive;   // excitation-referenced: never a feedback path
         }
+        // Fast envelope of the excitation, and the local mean of that envelope. Where the envelope
+        // stands above its own mean the signal is rising faster than the material can follow: that
+        // excess is the transient.
+        const float pw = u * u;
+        eF += (pw - eF) * (pw > eF ? fastAtk : fastRel);
+        eS += (eF - eS) * (eF > eS ? slowAtk : slowRel);
+        const float g = eF > 1.0e-12f ? 1.0f - std::sqrt (std::min (1.0f, eS / eF)) : 0.0f;
+
         excBuf[(size_t) t] = u + antiDenormal.next();
+        const float tr = u * g * kTransientGain;
+        transBuf[(size_t) t] = tr;
+        transPeak = std::max (transPeak, std::abs (tr));
     }
     lpState = lp;
-
-    // Strike pulse playback.
-    for (int t = 0; t < n; ++t)
-    {
-        const int p = strikePos + t;
-        strikeSig[(size_t) t] = p < strikeLen ? strikeBuf[(size_t) p] : 0.0f;
-    }
+    envFast = eF; envSlow = eS;
+    transientActive = transPeak > 1.0e-6f;
 }
 
 void MatterEngine::applyCoupling (const ShapeValues& v, float rMax) noexcept
@@ -360,7 +395,15 @@ void MatterEngine::process (const float* excL, const float* excR, float* outL, f
     {
         const float target = std::pow (kStrikeRef / std::max (0.05f, coherentSum), kStrikeNormPower);
         strikeNorm = std::clamp (target, 0.2f, 1.5f);
-        for (int i = 0; i < N; ++i) bIn[i] *= strikeNorm;
+    }
+
+    // The impulse input carries the strike pulse and the extracted transient: both are impulses,
+    // and only the pulse is coherence-normalised.
+    for (int t = 0; t < n; ++t)
+    {
+        const int p = strikePos + t;
+        const float pulse = p < strikeLen ? strikeBuf[(size_t) p] : 0.0f;
+        strikeSig[(size_t) t] = pulse * strikeNorm + transBuf[(size_t) t];
     }
     reportSafety (ctx, SafetyEvent::InvalidFrequency, invalidFreq);
     reportSafety (ctx, SafetyEvent::InvalidCoefficient, invalidCoeff);
@@ -371,7 +414,7 @@ void MatterEngine::process (const float* excL, const float* excR, float* outL, f
     if (snapNext) { bank.snapToTargets(); snapNext = false; }
 
     // ---- 4. Render.
-    bank.process (excBuf.data(), strikeLen > strikePos ? strikeSig.data() : nullptr, outL, outR, n);
+    bank.process (excBuf.data(), (strikeLen > strikePos || transientActive) ? strikeSig.data() : nullptr, outL, outR, n);
     strikePos = std::min (strikePos + n, strikeLen);
 
     // ---- 5. Safety and energies.

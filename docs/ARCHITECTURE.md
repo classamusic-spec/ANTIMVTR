@@ -109,6 +109,18 @@ raw sources.
   single note stays between roughly −12 and −2 dBFS across all Shape
   settings. Each note's strike lands up to 1.5 ms late by a seeded amount so
   chords never stack sample-aligned pulses.
+* Matter's excitation is **split** before it reaches the nodes. A resonator
+  answers a sustained drive at resonance with a build-up of roughly Q but
+  answers an impulse with roughly the impulse itself, so a single input gain
+  cannot serve both: the excitation input is normalised against Q
+  (`damping^0.75`) to keep a bowed tone sane, and that same normalisation used
+  to bury a mallet roll 28 dB and a dust cloud 39 dB below their own sources —
+  effectively inaudible. `conditionExcitation` therefore extracts the
+  transient part of the excitation (a fast envelope standing above its own
+  local mean) and adds it to the *strike* input, which is already calibrated
+  for impulses. A steady tone contributes nothing there, so sustained sound is
+  unchanged within about 1.5 dB; an impact roll gains ~18 dB. The detector's
+  coefficients come from the sample rate alone, never from the block length.
 * `SynthEngine` applies polyphony headroom `0.65 / N^0.3` eased over 40 ms.
 * `MasterSection`: gain → hard ceiling → instant-attack limiter (80 ms
   release) → final clip; every limited or clipped sample is counted.

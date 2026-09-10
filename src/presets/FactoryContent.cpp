@@ -595,6 +595,7 @@ void registerAll (PresetManager& manager)
     {
         wave (s, 6 /* FRACTURED */, 0.48f, 0.30f, 0.05f, 3, 0.14f, 0.45f, -1);
         amp (s, 0.002f, 0.35f, 0.72f, 0.24f, 0.3f);
+        set (s, Param::masterGain, -3.0f);   // struck material has a hot transient: keep headroom at the bottom of the keyboard
         shape (s, 0.42f, 0.52f, 0.72f, 0.40f, 0.34f, 0.52f);
         material (s, MaterialType::Metal, MaterialType::Wood, 0.55f);
         topology (s, 4 /* RANDOM */, 0.55f, 0.40f, 89);
@@ -1096,6 +1097,7 @@ void registerAll (PresetManager& manager)
     {
         impact (s, 6 /* MEMBRANE HIT */, 0.45f, 0.40f, 0.10f, 0.85f, 0.45f, 0.14f, 0.0f, 0.85f);
         amp (s, 0.001f, 0.45f, 0.0f, 0.35f, 0.25f);
+        set (s, Param::masterGain, -3.0f);   // struck material has a hot transient: keep headroom at the bottom of the keyboard
         shape (s, 0.28f, 0.20f, 0.42f, 0.48f, 0.42f, 0.22f);
         material (s, MaterialType::Wood, MaterialType::Membrane, 0.30f);
         topology (s, 0 /* CHAIN */, 0.30f, 0.40f, 311);
@@ -1162,6 +1164,7 @@ void registerAll (PresetManager& manager)
     {
         impact (s, 6 /* MEMBRANE HIT */, 0.30f, 0.32f, 0.22f, 0.90f, 0.60f, 0.18f, 0.0f, 0.85f);
         amp (s, 0.001f, 0.70f, 0.0f, 0.50f, 0.3f);
+        set (s, Param::masterGain, -2.0f);   // struck material has a hot transient: keep headroom at the bottom of the keyboard
         shape (s, 0.34f, 0.34f, 0.66f, 0.38f, 0.44f, 0.40f);
         material (s, MaterialType::Membrane, MaterialType::Wood, 0.40f);
         topology (s, 3 /* LATTICE */, 0.46f, 0.35f, 383);

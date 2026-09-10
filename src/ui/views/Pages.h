@@ -107,12 +107,16 @@ public:
     ~FracturePage() override { stopTimer(); }
     void resized() override;
 
-    /** Sequencer pattern (UI-side until the engine exposes a step table). */
+    /** Sequencer pattern as shown (mirrors the processor's FractureTable step gates). */
     std::vector<float> pattern() const { return steps.getSteps(); }
 
 private:
     void timerCallback() override;
+    void pushStepsToProcessor();
+    void pullStepsFromProcessor();
     AntiMatrProcessor& processor;
+    std::array<float, kMaxSequencerSteps> shownGates {};
+    bool pushing = false;
     ParamPanel engine, sequencer, spectral;
     AMSpectrumView spectrum;
     SpectrumAnalyzer analyzer;
@@ -122,6 +126,7 @@ private:
     std::unique_ptr<juce::ParameterAttachment> stepsAttachment;
     double playheadPhase = 0.0;
     uint64_t lastSampleTime = 0;
+    int lastEngineStep = -1;
 };
 
 //==============================================================================

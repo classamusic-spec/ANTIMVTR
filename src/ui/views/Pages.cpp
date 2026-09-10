@@ -401,7 +401,48 @@ FracturePage::FracturePage (AntiMatrProcessor& p)
     auto* stepsParam = processor.parameters().getParameter (ParameterRegistry::get (Param::fractureSteps).id);
     stepsAttachment = std::make_unique<juce::ParameterAttachment> (*stepsParam, [this] (float v) { steps.setNumSteps ((int) std::lround (v)); });
     stepsAttachment->sendInitialUpdate();
+
+    // The step editor edits the gate of each sequencer step in the processor's FractureTable
+    // (published to the engine on every change); presets and A/B flow back through the timer.
+    pullStepsFromProcessor();
+    steps.onStepChanged = [this] (int, float) { pushStepsToProcessor(); };
+    steps.onPatternChanged = [this] { pushStepsToProcessor(); };
     startTimerHz (30);
+}
+
+void FracturePage::pushStepsToProcessor()
+{
+    if (pushing) return;
+    pushing = true;
+    auto table = processor.getFractureTable();
+    for (int i = 0; i < kMaxSequencerSteps; ++i)
+    {
+        const float g = juce::jlimit (0.0f, 1.0f, steps.getStep (i));
+        table.steps[(size_t) i].gate = g;
+        shownGates[(size_t) i] = g;
+    }
+    processor.setFractureTable (table);
+    pushing = false;
+}
+
+void FracturePage::pullStepsFromProcessor()
+{
+    const auto& table = processor.getFractureTable();
+    bool changed = false;
+    std::vector<float> values ((size_t) kMaxSequencerSteps);
+    for (int i = 0; i < kMaxSequencerSteps; ++i)
+    {
+        const float g = juce::jlimit (0.0f, 1.0f, table.steps[(size_t) i].gate);
+        values[(size_t) i] = g;
+        if (std::abs (g - shownGates[(size_t) i]) > 1.0e-4f) changed = true;
+        shownGates[(size_t) i] = g;
+    }
+    if (changed)
+    {
+        pushing = true;                                   // the editor's callbacks must not echo this back
+        steps.setSteps (values, juce::dontSendNotification);
+        pushing = false;
+    }
 }
 
 void FracturePage::resized()
@@ -452,11 +493,23 @@ void FracturePage::timerCallback()
     spectrum.setMagnitudes (bands.data(), AMSpectrumView::kBands);
     engine.setActivity (vs.fractureOn ? vs.fractureActivity * 0.8f : 0.0f);
 
-    // Playhead: advanced from the engine's sample clock at the sequencer rate
-    // (the division at 120 BPM when synced) until the engine publishes a step index.
+    // Presets / A/B / undo may have replaced the table underneath the editor.
+    if (! steps.isMouseButtonDown()) pullStepsFromProcessor();
+
+    // Playhead: the engine's current sequencer step (wait-free), smoothed within the step from the
+    // sample clock so the glow travels instead of jumping.
+    FractureEngine::FragmentActivity act;
+    processor.engine().fractureEngine().fillFragmentActivity (act);
+    const int n = juce::jmax (1, steps.getNumSteps());
     const double sr = juce::jmax (1.0, processor.engine().sampleRate());
     const uint64_t now = vs.sampleTime;
-    if (lastSampleTime != 0 && now > lastSampleTime)
+    if (act.currentStep != lastEngineStep)
+    {
+        lastEngineStep = act.currentStep;
+        playheadPhase = 0.0;
+        lastSampleTime = now;
+    }
+    else if (lastSampleTime != 0 && now > lastSampleTime)
     {
         double stepsPerSecond = paramValue (values, Param::fractureRate);
         if (paramBool (values, Param::fractureSync))
@@ -464,11 +517,11 @@ void FracturePage::timerCallback()
             static const double beats[] = { 4.0, 2.0, 1.0, 0.5, 0.25, 0.125, 2.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0, 1.5, 0.75, 0.375 };
             stepsPerSecond = 2.0 / beats[juce::jlimit (0, 11, paramChoice (values, Param::fractureDivision))];
         }
-        playheadPhase += (double) (now - lastSampleTime) / sr * stepsPerSecond;
+        playheadPhase = juce::jmin (0.95, playheadPhase + (double) (now - lastSampleTime) / sr * stepsPerSecond);
+        lastSampleTime = now;
     }
-    lastSampleTime = now;
-    const int n = juce::jmax (1, steps.getNumSteps());
-    steps.setPlayhead (vs.fractureOn && vs.activeVoices > 0 ? (float) std::fmod (playheadPhase, (double) n) : -1.0f);
+    const float position = (float) ((act.currentStep % n) + playheadPhase);
+    steps.setPlayhead (vs.fractureOn && vs.activeVoices > 0 ? position : -1.0f);
 }
 
 //==============================================================================

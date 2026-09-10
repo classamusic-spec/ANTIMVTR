@@ -51,10 +51,13 @@ AntiMatrLookAndFeel::AntiMatrLookAndFeel()
 
 void AntiMatrLookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
 {
-    auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height);
-    g.fillAll (Theme::panel);
-    g.setColour (Theme::border);
-    g.drawRect (b, 1.0f);
+    // A menu is a small slab that has lifted off the chassis.
+    auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
+    draw::SlabStyle style;
+    style.top    = Theme::panelTop.brighter (0.04f);
+    style.bottom = Theme::panel;
+    style.shadow = 0.0f;   // the menu window has no room outside itself for one
+    draw::raisedSlab (g, b, 6.0f, style);
 }
 
 juce::Font AntiMatrLookAndFeel::getPopupMenuFont() { return Theme::font (13.0f); }
@@ -142,13 +145,12 @@ juce::Rectangle<int> AntiMatrLookAndFeel::getTooltipBounds (const juce::String& 
 void AntiMatrLookAndFeel::drawTooltip (juce::Graphics& g, const juce::String& text, int width, int height)
 {
     auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
-    g.setColour (juce::Colours::black.withAlpha (0.35f));
-    g.fillRoundedRectangle (b.translated (0.0f, 1.5f), 6.0f);
-    juce::ColourGradient fill (Theme::panelTop.brighter (0.06f), b.getX(), b.getY(), Theme::panel, b.getX(), b.getBottom(), false);
-    g.setGradientFill (fill);
-    g.fillRoundedRectangle (b, 6.0f);
-    g.setColour (Theme::border.withAlpha (0.14f));
-    g.drawRoundedRectangle (b, 6.0f, 1.0f);
+    draw::SlabStyle style;
+    style.top    = Theme::panelTop.brighter (0.08f);
+    style.bottom = Theme::panel;
+    style.shadow = 0.0f;
+    style.brush  = 0.5f;
+    draw::raisedSlab (g, b, 6.0f, style);
     // accent bar
     juce::Path bar; bar.startNewSubPath (b.getX() + 5.0f, b.getY() + 7.0f); bar.lineTo (b.getX() + 5.0f, b.getBottom() - 7.0f);
     draw::glowPath (g, bar, Theme::cyan, 1.5f, 6.0f, 0.6f);

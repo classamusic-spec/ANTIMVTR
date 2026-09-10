@@ -171,18 +171,20 @@ void AMKnob::paint (juce::Graphics& g)
     {
         const float r = body.getWidth() * 0.5f;
         const auto c = body.getCentre();
-        const juce::Point<float> inner (c.x + std::sin (angle) * r * 0.55f, c.y - std::cos (angle) * r * 0.55f);
-        const juce::Point<float> outer (c.x + std::sin (angle) * r * 0.88f, c.y - std::cos (angle) * r * 0.88f);
-        const float w = juce::jmax (1.3f, d * 0.026f);
+        const juce::Point<float> inner (c.x + std::sin (angle) * r * 0.50f, c.y - std::cos (angle) * r * 0.50f);
+        const juce::Point<float> outer (c.x + std::sin (angle) * r * 0.90f, c.y - std::cos (angle) * r * 0.90f);
+        const float w = juce::jmax (1.4f, d * 0.030f);
 
         // the groove it sits in
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.drawLine (inner.x, inner.y + w * 0.55f, outer.x, outer.y + w * 0.55f, w * 1.25f);
+        g.setColour (juce::Colours::black.withAlpha (0.6f));
+        g.drawLine (inner.x, inner.y + w * 0.6f, outer.x, outer.y + w * 0.6f, w * 1.3f);
 
-        // faint halo, then the crisp near-white core
-        g.setColour (juce::Colour (0xfff6f7ff).withAlpha (0.10f + 0.10f * lit));
-        g.drawLine (inner.x, inner.y, outer.x, outer.y, w * 2.6f);
-        g.setColour (juce::Colour (0xfff8f9ff).withAlpha (0.88f + 0.12f * lit));
+        // faint halo, then the crisp near-white core: the brightest thing on the knob
+        g.setColour (juce::Colour (0xffe8ecff).withAlpha (0.16f + 0.12f * lit));
+        g.drawLine (inner.x, inner.y, outer.x, outer.y, w * 3.0f);
+        g.setColour (juce::Colour (0xfff2f4ff).withAlpha (0.30f + 0.16f * lit));
+        g.drawLine (inner.x, inner.y, outer.x, outer.y, w * 1.8f);
+        g.setColour (juce::Colours::white.withAlpha (0.96f));
         g.drawLine (inner.x, inner.y, outer.x, outer.y, w);
     }
 

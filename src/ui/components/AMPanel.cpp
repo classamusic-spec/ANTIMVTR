@@ -42,7 +42,9 @@ juce::Rectangle<int> AMPanel::contentBounds() const
 void AMPanel::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat().reduced (1.5f);
-    const float corner = juce::jlimit (6.0f, Theme::kPanelRadius, b.getWidth() * 0.03f);
+    // SPEC section 1: a corner radius of about 1.2 % of the editor width, taken from
+    // the panel's own bounds so a short panel is not over-rounded.
+    const float corner = juce::jlimit (5.0f, Theme::kPanelRadius, juce::jmin (b.getWidth() * 0.045f, b.getHeight() * 0.16f));
 
     if (activity > 0.02f)
         draw::glowRoundedRect (g, b, corner, accent, 16.0f, activity * 0.35f);

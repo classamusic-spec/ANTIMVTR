@@ -185,7 +185,8 @@ void TopBar::paint (juce::Graphics& g)
     auto pill = presetArea.toFloat();
     const float corner = pill.getHeight() * 0.5f;
     draw::insetWell (g, pill, corner, Theme::panelInset, 1.0f);
-    draw::softLight (g, pill.getCentre(), pill.getWidth() * 0.4f, Theme::blue, 0.05f);
+    draw::softLight (g, pill.getCentre(), pill.getWidth() * 0.4f, Theme::blue, 0.06f);
+    draw::screenGlass (g, pill, corner, 0.85f);
     g.setColour (Theme::border);
     g.drawRoundedRectangle (pill.reduced (0.6f), corner - 0.6f, 1.0f);
 

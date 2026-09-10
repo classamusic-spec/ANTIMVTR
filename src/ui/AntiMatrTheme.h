@@ -49,7 +49,7 @@ struct Theme
     static inline const juce::Colour ivory   { 0xfff1e7d3 };
     static inline const juce::Colour amber   { 0xffffb46b };
 
-    static inline const juce::Colour knobBase  { 0xff191d26 };
+    static inline const juce::Colour knobBase  { 0xff20252f };
     static inline const juce::Colour knobTrack { 0xff0b0d13 };
 
     /** Accent for a section, used to colour knobs and glows consistently. */
@@ -135,7 +135,7 @@ struct Theme
     // Reference layout: the design is authored at 1600 x 1000 logical units.
     static constexpr float kReferenceWidth  = 1600.0f;
     static constexpr float kReferenceHeight = 1000.0f;
-    static constexpr float kPanelRadius     = 14.0f;
+    static constexpr float kPanelRadius     = 20.0f;
 };
 
 /** Converts reference-design units to actual pixels for the current editor size. */

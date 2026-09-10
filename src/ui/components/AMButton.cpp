@@ -101,7 +101,7 @@ void AMIconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
         }
         else
         {
-            draw::domeBody (g, circle.reduced (1.0f), Theme::knobBase.darker (0.15f), lit * 0.7f, 0.8f);
+            draw::domeBody (g, circle.reduced (1.0f), Theme::knobBase.darker (0.45f), lit * 0.7f, 0.8f);
         }
     }
     if (lit > 0.02f)
@@ -115,7 +115,7 @@ void AMIconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     }
     auto iconArea = circle.reduced (s * (outlined ? 0.32f : 0.28f));
     if (down) iconArea = iconArea.translated (0.0f, 0.6f);
-    Icons::draw (g, icon, iconArea, accent.interpolatedWith (Theme::textPrimary, 0.35f + 0.65f * lit), 0.95f);
+    Icons::draw (g, icon, iconArea, accent.interpolatedWith (Theme::textPrimary, 0.55f + 0.45f * lit), 1.0f);
 }
 
 //==============================================================================

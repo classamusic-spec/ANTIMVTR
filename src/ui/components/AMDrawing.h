@@ -468,20 +468,23 @@ inline void domeBody (juce::Graphics& g, juce::Rectangle<float> circle, juce::Co
     if (r < 1.0f) return;
 
     if (shadow > 0.01f)
-        contactShadowEllipse (g, circle, juce::jlimit (2.0f, 14.0f, r * 0.24f), shadow);
+        contactShadowEllipse (g, circle, juce::jlimit (2.5f, 18.0f, r * 0.34f), shadow * 1.25f);
 
-    // The dome: brightest where the light strikes it, falling away to the lower right.
-    juce::ColourGradient body (base.brighter (0.85f + 0.35f * lit), c.x + kLightX * r * 0.62f, c.y + kLightY * r * 0.58f,
-                               base.darker (0.80f), c.x - kLightX * r * 0.95f, c.y - kLightY * r * 0.92f, true);
-    body.addColour (0.42, base.brighter (0.24f + 0.12f * lit));
-    body.addColour (0.72, base.darker (0.35f));
+    // The dome. The light strikes the upper left of the cap and the surface turns
+    // away from it toward the lower right, so the two sides must be a long way
+    // apart in tone: anything gentler reads as a hole in the panel, not a cap on it.
+    juce::ColourGradient body (base.brighter (1.35f + 0.45f * lit), c.x + kLightX * r * 0.66f, c.y + kLightY * r * 0.62f,
+                               base.darker (0.88f), c.x - kLightX * r * 0.90f, c.y - kLightY * r * 0.88f, true);
+    body.addColour (0.30, base.brighter (0.62f + 0.18f * lit));
+    body.addColour (0.58, base.brighter (0.02f));
+    body.addColour (0.80, base.darker (0.55f));
     g.setGradientFill (body);
     g.fillEllipse (circle);
 
     // Ambient bounce along the lower-right edge keeps the dome from going flat black.
     {
         juce::ColourGradient bounce (juce::Colours::transparentBlack, c.x, c.y,
-                                     base.brighter (0.42f).withAlpha (0.34f), c.x - kLightX * r, c.y - kLightY * r, true);
+                                     base.brighter (0.55f).withAlpha (0.30f), c.x - kLightX * r, c.y - kLightY * r, true);
         bounce.addColour (0.74, juce::Colours::transparentBlack);
         g.setGradientFill (bounce);
         g.fillEllipse (circle);
@@ -490,28 +493,43 @@ inline void domeBody (juce::Graphics& g, juce::Rectangle<float> circle, juce::Co
     // Machined rim: one continuous stroke lit on the light's side and dark on the
     // other, so the edge never breaks where the two halves meet.
     {
-        const float rimW = juce::jmax (0.9f, r * 0.05f);
+        const float rimW = juce::jmax (0.9f, r * 0.055f);
         juce::Path rim;
         rim.addEllipse (circle.reduced (rimW * 0.55f));
-        juce::ColourGradient edge (juce::Colours::white.withAlpha (0.30f + 0.22f * lit), c.x + kLightX * r, c.y + kLightY * r,
-                                   juce::Colours::black.withAlpha (0.80f), c.x - kLightX * r, c.y - kLightY * r, false);
-        edge.addColour (0.40, juce::Colours::white.withAlpha (0.03f));
-        edge.addColour (0.58, juce::Colours::black.withAlpha (0.06f));
+        juce::ColourGradient edge (juce::Colours::white.withAlpha (0.46f + 0.28f * lit), c.x + kLightX * r, c.y + kLightY * r,
+                                   juce::Colours::black.withAlpha (0.88f), c.x - kLightX * r, c.y - kLightY * r, false);
+        edge.addColour (0.38, juce::Colours::white.withAlpha (0.05f));
+        edge.addColour (0.56, juce::Colours::black.withAlpha (0.10f));
         g.setGradientFill (edge);
         g.strokePath (rim, juce::PathStrokeType (rimW));
+
+        // A hot line where the light actually catches the machined edge. It fades out
+        // along the same axis, so the rim still reads as one continuous edge.
+        juce::ColourGradient hot (juce::Colours::white.withAlpha (0.70f + 0.30f * lit), c.x + kLightX * r * 1.05f, c.y + kLightY * r * 1.05f,
+                                  juce::Colours::transparentWhite, c.x - kLightX * r * 0.25f, c.y - kLightY * r * 0.25f, false);
+        hot.addColour (0.55, juce::Colours::white.withAlpha (0.04f));
+        g.setGradientFill (hot);
+        g.strokePath (rim, juce::PathStrokeType (juce::jmax (0.8f, rimW * 0.45f)));
     }
 
-    // Specular bloom in the upper-left third: broad, then a tighter core.
-    softLight (g, { c.x + kLightX * r * 0.46f, c.y + kLightY * r * 0.42f }, r * 0.74f, juce::Colours::white, 0.11f + 0.07f * lit);
+    // Specular bloom in the upper-left third: a broad sheen, then a tighter core.
+    softLight (g, { c.x + kLightX * r * 0.44f, c.y + kLightY * r * 0.40f }, r * 0.80f, juce::Colours::white, 0.16f + 0.09f * lit);
     {
-        // A soft ellipse, squashed along the light direction, is the sheen itself.
-        const juce::Point<float> sc (c.x + kLightX * r * 0.40f, c.y + kLightY * r * 0.36f);
+        // A soft ellipse, squashed and tilted along the light direction, is the sheen.
+        const juce::Point<float> sc (c.x + kLightX * r * 0.42f, c.y + kLightY * r * 0.38f);
         juce::Graphics::ScopedSaveState save (g);
-        g.addTransform (juce::AffineTransform::rotation (-0.62f, sc.x, sc.y).scaled (1.0f, 0.62f, sc.x, sc.y));
-        softLight (g, sc, r * 0.52f, juce::Colours::white, 0.14f + 0.10f * lit);
+        g.addTransform (juce::AffineTransform::rotation (-0.62f, sc.x, sc.y).scaled (1.0f, 0.55f, sc.x, sc.y));
+        softLight (g, sc, r * 0.58f, juce::Colours::white, 0.20f + 0.10f * lit);
+        // The sheen itself: a defined bloom, not a smear.
+        juce::ColourGradient core (juce::Colours::white.withAlpha (0.30f + 0.16f * lit), sc.x, sc.y,
+                                   juce::Colours::transparentWhite, sc.x + r * 0.30f, sc.y, true);
+        core.addColour (0.55, juce::Colours::white.withAlpha (0.17f + 0.09f * lit));
+        core.addColour (0.82, juce::Colours::white.withAlpha (0.035f));
+        g.setGradientFill (core);
+        g.fillEllipse (sc.x - r * 0.30f, sc.y - r * 0.30f, r * 0.60f, r * 0.60f);
     }
 
-    g.setColour (juce::Colours::black.withAlpha (0.5f));
+    g.setColour (juce::Colours::black.withAlpha (0.55f));
     g.drawEllipse (circle, 1.0f);
 }
 

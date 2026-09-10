@@ -32,7 +32,7 @@ public:
         bufferSize = lines[0].capacity();
 
         for (size_t i = 0; i < window.size(); ++i)
-            window[i] = 0.5f - 0.5f * std::cos (kTwoPi * (double) i / (double) (window.size() - 1));
+            window[i] = (float) (0.5 - 0.5 * std::cos (kTwoPi * (double) i / (double) (window.size() - 1)));
 
         mix.prepare (sampleRate, 25.0f);
         regen.prepare (sampleRate, 40.0f);

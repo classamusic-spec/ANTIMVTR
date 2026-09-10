@@ -247,8 +247,10 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
     f.maxSparkles = capSparkles; f.maxBubbles = capBubbles;
     f.shadows = capShadows; f.bloom = capBloom; f.smudges = capSmudges;
 
-    // Size and brightness follow level; the object breathes so it never looks asleep.
-    f.breathe = 1.0f + 0.018f * std::sin (time * 0.7f) + 0.055f * f.pulse + 0.025f * f.energy * f.life;
+    // Size and brightness follow level; the object breathes so it never looks asleep,
+    // except under FREEZE, where the idle breath stops with the rest of the flow.
+    f.breathe = 1.0f + 0.018f * std::sin (time * 0.7f) * (1.0f - freezeMix)
+                + 0.055f * f.pulse + 0.025f * f.energy * f.life;
     f.R = f.port.glassR * (0.775f + 0.030f * smooth.mass + 0.030f * f.pulse);
 
     f.p.time = time;
@@ -396,10 +398,13 @@ void AntiMatterVisualizer::buildOrganism (const Frame& f)
             const float base = juce::jmin (row[(size_t) i].width * f.R * out[(size_t) i].scale * depthWidth, curveLimit);
             if (f.surfaceRough > 0.02f)
             {
-                const float s0 = noise.noise ((float) i * 0.9f + (float) r * 17.0f, time * 1.1f);
-                const float s1 = noise.noise ((float) i * 0.9f + (float) r * 17.0f + 53.0f, time * 1.3f);
-                out[(size_t) i].w0 = juce::jmax (0.0f, base * (1.0f + f.surfaceRough * 0.55f * s0));
-                out[(size_t) i].w1 = juce::jmax (0.0f, base * (1.0f + f.surfaceRough * 0.55f * s1));
+                const float ft = flowTime * 1.6f;
+                const float s0 = noise.noise ((float) i * 1.7f + (float) r * 17.0f, ft * 1.1f)
+                                 + 0.5f * noise.noise ((float) i * 4.1f + (float) r * 7.0f, ft * 1.9f);
+                const float s1 = noise.noise ((float) i * 1.7f + (float) r * 17.0f + 53.0f, ft * 1.3f)
+                                 + 0.5f * noise.noise ((float) i * 4.1f + (float) r * 7.0f + 29.0f, ft * 2.2f);
+                out[(size_t) i].w0 = juce::jmax (0.0f, base * (1.0f + f.surfaceRough * 0.60f * s0));
+                out[(size_t) i].w1 = juce::jmax (0.0f, base * (1.0f + f.surfaceRough * 0.60f * s1));
             }
             else
             {
@@ -502,16 +507,25 @@ void AntiMatterVisualizer::buildSpanPath (juce::Path& path, const RibbonSpan& sp
     };
 
     // A quadratic B-spline through the sample points: the silhouette of a ribbon
-    // of liquid must never show the straight segments it is sampled from.
+    // of liquid must never show the straight segments it is sampled from. Under
+    // CRUSH the fluid has gone angular, and then the corners are the point.
     path.clear();
     path.startNewSubPath (edge (a, 1.0f));
-    for (int i = a + 1; i < b; ++i)
-        path.quadraticTo (edge (i, 1.0f), midway (edge (i, 1.0f), edge (i + 1, 1.0f)));
-    path.lineTo (edge (b, 1.0f));
-    path.lineTo (edge (b, -1.0f));
-    for (int i = b - 1; i > a; --i)
-        path.quadraticTo (edge (i, -1.0f), midway (edge (i, -1.0f), edge (i - 1, -1.0f)));
-    path.lineTo (edge (a, -1.0f));
+    if (span.angular)
+    {
+        for (int i = a + 1; i <= b; ++i) path.lineTo (edge (i, 1.0f));
+        for (int i = b; i >= a; --i) path.lineTo (edge (i, -1.0f));
+    }
+    else
+    {
+        for (int i = a + 1; i < b; ++i)
+            path.quadraticTo (edge (i, 1.0f), midway (edge (i, 1.0f), edge (i + 1, 1.0f)));
+        path.lineTo (edge (b, 1.0f));
+        path.lineTo (edge (b, -1.0f));
+        for (int i = b - 1; i > a; --i)
+            path.quadraticTo (edge (i, -1.0f), midway (edge (i, -1.0f), edge (i - 1, -1.0f)));
+        path.lineTo (edge (a, -1.0f));
+    }
     path.closeSubPath();
 }
 

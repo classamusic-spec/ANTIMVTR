@@ -137,7 +137,8 @@ public:
             q *= (1.0f + s.burst) * e.breathe;
             s.p = { liquid::clampf (q.x, -5.0f, 5.0f), liquid::clampf (q.y, -5.0f, 5.0f), liquid::clampf (q.z, -5.0f, 5.0f) };
 
-            // Twinkle: a mote passing in and out of the light.
+            // Twinkle: a mote passing in and out of the light. This one runs off the
+            // wall clock, not the flow: the field can be frozen and the light still moves.
             const float tw = 0.5f + 0.5f * std::sin (e.time * (1.4f + 3.4f * s.rate) + s.phase);
             const float slow = 0.5f + 0.5f * noise.noise (s.seed * 0.7f, e.time * 0.35f);
             s.bright = liquid::clampf ((0.18f + 0.82f * tw * slow) * (0.35f + 0.65f * e.life) + 0.5f * e.fracture, 0.0f, 1.0f);

@@ -283,7 +283,7 @@ public:
     float coreProfile (float angle, const Params& p, const ValueNoise& n) const noexcept
     {
         if (! std::isfinite (angle)) angle = 0.0f;
-        const float t = liquid::clean (p.time, -1.0e6f, 1.0e6f, 0.0f);
+        const float t = liquid::clean (p.flowTime, -1.0e6f, 1.0e6f, 0.0f) * 1.6f;
         const float mass = liquid::clean (p.mass, 0.0f, 1.0f, 0.4f);
         const float melt = liquid::clean (p.melt, 0.0f, 1.0f, 0.0f);
         const float lobes = 2.0f + 1.6f * mass;
@@ -326,9 +326,10 @@ public:
         const float flowScale = 1.25f + 1.6f * p.density;
 
         // ---- Bend: a slowly turning direction the ribbon leans into.
-        const Vec3 bendDir = normalised ({ std::cos (p.time * 0.11f + (float) index * 0.7f),
-                                           0.42f * std::sin (p.time * 0.09f),
-                                           std::sin (p.time * 0.11f + (float) index * 0.7f) });
+        const float motion = p.flowTime * 1.6f;
+        const Vec3 bendDir = normalised ({ std::cos (motion * 0.11f + (float) index * 0.7f),
+                                           0.42f * std::sin (motion * 0.09f),
+                                           std::sin (motion * 0.11f + (float) index * 0.7f) });
 
         // ---- Tear: this ribbon opens a gap in the middle and the halves drift apart.
         const float tearOpen = r.tearVictim ? liquid::smoothstep (0.06f, 0.85f, p.tear) : 0.0f;
@@ -351,7 +352,7 @@ public:
 
             // Bend: lean the middle of the ribbon toward the bend direction.
             if (p.bend > 0.001f)
-                q += bendDir * (p.bend * 0.55f * std::sin (3.14159265f * s));
+                q += bendDir * (p.bend * 0.42f * std::sin (3.14159265f * s));
 
             // Advection through the slowly evolving flow field.
             const Vec3 f = liquid::flow (noise, q, p.flowTime, flowScale);
@@ -373,9 +374,9 @@ public:
             if (p.scatter > 0.001f)
             {
                 const float js = r.seed + (float) i * 3.7f;
-                q += Vec3 { noise.noise (js, p.time * 3.1f),
-                            noise.noise (js + 31.0f, p.time * 2.7f),
-                            noise.noise (js + 67.0f, p.time * 3.5f) } * (p.scatter * 0.17f);
+                q += Vec3 { noise.noise (js, motion * 3.1f),
+                            noise.noise (js + 31.0f, motion * 2.7f),
+                            noise.noise (js + 67.0f, motion * 3.5f) } * (p.scatter * 0.17f);
             }
 
             // Fracture blows the whole bundle outward for the length of the hit.
@@ -420,13 +421,13 @@ public:
 
             // Surface tension: a slow travelling wobble along the ribbon.
             const float wobble = 1.0f + 0.11f * std::sin (s * r.wobbleFreq * 6.2831853f
-                                                          + p.time * (1.3f + 0.9f * p.life) + r.wobblePhase);
+                                                          + motion * (1.3f + 0.9f * p.life) + r.wobblePhase);
 
             out[i].width = liquid::clampf (widthBase * taper * std::pow (stretch, 0.7f) * wobble, 0.0f, 0.70f);
 
             // Brightness along the length: a moving hot spot, plus the note envelope.
-            const float travel = 0.5f + 0.5f * std::sin (s * 6.2831853f * 1.15f - p.time * (0.7f + 1.4f * p.life) + r.seed);
-            const float slow = 0.5f + 0.5f * std::sin (s * 6.2831853f * 0.37f + p.time * 0.21f + r.wobblePhase);
+            const float travel = 0.5f + 0.5f * std::sin (s * 6.2831853f * 1.15f - motion * (0.7f + 1.4f * p.life) + r.seed);
+            const float slow = 0.5f + 0.5f * std::sin (s * 6.2831853f * 0.37f + motion * 0.21f + r.wobblePhase);
             out[i].bright = liquid::clampf (0.34f + 0.50f * travel * (0.40f + 0.60f * slow)
                                             + 0.26f * p.energy + 0.20f * p.level, 0.0f, 1.35f);
         }

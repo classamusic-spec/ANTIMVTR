@@ -417,7 +417,9 @@ public:
             Frame fa, fb;
             fa.build (o, a, noise);
             fb.build (o, b, noise);
-            expect (fb.shiftFrom (fa) < 0.02f, "the object kept travelling while the flow was frozen");
+            expectWithinAbsoluteError (fb.shiftFrom (fa), 0.0f, 0.0f);
+            for (int r = 0; r < fa.ribbons; ++r)
+                expectWithinAbsoluteError (fb.widthOf (r), fa.widthOf (r), 0.0f);
 
             auto c = defaultParams();
             c.flowTime = a.flowTime + 4.0f;     // and it must move again once the flow runs
@@ -441,10 +443,15 @@ public:
             expect (maxR - minR > 0.02f, "the core is a circle, not an organic mass");
             expect (std::isfinite (o.coreProfile (std::numeric_limits<float>::quiet_NaN(), p, noise)), "NaN angle broke the core");
 
-            auto later = defaultParams();
-            later.time = p.time + 6.0f;
-            expect (std::abs (o.coreProfile (1.0f, later, noise) - o.coreProfile (1.0f, p, noise)) > 1.0e-4f,
-                    "the core does not deform over time");
+            auto flowing = defaultParams();
+            flowing.flowTime = p.flowTime + 6.0f;
+            expect (std::abs (o.coreProfile (1.0f, flowing, noise) - o.coreProfile (1.0f, p, noise)) > 1.0e-4f,
+                    "the core does not deform as the flow runs");
+
+            // FREEZE holds the flow clock, and the core must stop deforming with it.
+            auto frozen = defaultParams();
+            frozen.time = p.time + 6.0f;
+            expectWithinAbsoluteError (o.coreProfile (1.0f, frozen, noise), o.coreProfile (1.0f, p, noise), 0.0f);
         }
     }
 };

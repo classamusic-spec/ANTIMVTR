@@ -513,8 +513,8 @@ void AntiMatterVisualizer::renderPlinth (juce::Graphics& g, const Frame& f)
     const float cx = L.centreX;
     const float top = L.plinthTop;
     const float rx = L.plinthHalfWidth;
-    const float ry = juce::jmax (2.0f, L.plinthHeight * 0.26f);
-    const float bodyH = L.plinthHeight * 0.62f;
+    const float ry = juce::jmax (2.0f, L.plinthHeight * 0.215f);
+    const float bodyH = L.plinthHeight * 0.70f;
     const float u = juce::jmax (0.6f, L.unit);
 
     // ---- Contact shadow under the whole stand.
@@ -588,10 +588,10 @@ void AntiMatterVisualizer::renderPlinth (juce::Graphics& g, const Frame& f)
         gradient.isRadial = false;
         gradient.point1 = { cx - rx, top };
         gradient.point2 = { cx + rx, top };
-        gradient.addColour (0.0, kChrome.withAlpha (0.18f));
-        gradient.addColour (0.34, kChrome.withAlpha (0.92f));
-        gradient.addColour (0.64, kChrome.withAlpha (0.55f));
-        gradient.addColour (1.0, kChrome.withAlpha (0.16f));
+        gradient.addColour (0.0, kChrome.withAlpha (0.22f));
+        gradient.addColour (0.32, kChrome.brighter (0.25f).withAlpha (1.0f));
+        gradient.addColour (0.62, kChrome.withAlpha (0.70f));
+        gradient.addColour (1.0, kChrome.withAlpha (0.20f));
         g.setGradientFill (gradient);
         g.strokePath (lip, juce::PathStrokeType (juce::jmax (1.0f, u * 1.7f)));
 
@@ -603,9 +603,9 @@ void AntiMatterVisualizer::renderPlinth (juce::Graphics& g, const Frame& f)
 
     // ---- The recessed face carrying the engraved wordmark.
     {
-        const float insetW = rx * 1.22f;
-        const float insetH = bodyH * 0.80f;
-        const auto inset = juce::Rectangle<float> (cx - insetW * 0.5f, top + bodyH * 0.09f, insetW, insetH);
+        const float insetW = rx * 1.05f;
+        const float insetH = bodyH * 0.78f;
+        const auto inset = juce::Rectangle<float> (cx - insetW * 0.5f, top + bodyH * 0.10f, insetW, insetH);
         const float corner = insetH * 0.22f;
 
         gradient.clearColours();
@@ -624,25 +624,25 @@ void AntiMatterVisualizer::renderPlinth (juce::Graphics& g, const Frame& f)
                     juce::jmax (0.6f, u * 0.7f));
 
         // Engraved: cut in, so the letters are dark with a light lower edge.
-        const float titleH = juce::jlimit (7.0f, 24.0f, insetH * 0.36f);
-        const float subH = juce::jlimit (5.0f, 11.0f, insetH * 0.17f);
-        auto textArea = inset.reduced (insetW * 0.05f, insetH * 0.10f);
-        auto titleRow = textArea.removeFromTop (titleH * 1.20f);
+        const float titleH = juce::jlimit (7.0f, 24.0f, insetH * 0.40f);
+        const float subH = juce::jlimit (5.0f, 11.0f, insetH * 0.19f);
+        auto textArea = inset.reduced (insetW * 0.05f, insetH * 0.08f);
+        auto titleRow = textArea.removeFromTop (textArea.getHeight() * 0.60f);
         const float lift = juce::jmax (0.7f, u * 0.9f);
 
         auto title = draw::fitFont (Theme::displayFont (titleH, 0.20f), "ANTI-MATR", titleRow.getWidth(), 7.0f);
-        draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, lift), juce::Justification::centred, title,
-                           kChrome.brighter (0.35f).withAlpha (0.85f));
-        draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, -lift * 0.35f), juce::Justification::centred, title,
-                           juce::Colour (0xff000103).withAlpha (0.55f));
-        draw::trackedText (g, "ANTI-MATR", titleRow, juce::Justification::centred, title, juce::Colour (0xff05060a));
+        draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, lift * 1.15f), juce::Justification::centred, title,
+                           kChrome.brighter (0.55f).withAlpha (0.95f));
+        draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, -lift * 0.55f), juce::Justification::centred, title,
+                           juce::Colour (0xff000103).withAlpha (0.70f));
+        draw::trackedText (g, "ANTI-MATR", titleRow, juce::Justification::centred, title, juce::Colour (0xff04050a));
 
         if (textArea.getHeight() > subH * 1.0f)
         {
-            auto subRow = textArea.removeFromTop (juce::jmin (textArea.getHeight(), subH * 1.7f));
+            auto subRow = textArea;
             auto sub = draw::fitFont (Theme::captionFont (subH), "SOUND BEYOND MATTER", subRow.getWidth(), 5.0f);
-            draw::trackedText (g, "SOUND BEYOND MATTER", subRow.translated (0.0f, lift * 0.75f), juce::Justification::centred, sub,
-                               kChrome.brighter (0.2f).withAlpha (0.62f));
+            draw::trackedText (g, "SOUND BEYOND MATTER", subRow.translated (0.0f, lift * 0.9f), juce::Justification::centred, sub,
+                               kChrome.brighter (0.35f).withAlpha (0.80f));
             draw::trackedText (g, "SOUND BEYOND MATTER", subRow, juce::Justification::centred, sub,
                                juce::Colour (0xff06070c));
         }

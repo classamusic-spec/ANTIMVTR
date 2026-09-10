@@ -32,15 +32,30 @@ namespace amtest
         return p;
     }
 
+    // MSVC never implemented C11 aligned_alloc, and its aligned blocks must be released with
+    // _aligned_free, so the over-aligned pair is platform split.
     inline void* trackedAllocateAligned (std::size_t size, std::size_t alignment)
     {
         if (countingAllocations.load (std::memory_order_relaxed))
             allocationCount.fetch_add (1, std::memory_order_relaxed);
         if (alignment < sizeof (void*)) alignment = sizeof (void*);
         const std::size_t rounded = ((size == 0 ? 1 : size) + alignment - 1) / alignment * alignment;
+       #if defined (_MSC_VER)
+        void* p = _aligned_malloc (rounded, alignment);
+       #else
         void* p = std::aligned_alloc (alignment, rounded);
+       #endif
         if (p == nullptr) throw std::bad_alloc();
         return p;
+    }
+
+    inline void trackedFreeAligned (void* p) noexcept
+    {
+       #if defined (_MSC_VER)
+        _aligned_free (p);
+       #else
+        std::free (p);
+       #endif
     }
 
     /** RAII guard: counts allocations for the lifetime of the object. */
@@ -60,10 +75,10 @@ void  operator delete (void* p) noexcept                    { std::free (p); }
 void  operator delete[] (void* p) noexcept                  { std::free (p); }
 void  operator delete (void* p, std::size_t) noexcept       { std::free (p); }
 void  operator delete[] (void* p, std::size_t) noexcept     { std::free (p); }
-void  operator delete (void* p, std::align_val_t) noexcept  { std::free (p); }
-void  operator delete[] (void* p, std::align_val_t) noexcept { std::free (p); }
-void  operator delete (void* p, std::size_t, std::align_val_t) noexcept  { std::free (p); }
-void  operator delete[] (void* p, std::size_t, std::align_val_t) noexcept { std::free (p); }
+void  operator delete (void* p, std::align_val_t) noexcept  { amtest::trackedFreeAligned (p); }
+void  operator delete[] (void* p, std::align_val_t) noexcept { amtest::trackedFreeAligned (p); }
+void  operator delete (void* p, std::size_t, std::align_val_t) noexcept  { amtest::trackedFreeAligned (p); }
+void  operator delete[] (void* p, std::size_t, std::align_val_t) noexcept { amtest::trackedFreeAligned (p); }
 
 //==============================================================================
 namespace
@@ -1266,9 +1281,26 @@ private:
                     + juce::String (percent - plainPercent, 1) + " point difference is the DSP the modulation switches on)");
         logMessage ("   16 voices + 64 routings = " + juce::String (sixteen.first.realtimeRatio * 100.0, 1) + " % of realtime");
 
-        expect (full.first.realtimeRatio < 0.75, "64 voices with 64 routings used " + juce::String (percent, 1) + " % of realtime");
-        expect (sixteen.first.realtimeRatio < 0.25, "16 voices with 64 routings used "
-                                                    + juce::String (sixteen.first.realtimeRatio * 100.0, 1) + " % of realtime");
+        // The absolute percentage depends entirely on the machine, so a shared CI runner cannot be
+        // held to this box's number. The requirement that actually matters is that the instrument
+        // still runs faster than realtime at maximum polyphony with a full matrix; everything else
+        // is expressed as a ratio against the same engine measured on the same machine, which is
+        // what catches a regression in the modulation machinery.
+        const double plainRatio = juce::jmax (1.0e-6, plain.first.realtimeRatio);
+        const double machineryOverhead = (idle.first.realtimeRatio - plain.first.realtimeRatio) / plainRatio;
+        const double totalMultiplier = full.first.realtimeRatio / plainRatio;
+        logMessage ("   machinery overhead = " + juce::String (machineryOverhead * 100.0, 1)
+                    + " % of the unmodulated cost; total multiplier = x" + juce::String (totalMultiplier, 2));
+
+        expect (full.first.realtimeRatio < 0.95, "64 voices with 64 routings are not faster than realtime: "
+                                                 + juce::String (percent, 1) + " %");
+        expect (machineryOverhead < 0.60, "the per-voice modulation machinery costs "
+                                          + juce::String (machineryOverhead * 100.0, 1)
+                                          + " % on top of the unmodulated engine");
+        expect (totalMultiplier < 2.3, "enabling 64 routings multiplies the cost by "
+                                       + juce::String (totalMultiplier, 2));
+        expect (sixteen.first.realtimeRatio < plain.first.realtimeRatio * 0.75,
+                "16 voices with 64 routings cost more than 64 unmodulated voices");
     }
 };
 

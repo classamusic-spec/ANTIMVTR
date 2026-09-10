@@ -201,7 +201,7 @@ public:
                 const float mono = 0.5f * (outL + outR);
                 float s = shifter.process (mono + 0.6f * shimmerState);
                 s = shimmerLow.lp (shimmerHigh.hp (s));
-                shimmerState = fastTanh (s * 0.9f);
+                shimmerState = softLimit (s, 0.8f, 1.1f);
                 shimmer = shimmerState * shimmerAmt;
             }
             else

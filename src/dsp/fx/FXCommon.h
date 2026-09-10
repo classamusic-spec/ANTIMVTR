@@ -44,6 +44,24 @@ inline void equalPower (float mix, float& dryGain, float& wetGain) noexcept
     wetGain = std::sin (a);
 }
 
+/**
+    Bounded soft limiter for feedback paths.
+
+    Below `knee` it is exactly linear — unlike a plain tanh, which colours
+    everything it touches — and above it the signal bends smoothly towards
+    `ceiling` and can never pass it. That keeps regenerating loops honest
+    (repeats that stay clean until they are genuinely too loud) while making
+    runaway impossible.
+*/
+inline float softLimit (float x, float knee = 0.75f, float ceiling = 1.15f) noexcept
+{
+    const float a = std::abs (x);
+    if (a <= knee) return x;
+    const float headroom = ceiling - knee;
+    const float shaped = knee + headroom * fastTanh ((a - knee) / headroom);
+    return x < 0.0f ? -shaped : shaped;
+}
+
 /** Exponential map of a 0..1 control onto [lo, hi]. */
 inline float expMap (float t, float lo, float hi) noexcept
 {

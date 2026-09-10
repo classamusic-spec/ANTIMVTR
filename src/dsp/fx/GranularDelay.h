@@ -74,8 +74,8 @@ public:
             const float m = mix.next();
             const float fb = regen.next();
 
-            lines[0].write (l[i] + fastTanh (fb * feedbackL));
-            lines[1].write (r[i] + fastTanh (fb * feedbackR));
+            lines[0].write (l[i] + softLimit (fb * feedbackL));
+            lines[1].write (r[i] + softLimit (fb * feedbackR));
 
             if (--countdown <= 0)
             {

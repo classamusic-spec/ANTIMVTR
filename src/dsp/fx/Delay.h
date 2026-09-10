@@ -132,11 +132,15 @@ public:
 
             float fL = loopHigh[0].hp (loopLow[0].lp (tapL));
             float fR = loopHigh[1].hp (loopLow[1].lp (tapR));
-            fL = fastTanh (fL * 1.2f) * 0.833f;   // gentle ceiling inside the loop
-            fR = fastTanh (fR * 1.2f) * 0.833f;
+            // Headroom for the pile-up a sustained note creates, then a soft ceiling.
+            fL = softLimit (fL, 0.9f, 1.6f);
+            fR = softLimit (fR, 0.9f, 1.6f);
 
-            lines[0].write (l[i] + fb * fR);
-            lines[1].write (r[i] + fb * fL);
+            // Partial input normalisation: raising FEEDBACK lengthens the repeats
+            // instead of just piling energy up until something has to squash it.
+            const float writeGain = 1.0f - 0.35f * fb;
+            lines[0].write (l[i] * writeGain + fb * fR);
+            lines[1].write (r[i] * writeGain + fb * fL);
 
             l[i] += m * (tapL - l[i]);
             r[i] += m * (tapR - r[i]);

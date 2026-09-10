@@ -42,6 +42,7 @@ public:
         const float releaseMs = 260.0f - 170.0f * a;
         attackCoeff = (float) std::exp (-1.0 / (0.001 * (double) attackMs * sr));
         releaseCoeff = (float) std::exp (-1.0 / (0.001 * (double) releaseMs * sr));
+        smoothCoeff = 1.0f - (float) std::exp (-1.0 / (0.0015 * sr));   // ~1.5 ms de-chatter
         // Half of the theoretical gain lost at the threshold, so it stays polite.
         makeup.setTarget (dbToGain (-thresholdDb * (1.0f - 1.0f / ratio) * 0.45f * a));
     }
@@ -69,7 +70,7 @@ public:
             }
 
             const float target = dbToGain (gainDb);
-            gainState += (target - gainState) * 0.25f;      // smooth the last few dB of chatter
+            gainState += (target - gainState) * smoothCoeff;   // smooth the last few dB of chatter
             reduction = gainState;
 
             const float mk = makeup.next();
@@ -81,7 +82,7 @@ public:
 private:
     double sr = 48000.0;
     float thresholdDb = -12.0f, ratio = 2.0f, knee = 6.0f;
-    float attackCoeff = 0.9f, releaseCoeff = 0.999f;
+    float attackCoeff = 0.9f, releaseCoeff = 0.999f, smoothCoeff = 0.25f;
     float envelope = 0.0f, gainState = 1.0f, reduction = 1.0f;
     SmoothParam makeup;
 };

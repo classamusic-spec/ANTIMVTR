@@ -144,8 +144,8 @@ target_include_directories(AntiMatr PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_definitions(AntiMatr PUBLIC
     ${ANTIMATR_COMMON_DEFINES}
     ${ANTIMATR_ASSET_DEFINES}
-    JUCE_JACK=1
-    JUCE_ALSA=1)
+    $<$<PLATFORM_ID:Linux>:JUCE_JACK=1>
+    $<$<PLATFORM_ID:Linux>:JUCE_ALSA=1>)
 
 target_link_libraries(AntiMatr
     PRIVATE

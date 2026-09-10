@@ -282,7 +282,9 @@ inline KnobFootprint knobFootprint (float width, float height, bool hero, bool w
     KnobFootprint f;
     if (width <= 0.0f || height <= 0.0f) return f;
     f.labelHeight = withLabel ? juce::jlimit (10.0f, 22.0f, height * 0.19f) : 0.0f;
-    f.diameter = juce::jmax (0.0f, juce::jmin (width, height - f.labelHeight - 2.0f, knobDiameterCap (hero)) * 0.99f);
+    // The width keeps a little more margin than the height: side by side in a row,
+    // two knobs that each took their whole cell would have their arcs touching.
+    f.diameter = juce::jmax (0.0f, juce::jmin (width * 0.94f, height - f.labelHeight - 2.0f, knobDiameterCap (hero)) * 0.99f);
     f.top = juce::jmax (0.0f, (height - f.groupHeight()) * 0.5f);
     return f;
 }

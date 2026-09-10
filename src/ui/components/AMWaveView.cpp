@@ -72,7 +72,7 @@ void AMWaveView::paint (juce::Graphics& g)
         const float norm = peak > 0.001f ? 0.9f / juce::jmax (peak, 0.25f) : 0.0f;
         trace.clear();
         fill.clear();
-        fill.startNewSubPath (inner.getX(), inner.getCentreY());
+        fill.startNewSubPath (inner.getX(), inner.getBottom());
         for (int i = 0; i < n; ++i)
         {
             const float x = inner.getX() + inner.getWidth() * (float) i / (float) (n - 1);
@@ -80,10 +80,13 @@ void AMWaveView::paint (juce::Graphics& g)
             if (i == 0) trace.startNewSubPath (x, y); else trace.lineTo (x, y);
             fill.lineTo (x, y);
         }
-        fill.lineTo (inner.getRight(), inner.getCentreY());
+        // The fill hangs under the trace and fades out toward the floor of the screen.
+        fill.lineTo (inner.getRight(), inner.getBottom());
         fill.closeSubPath();
 
-        juce::ColourGradient grad (accent.withAlpha (0.16f + 0.1f * energy), 0.0f, inner.getY(), accent.withAlpha (0.02f), 0.0f, inner.getBottom(), false);
+        juce::ColourGradient grad (accent.withAlpha (0.22f + 0.12f * energy), 0.0f, inner.getY(),
+                                   accent.withAlpha (0.0f), 0.0f, inner.getBottom(), false);
+        grad.addColour (0.55, accent.withAlpha (0.06f));
         g.setGradientFill (grad);
         g.fillPath (fill);
         draw::glowPath (g, trace, accent, 1.3f, 8.0f, 0.45f + 0.55f * energy);

@@ -70,30 +70,32 @@ void SpaceArt::nebula (juce::Graphics& g, juce::Rectangle<float> a, float phase,
     const float R = juce::jmin (a.getWidth(), a.getHeight()) * 0.5f;
     stars (g, a, 11, 48, phase, 0.5f);
 
-    // soft gas clouds
-    draw::softLight (g, { c.x - R * 0.35f, c.y + R * 0.15f }, R * 1.1f, Theme::violet, 0.22f + 0.15f * activity);
-    draw::softLight (g, { c.x + R * 0.45f, c.y - R * 0.25f }, R * 0.9f, Theme::magenta, 0.16f + 0.1f * activity);
-    draw::softLight (g, { c.x + R * 0.1f, c.y + R * 0.4f }, R * 0.8f, Theme::blue, 0.14f);
-    draw::softLight (g, c, R * 0.55f, Theme::ivory, 0.18f + 0.2f * activity);
+    // A soft violet halo around the disc, tight enough that the arms still read.
+    draw::softLight (g, { c.x - R * 0.18f, c.y + R * 0.08f }, R * 0.78f, Theme::violet, 0.30f + 0.14f * activity);
+    draw::softLight (g, { c.x + R * 0.24f, c.y - R * 0.14f }, R * 0.58f, Theme::magenta, 0.20f + 0.10f * activity);
+    draw::softLight (g, { c.x + R * 0.06f, c.y + R * 0.22f }, R * 0.5f, Theme::blue, 0.16f);
 
-    // spiral arms of glowing dust
+    // Spiral arms of glowing dust, drawn as fine specks along two logarithmic arms.
     juce::Random rng (3);
     for (int arm = 0; arm < 2; ++arm)
     {
-        for (int i = 0; i < 70; ++i)
+        for (int i = 0; i < 110; ++i)
         {
-            const float u = (float) i / 70.0f;
+            const float u = (float) i / 110.0f;
             const float ang = u * 4.6f + (float) arm * juce::MathConstants<float>::pi + phase * 0.12f;
-            const float rad = R * (0.06f + 0.92f * u);
-            const float jitter = (rng.nextFloat() * 2.0f - 1.0f) * R * 0.05f * u;
+            const float rad = R * (0.08f + 0.84f * u);
+            const float jitter = (rng.nextFloat() * 2.0f - 1.0f) * R * 0.045f * (0.3f + u);
             const juce::Point<float> p (c.x + std::cos (ang) * rad + jitter, c.y + std::sin (ang) * rad * 0.62f + jitter);
-            const float s = (0.8f + 2.2f * rng.nextFloat()) * (1.0f - 0.5f * u);
+            const float s = (0.7f + 2.0f * rng.nextFloat()) * (1.0f - 0.45f * u);
             const auto col = (i % 3 == 0) ? Theme::magenta : (i % 3 == 1 ? Theme::violet : Theme::cyan);
-            g.setColour (col.withAlpha (0.25f + 0.6f * (1.0f - u)));
+            g.setColour (col.withAlpha (0.35f + 0.55f * (1.0f - u)));
             g.fillEllipse (p.x - s * 0.5f, p.y - s * 0.5f, s, s);
         }
     }
-    draw::glowDot (g, c, R * 0.06f, Theme::ivory, 0.7f + 0.3f * activity);
+
+    // The bright core sits on top of everything.
+    draw::softLight (g, c, R * 0.34f, Theme::ivory, 0.34f + 0.22f * activity);
+    draw::glowDot (g, c, R * 0.055f, Theme::ivory, 0.8f + 0.2f * activity);
 }
 
 void SpaceArt::voidHole (juce::Graphics& g, juce::Rectangle<float> a, float phase, float activity)

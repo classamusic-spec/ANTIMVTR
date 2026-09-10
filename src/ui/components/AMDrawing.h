@@ -487,22 +487,18 @@ inline void domeBody (juce::Graphics& g, juce::Rectangle<float> circle, juce::Co
         g.fillEllipse (circle);
     }
 
-    // Machined rim: a bright crescent centred on the light, dark around the shaded edge.
+    // Machined rim: one continuous stroke lit on the light's side and dark on the
+    // other, so the edge never breaks where the two halves meet.
     {
-        const float rimW = juce::jmax (0.9f, r * 0.055f);
-        const float toLight = std::atan2 (kLightX, -kLightY);   // 0 rad is 12 o'clock, clockwise
-        juce::Path lip;
-        lip.addCentredArc (c.x, c.y, r - rimW * 0.6f, r - rimW * 0.6f, 0.0f, toLight - 1.45f, toLight + 1.45f, true);
-        juce::ColourGradient shine (juce::Colours::white.withAlpha (0.34f + 0.26f * lit), c.x, c.y - r,
-                                    juce::Colours::white.withAlpha (0.05f), c.x, c.y + r, false);
-        g.setGradientFill (shine);
-        g.strokePath (lip, juce::PathStrokeType (rimW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-        juce::Path shade;
-        shade.addCentredArc (c.x, c.y, r - rimW * 0.6f, r - rimW * 0.6f, 0.0f,
-                             toLight + 1.45f, toLight + juce::MathConstants<float>::twoPi - 1.45f, true);
-        g.setColour (juce::Colours::black.withAlpha (0.72f));
-        g.strokePath (shade, juce::PathStrokeType (rimW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        const float rimW = juce::jmax (0.9f, r * 0.05f);
+        juce::Path rim;
+        rim.addEllipse (circle.reduced (rimW * 0.55f));
+        juce::ColourGradient edge (juce::Colours::white.withAlpha (0.30f + 0.22f * lit), c.x + kLightX * r, c.y + kLightY * r,
+                                   juce::Colours::black.withAlpha (0.80f), c.x - kLightX * r, c.y - kLightY * r, false);
+        edge.addColour (0.40, juce::Colours::white.withAlpha (0.03f));
+        edge.addColour (0.58, juce::Colours::black.withAlpha (0.06f));
+        g.setGradientFill (edge);
+        g.strokePath (rim, juce::PathStrokeType (rimW));
     }
 
     // Specular bloom in the upper-left third: broad, then a tighter core.

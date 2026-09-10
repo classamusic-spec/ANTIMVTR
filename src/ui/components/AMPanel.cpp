@@ -1,4 +1,5 @@
 #include "AMPanel.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -11,7 +12,7 @@ AMPanel::AMPanel (const juce::String& t, const juce::String& s, juce::Colour a)
 
 int AMPanel::padding() const
 {
-    return juce::jlimit (8, 22, juce::roundToInt ((float) getWidth() * 0.042f));
+    return juce::roundToInt (layout::panelPadding ((float) getWidth()));
 }
 
 juce::Rectangle<int> AMPanel::headerBounds() const
@@ -42,7 +43,6 @@ void AMPanel::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat().reduced (1.5f);
     const float corner = juce::jlimit (6.0f, Theme::kPanelRadius, b.getWidth() * 0.03f);
-    const float small = juce::jmin (b.getWidth(), b.getHeight());
 
     if (activity > 0.02f)
         draw::glowRoundedRect (g, b, corner, accent, 16.0f, activity * 0.35f);
@@ -50,8 +50,8 @@ void AMPanel::paint (juce::Graphics& g)
     draw::raisedSlab (g, b, corner);
 
     // Four screws bolt the slab to the chassis, one inset from each corner.
-    const float inset = juce::jlimit (6.0f, 13.0f, small * 0.024f);
-    draw::rivets (g, b, inset, juce::jlimit (2.0f, 4.0f, small * 0.0085f));
+    const auto hardware = layout::panelHardware (b.getWidth(), b.getHeight());
+    draw::rivets (g, b, hardware.inset, hardware.radius);
 
     const auto h = headerBounds().toFloat();
     const float titleH = compact ? juce::jlimit (10.0f, 14.0f, h.getHeight() * 0.5f)

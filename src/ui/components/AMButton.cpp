@@ -1,4 +1,5 @@
 #include "AMButton.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -224,17 +225,15 @@ void AMSlider::mouseDrag (const juce::MouseEvent& e)
 
 void AMSlider::paint (juce::Graphics& g)
 {
-    auto b = getLocalBounds().toFloat();
+    const auto b = getLocalBounds().toFloat();
     const float h = juce::jlimit (8.5f, 12.5f, b.getHeight() * 0.4f);
-    const float labelW = showLabel ? juce::jmin (b.getWidth() * 0.24f, 92.0f) : 0.0f;
-    const float valueW = showValue ? juce::jmin (b.getWidth() * 0.16f, 58.0f) : 0.0f;
     const float lit = juce::jmax (hover.value, isMouseButtonDown() ? 1.0f : 0.0f);
     const auto pair = Theme::accentPair (accent);
+    const auto geo = layout::sliderRow (b.getWidth(), b.getHeight(), showLabel, showValue);
+    const float r = geo.handleRadius;
 
-    auto labelArea = b.removeFromLeft (labelW);
-    auto valueArea = b.removeFromRight (valueW);
-    const float r = juce::jlimit (4.5f, 9.0f, b.getHeight() * 0.24f);
-    auto row = b.reduced (r + 3.0f, 0.0f);
+    const auto labelArea = b.withWidth (geo.labelWidth);
+    const auto valueArea = b.withLeft (b.getRight() - geo.valueWidth);
 
     if (showLabel)
         draw::trackedText (g, label, labelArea, juce::Justification::centredLeft, Theme::labelFont (h), Theme::textPrimary.withAlpha (0.82f));
@@ -242,14 +241,14 @@ void AMSlider::paint (juce::Graphics& g)
         draw::trackedText (g, getTextFromValue (getValue()), valueArea, juce::Justification::centredRight, Theme::valueFont (h + 1.0f),
                            Theme::textValue.interpolatedWith (pair.second, 0.5f * lit).withAlpha (0.85f));
 
-    const float y = row.getCentreY();
+    const float y = b.getCentreY();
     const auto range = getRange();
     const float p = range.getLength() > 0.0 ? (float) ((getValue() - range.getStart()) / range.getLength()) : 0.0f;
-    const float x = row.getX() + row.getWidth() * p;
+    const float x = b.getX() + geo.handleX (p);
 
     // Recessed capsule track: dark inside, with a lit lower lip.
-    const float trackH = juce::jlimit (4.0f, 11.0f, r * 1.15f);
-    const auto track = juce::Rectangle<float> (row.getX() - trackH * 0.5f, y - trackH * 0.5f, row.getWidth() + trackH, trackH);
+    const float trackH = geo.trackHeight;
+    const auto track = juce::Rectangle<float> (b.getX() + geo.trackX - trackH * 0.5f, y - trackH * 0.5f, geo.trackWidth + trackH, trackH);
     draw::insetWell (g, track, trackH * 0.5f, Theme::panelInset, 1.0f);
 
     // The filled portion, in the section's accent pair, glowing softly.

@@ -12,6 +12,7 @@
                      [--seq "60:0:1.5,64:0.5:2.0"]               (note:start:end, seconds)
                      [--preset "Void Bloom"] [--set shape.form=0.7 ...]
                      [--dry full|source|matter|evolve] [--json report.json]
+                     [--sample path.wav | --sample builtin:3]      (SAMPLE source data)
 */
 
 #include <juce_core/juce_core.h>
@@ -20,6 +21,7 @@
 #include <juce_dsp/juce_dsp.h>
 
 #include "dsp/SynthEngine.h"
+#include "dsp/source/SampleData.h"
 #include "presets/PresetManager.h"
 #include "state/StateManager.h"
 
@@ -185,6 +187,29 @@ int main (int argc, char* argv[])
     SynthEngine engine;
     engine.prepare (sr, block);
     engine.control().resetTo (patch.params);
+
+    // SAMPLE source data: a built-in ("builtin:N") or any audio file.
+    if (hasOption (args, "--sample"))
+    {
+        const auto spec = optionValue (args, "--sample");
+        if (spec.startsWithIgnoreCase ("builtin:"))
+        {
+            engine.publishSample (BuiltInSamples::create (spec.fromFirstOccurrenceOf (":", false, false).getIntValue()));
+        }
+        else
+        {
+            juce::String error;
+            if (auto loaded = loadSampleFile (juce::File::getCurrentWorkingDirectory().getChildFile (spec), &error))
+            {
+                engine.publishSample (std::move (loaded));
+            }
+            else
+            {
+                std::cerr << error << std::endl;
+                return 2;
+            }
+        }
+    }
 
     const auto dry = optionValue (args, "--dry");
     if (dry == "source") engine.diagnostics().dev.dryMode.store ((int) DryMode::SourceOnly);

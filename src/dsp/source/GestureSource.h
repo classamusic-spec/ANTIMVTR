@@ -124,7 +124,8 @@ private:
     excitation::Svf              band, formant1, formant2, tone;
     excitation::ExciterLowpass   pulseLp, breathLp;
     excitation::DcBlocker        dcL, dcR;
-    float bandGain = 1.0f, dryMix = 0.0f;
+    float bandGain = 1.0f, dryMix = 0.0f, modeTrim = 1.0f;
+    bool  tonalBand = false;   ///< pitched modes normalise the band by its peak gain, noisy ones by its noise gain
 
     // Contact-point comb --------------------------------------------------------
     std::array<float, kCombSize> comb {};

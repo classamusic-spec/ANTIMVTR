@@ -99,7 +99,9 @@ struct SampleData
         if (! (base >= -1.0)) base = -1.0;                       // also catches NaN
         if (base > (double) (numFrames)) base = (double) numFrames;
         const int   i = (int) base;
-        const float f = (float) juce::jlimit (0.0, 1.0, position - base);
+        float f = (float) (position - base);
+        if (! (f >= 0.0f)) f = 0.0f;    // also catches NaN
+        if (f > 1.0f) f = 1.0f;
 
         const float y0 = s[i - 1], y1 = s[i], y2 = s[i + 1], y3 = s[i + 2];
         const float c0 = y1;
@@ -143,5 +145,17 @@ namespace BuiltInSamples
     /** Builds one built-in sample (message thread). `index` is clamped. */
     std::shared_ptr<const SampleData> create (int index, double sampleRate = 48000.0);
 }
+
+//==============================================================================
+/**
+    Decodes an audio file into a `SampleData` (message thread only — this
+    touches the disk). Returns null and fills `error` when the file cannot be
+    read; callers fall back to a built-in instead of failing.
+
+    Longer files are truncated to `maxSeconds` and more than two channels are
+    mixed down to stereo, which bounds what a patch can pull into memory.
+*/
+std::shared_ptr<const SampleData> loadSampleFile (const juce::File& file, juce::String* error = nullptr,
+                                                  double maxSeconds = 30.0);
 
 } // namespace am

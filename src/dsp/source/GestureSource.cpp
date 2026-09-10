@@ -53,7 +53,7 @@ void GestureSource::prepare (double sampleRate, int maxBlockSize)
     dcR.prepare (sr, 12.0f);
 
     attackCoeff  = timeCoeff (0.006f, sr);   // 6 ms in
-    releaseCoeff = timeCoeff (0.045f, sr);   // 45 ms out
+    releaseCoeff = timeCoeff (0.030f, sr);   // 30 ms out
 
     formant1.set (760.0f, 3.2f);
     formant2.set (1850.0f, 4.5f);
@@ -149,11 +149,20 @@ void GestureSource::updateFilters()
 {
     const float f0 = (float) p.freq;
 
-    // ---- bandwidth: resonant band-pass around the note, narrow to wide.
+    // Per-mode output trim: every gesture leaves this source at a comparable
+    // level so switching mode changes character, not loudness.
+    static constexpr float kTrim[(int) Mode::Count] = { 1.30f, 5.2f, 0.24f, 0.95f, 2.10f, 28.0f };
+    modeTrim = kTrim[(size_t) juce::jlimit (0, (int) Mode::Count - 1, (int) p.mode)];
+    tonalBand = p.mode == Mode::Bow || p.mode == Mode::Electrical;
+
+    // ---- bandwidth: resonant band-pass around the note, narrow to wide. The
+    //      band is normalised to unit peak gain (not unit noise gain) so a
+    //      pitched gesture keeps its level as the band tightens, and the raw
+    //      signal is blended back in as the band opens.
     const float q = expMap (1.0f - p.bandwidth, 0.5f, 14.0f);
     band.set (f0, q);
-    bandGain = band.bandpassNoiseGain();
-    dryMix = clamp01 ((p.bandwidth - 0.6f) / 0.4f) * 0.55f;
+    bandGain = tonalBand ? 1.0f / juce::jmax (0.5f, q) : band.bandpassNoiseGain();
+    dryMix = p.bandwidth * p.bandwidth * 0.7f;
 
     // ---- position: contact point comb tuned to the note. 0.5 is neutral.
     const float period = (float) sr / juce::jmax (20.0f, f0);
@@ -165,11 +174,13 @@ void GestureSource::updateFilters()
     {
         case Mode::Bow:
             bowInc = juce::jlimit (1.0e-6, 0.24, (double) f0 / sr);
-            bowLpCoeff = onePoleCoeff (juce::jlimit (150.0f, (float) sr * 0.40f, f0 * (4.0f + 26.0f * pressureEff)), sr);
+            bowLpCoeff = onePoleCoeff (juce::jlimit (150.0f, (float) sr * 0.40f, f0 * (5.0f + 30.0f * pressureEff)), sr);
             break;
 
         case Mode::Scrape:
-            tilt.set (2200.0f, -0.55f + 1.35f * p.roughness);
+            // Roughness tilts the friction spectrum: smooth surfaces are dull,
+            // coarse ones let the high grain through.
+            tone.set (juce::jlimit (200.0f, (float) sr * 0.40f, expMap (p.roughness, 700.0f, 9000.0f)), 0.8f);
             break;
 
         case Mode::Rub:
@@ -184,7 +195,7 @@ void GestureSource::updateFilters()
             break;
 
         case Mode::Friction:
-            tilt.set (1800.0f, -0.15f + 1.05f * p.roughness);
+            tilt.set (900.0f, -0.35f + 1.15f * p.roughness);
             break;
 
         case Mode::Electrical:
@@ -207,7 +218,7 @@ inline float GestureSource::renderBow() noexcept
     if (bowPhase >= 1.0)
     {
         bowPhase -= 1.0;
-        const float base = 0.30f + 0.55f * pressureEff;
+        const float base = 0.30f + 0.40f * pressureEff;
         bowGrip = juce::jlimit (0.10f, 0.90f, base * (1.0f + p.roughness * 0.4f * shapeRng.nextBipolar()));
         bowSlipNoise = p.roughness * (0.4f + 0.6f * shapeRng.nextFloat());
     }
@@ -258,7 +269,7 @@ inline float GestureSource::renderScrape() noexcept
         if (g.env < 1.0e-4f) g.active = false;
     }
 
-    const float noise = tilt.process (noiseRng.nextBipolar());
+    const float noise = tone.lowpass (noiseRng.nextBipolar()) * tone.lowpassNoiseGain();
     return noise * grainSum * 0.9f;
 }
 
@@ -400,7 +411,7 @@ void GestureSource::render (float* l, float* r, int n, const RenderContext& ctx,
             default: break;
         }
 
-        x = applyComb (x);
+        x = applyComb (x * modeTrim);
 
         const float shaped = band.bandpass (x) * bandGain;
         x = shaped * (1.0f - dryMix) + x * dryMix;

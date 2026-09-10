@@ -1,6 +1,8 @@
 #include "SampleData.h"
 #include "NoiseGenerators.h"
 
+#include <juce_audio_formats/juce_audio_formats.h>
+
 namespace am
 {
 
@@ -354,5 +356,47 @@ std::shared_ptr<const SampleData> create (int index, double sampleRate)
 }
 
 } // namespace BuiltInSamples
+
+//==============================================================================
+std::shared_ptr<const SampleData> loadSampleFile (const juce::File& file, juce::String* error, double maxSeconds)
+{
+    auto fail = [error] (const juce::String& message) -> std::shared_ptr<const SampleData>
+    {
+        if (error != nullptr) *error = message;
+        return {};
+    };
+
+    if (! file.existsAsFile()) return fail ("File not found: " + file.getFullPathName());
+
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+    if (reader == nullptr) return fail ("Unsupported audio file: " + file.getFileName());
+    if (reader->lengthInSamples <= 0 || reader->numChannels < 1) return fail ("Empty audio file: " + file.getFileName());
+
+    const double sr = reader->sampleRate > 0.0 ? reader->sampleRate : 48000.0;
+    const int64_t maxFrames = (int64_t) (juce::jlimit (0.05, 600.0, maxSeconds) * sr);
+    const int frames = (int) juce::jmin ((int64_t) reader->lengthInSamples, maxFrames);
+    const int channels = (int) juce::jmin ((juce::uint32) 2, reader->numChannels);
+
+    auto sample = std::make_shared<SampleData>();
+    sample->allocate (channels, frames);
+    sample->sampleRate = sr;
+    sample->name = file.getFileNameWithoutExtension();
+    sample->path = file.getFullPathName();
+    sample->builtInIndex = -1;
+
+    float* dest[2] = { sample->write (0), channels > 1 ? sample->write (1) : nullptr };
+    if (! reader->read (dest, channels, 0, frames))
+        return fail ("Could not decode " + file.getFileName());
+
+    for (int c = 0; c < channels; ++c)
+        if (float* d = sample->write (c))
+            for (int i = 0; i < frames; ++i)
+                if (! std::isfinite (d[i])) d[i] = 0.0f;
+
+    sample->updatePeak();
+    return sample;
+}
 
 } // namespace am

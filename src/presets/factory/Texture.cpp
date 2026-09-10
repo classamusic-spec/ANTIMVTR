@@ -120,7 +120,7 @@ manager.addFactory ({ "Rain Membrane", "TEXTURE", { "organic", "granular", "brea
     shape (s, 0.56f, 0.30f, 0.52f, 0.42f, 0.66f, 0.38f);
     material (s, MaterialType::Membrane, MaterialType::Wood, 0.38f);
     topology (s, 3 /* LATTICE */, 0.56f, 0.50f, 4409);
-    matter (s, 0.96f, 0.72f, 0.18f, 0.86f, 0.45f);
+    matter (s, 0.96f, 0.72f, 0.18f, 0.86f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.52f, 0.32f, 0.0f, 0.32f, 0.46f);
     set (s, Param::evolveScatterSeed, 4409);
     space (s, SpacePresets::Dust, 0.44f, 0.56f, 0.44f, 0.34f);
@@ -156,7 +156,7 @@ manager.addFactory ({ "Rust Bloom", "TEXTURE", { "metallic", "dirty", "evolving"
     shape (s, 0.60f, 0.46f, 0.44f, 0.52f, 0.62f, 0.52f);
     material (s, MaterialType::Metal, MaterialType::Organic, 0.42f);
     topology (s, 4 /* RANDOM */, 0.60f, 0.44f, 5023);
-    matter (s, 0.94f, 0.70f, 0.20f, 0.72f, 0.40f);
+    matter (s, 0.94f, 0.70f, 0.20f, 0.72f, 0.80f);
     evolve (s, 0.0f, 0.34f, 0.26f, 0.0f, 0.54f, 0.28f, 0.0f, 0.26f, 0.52f);
     set (s, Param::evolveScatterSeed, 5023);
     space (s, SpacePresets::Machine, 0.38f, 0.46f, 0.42f, 0.36f);
@@ -192,7 +192,7 @@ manager.addFactory ({ "Cavern Wind", "TEXTURE", { "dark", "hollow", "huge", "low
     shape (s, 0.48f, 0.20f, 0.74f, 0.36f, 0.72f, 0.28f);
     material (s, MaterialType::Void, MaterialType::Wood, 0.40f);
     topology (s, 0 /* CHAIN */, 0.42f, 0.60f, 5501);
-    matter (s, 0.90f, 0.66f, 0.16f, 0.78f, 0.30f);
+    matter (s, 0.90f, 0.66f, 0.16f, 0.78f, 0.76f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.62f, 0.22f, 0.0f, 0.18f, 0.44f);
     set (s, Param::evolveScatterSeed, 5501);
     space (s, SpacePresets::Void, 0.52f, 0.82f, 0.32f, 0.42f);
@@ -228,7 +228,7 @@ manager.addFactory ({ "Gravel Weather", "TEXTURE", { "dirty", "granular", "chaot
     shape (s, 0.64f, 0.52f, 0.46f, 0.48f, 0.58f, 0.46f);
     material (s, MaterialType::Wood, MaterialType::Membrane, 0.46f);
     topology (s, 2 /* CLUSTERS */, 0.50f, 0.42f, 6089);
-    matter (s, 0.88f, 0.68f, 0.22f, 0.80f, 0.35f);
+    matter (s, 0.88f, 0.68f, 0.22f, 0.80f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.20f, 0.0f, 0.50f, 0.36f, 0.0f, 0.44f, 0.48f);
     set (s, Param::evolveScatterSeed, 6089);
     fracture (s, 0 /* SPECTRAL */, 0.44f, 0.42f, 0.62f, 0.40f, 0.28f, 0.42f, 0.56f, 0.44f, 0.40f,
@@ -267,7 +267,7 @@ manager.addFactory ({ "Slate Scrape", "TEXTURE", { "wooden", "scraped", "dry", "
     shape (s, 0.52f, 0.36f, 0.56f, 0.44f, 0.54f, 0.58f);
     material (s, MaterialType::Wood, MaterialType::String, 0.36f);
     topology (s, 2 /* CLUSTERS */, 0.48f, 0.46f, 6553);
-    matter (s, 0.92f, 0.74f, 0.24f, 0.58f, 0.50f);
+    matter (s, 0.92f, 0.74f, 0.24f, 0.58f, 0.84f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.48f, 0.26f, 0.0f, 0.48f, 0.42f);
     set (s, Param::evolveScatterSeed, 6553);
     space (s, SpacePresets::Chamber, 0.24f, 0.30f, 0.46f, 0.24f);
@@ -302,7 +302,7 @@ manager.addFactory ({ "Frozen Choir", "TEXTURE", { "glassy", "cold", "drift", "a
     shape (s, 0.46f, 0.76f, 0.28f, 0.66f, 0.74f, 0.18f);
     material (s, MaterialType::Crystal, MaterialType::Liquid, 0.44f);
     topology (s, 5 /* STAR */, 0.36f, 0.64f, 6421);
-    matter (s, 0.90f, 0.74f, 0.20f, 0.82f, 0.40f);
+    matter (s, 0.90f, 0.74f, 0.20f, 0.82f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.44f, 0.34f, 0.0f, 0.14f, 0.50f);
     set (s, Param::evolveFreeze, 1.0f);
     set (s, Param::evolveScatterSeed, 6421);
@@ -339,7 +339,7 @@ manager.addFactory ({ "Vinyl Weather", "TEXTURE", { "dirty", "noisy", "breathing
     shape (s, 0.58f, 0.42f, 0.48f, 0.40f, 0.50f, 0.48f);
     material (s, MaterialType::Void, MaterialType::Membrane, 0.48f);
     topology (s, 4 /* RANDOM */, 0.46f, 0.38f, 7013);
-    matter (s, 0.72f, 0.64f, 0.20f, 0.62f, 0.25f);
+    matter (s, 0.72f, 0.64f, 0.20f, 0.62f, 0.76f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.30f, 0.34f, 0.36f, 0.44f);
     set (s, Param::evolveScatterSeed, 7013);
     space (s, SpacePresets::Chamber, 0.26f, 0.34f, 0.40f, 0.26f);
@@ -375,7 +375,7 @@ manager.addFactory ({ "Breath Cathedral", "TEXTURE", { "hollow", "huge", "breath
     shape (s, 0.50f, 0.34f, 0.52f, 0.46f, 0.70f, 0.22f);
     material (s, MaterialType::Void, MaterialType::Membrane, 0.36f);
     topology (s, 2 /* CLUSTERS */, 0.44f, 0.56f, 7549);
-    matter (s, 0.90f, 0.62f, 0.18f, 0.84f, 0.35f);
+    matter (s, 0.90f, 0.62f, 0.18f, 0.84f, 0.80f);
     evolve (s, 0.0f, 0.16f, 0.0f, 0.0f, 0.56f, 0.24f, 0.0f, 0.20f, 0.42f);
     set (s, Param::evolveScatterSeed, 7549);
     space (s, SpacePresets::Void, 0.54f, 0.86f, 0.44f, 0.44f);
@@ -411,7 +411,7 @@ manager.addFactory ({ "Insect Field", "TEXTURE", { "organic", "chaotic", "high",
     shape (s, 0.44f, 0.64f, 0.24f, 0.62f, 0.48f, 0.42f);
     material (s, MaterialType::Organic, MaterialType::Crystal, 0.40f);
     topology (s, 4 /* RANDOM */, 0.40f, 0.52f, 8093);
-    matter (s, 0.94f, 0.72f, 0.18f, 0.84f, 0.35f);
+    matter (s, 0.94f, 0.72f, 0.18f, 0.84f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.40f, 0.34f, 0.0f, 0.58f, 0.48f);
     set (s, Param::evolveScatterSeed, 8093);
     space (s, SpacePresets::Chamber, 0.30f, 0.38f, 0.62f, 0.28f);
@@ -452,7 +452,7 @@ manager.addFactory ({ "Tape Shards", "TEXTURE", { "dirty", "synthetic", "rhythmi
     shape (s, 0.54f, 0.58f, 0.38f, 0.56f, 0.44f, 0.44f);
     material (s, MaterialType::Membrane, MaterialType::Metal, 0.42f);
     topology (s, 5 /* STAR */, 0.44f, 0.46f, 8623);
-    matter (s, 0.74f, 0.66f, 0.22f, 0.70f, 0.30f);
+    matter (s, 0.74f, 0.66f, 0.22f, 0.70f, 0.76f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.48f, 0.30f, 0.26f, 0.50f, 0.40f);
     set (s, Param::evolveScatterSeed, 8623);
     fracture (s, 2 /* TRANSIENT */, 0.52f, 0.48f, 0.44f, 0.66f, 0.26f, 0.30f, 0.42f, 0.52f, 0.34f,
@@ -491,7 +491,7 @@ manager.addFactory ({ "Deep Sediment", "TEXTURE", { "dark", "sub", "drift", "hug
     shape (s, 0.42f, 0.14f, 0.86f, 0.28f, 0.78f, 0.20f);
     material (s, MaterialType::Membrane, MaterialType::Organic, 0.44f);
     topology (s, 0 /* CHAIN */, 0.50f, 0.36f, 9109);
-    matter (s, 0.92f, 0.60f, 0.14f, 0.66f, 0.25f);
+    matter (s, 0.92f, 0.60f, 0.14f, 0.66f, 0.76f);
     set (s, Param::shapePitch, -7.0f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.74f, 0.20f, 0.0f, 0.12f, 0.40f);
     set (s, Param::evolveScatterSeed, 9109);
@@ -533,7 +533,7 @@ manager.addFactory ({ "Plate Corrosion", "TEXTURE", { "metallic", "rhythmic", "d
     shape (s, 0.58f, 0.62f, 0.36f, 0.64f, 0.56f, 0.48f);
     material (s, MaterialType::Metal, MaterialType::Crystal, 0.46f);
     topology (s, 3 /* LATTICE */, 0.62f, 0.44f, 9631);
-    matter (s, 0.88f, 0.70f, 0.24f, 0.76f, 0.40f);
+    matter (s, 0.88f, 0.70f, 0.24f, 0.76f, 0.80f);
     evolve (s, 0.0f, 0.22f, 0.24f, 0.0f, 0.52f, 0.32f, 0.0f, 0.46f, 0.44f);
     set (s, Param::evolveScatterSeed, 9631);
     fracture (s, 3 /* EVOLVE */, 0.46f, 0.44f, 0.50f, 0.52f, 0.32f, 0.36f, 0.54f, 0.48f, 0.50f,
@@ -572,15 +572,15 @@ manager.addFactory ({ "Ice Shelf", "TEXTURE", { "cold", "distant", "glassy", "st
     amp (s, 0.30f, 2.00f, 0.70f, 2.40f, 0.5f);
     shape (s, 0.40f, 0.80f, 0.26f, 0.70f, 0.72f, 0.30f);
     material (s, MaterialType::Crystal, MaterialType::Void, 0.42f);
-    topology (s, 5 /* STAR */, 0.34f, 0.60f, 10259);
-    matter (s, 0.96f, 0.64f, 0.30f, 0.80f, 0.45f);
+    topology (s, 5 /* STAR */, 0.34f, 0.60f, 2657);
+    matter (s, 0.96f, 0.64f, 0.30f, 0.80f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.38f, 0.0f, 0.44f, 0.36f, 0.0f, 0.30f, 0.46f);
-    set (s, Param::evolveScatterSeed, 10259);
+    set (s, Param::evolveScatterSeed, 2657);
     space (s, SpacePresets::Void, 0.50f, 0.76f, 0.56f, 0.38f);
 
     lfo (s, 1, 0.36f, 5 /* SMOOTH RANDOM */, 1.0f, false);
     lfo (s, 2, 0.12f, 0 /* SINE */, 1.0f, false);
-    chaos (s, 1, 3 /* LORENZ */, 0.70f, 0.55f, 0.58f, 0.5f, 10259);
+    chaos (s, 1, 3 /* LORENZ */, 0.70f, 0.55f, 0.58f, 0.5f, 2657);
     env (s, 2, 1.20f, 2.40f, 0.40f, 2.00f, 0.6f, true);
     macros (s, 0.50f, 0.45f, 0.55f, 0.50f);
 
@@ -608,19 +608,19 @@ manager.addFactory ({ "Mains Ghost", "TEXTURE", { "synthetic", "dirty", "pulsing
     amp (s, 0.12f, 1.10f, 0.80f, 0.80f, 0.5f);
     shape (s, 0.66f, 0.50f, 0.42f, 0.58f, 0.46f, 0.50f);
     material (s, MaterialType::Custom, MaterialType::Metal, 0.52f);
-    topology (s, 4 /* RANDOM */, 0.54f, 0.40f, 10847);
-    matter (s, 0.80f, 0.68f, 0.22f, 0.62f, 0.30f);
+    topology (s, 4 /* RANDOM */, 0.54f, 0.40f, 2861);
+    matter (s, 0.80f, 0.68f, 0.22f, 0.62f, 0.76f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.30f, 0.42f, 0.54f, 0.42f);
-    set (s, Param::evolveScatterSeed, 10847);
+    set (s, Param::evolveScatterSeed, 2861);
     fracture (s, 1 /* RHYTHMIC */, 0.48f, 0.42f, 0.34f, 0.70f, 0.28f, 0.24f, 0.40f, 0.44f, 0.30f,
-              0 /* 8 */, 3 /* 1/8 */, 8, 0.0f, 0 /* FORWARD */, 0.90f, 0.28f, 10847,
+              0 /* 8 */, 3 /* 1/8 */, 8, 0.0f, 0 /* FORWARD */, 0.90f, 0.28f, 2861,
               FractureShape { 8, 0.04f, 0.24f, 0.12f, 0.34f, 0.36f, 0.56f, 0.20f, 0.70f,
                               1.0f, 0.90f, 0.45f, 0.90f, nullptr, "XXoXXo.X", nullptr });
     space (s, SpacePresets::Machine, 0.28f, 0.32f, 0.40f, 0.32f);
 
     lfo (s, 1, 1.20f, 3 /* SQUARE */, 1.0f, false, 0.0f, 0.35f);
     lfo (s, 2, 0.26f, 5 /* SMOOTH RANDOM */, 1.0f, false);
-    chaos (s, 1, 2 /* LOGISTIC */, 2.80f, 0.45f, 0.66f, 0.5f, 10847);
+    chaos (s, 1, 2 /* LOGISTIC */, 2.80f, 0.45f, 0.66f, 0.5f, 2861);
     macros (s, 0.50f, 0.40f, 0.25f, 0.55f);
 
     Routings r;
@@ -647,15 +647,15 @@ manager.addFactory ({ "Cymbal Weather", "TEXTURE", { "metallic", "bowed", "wide"
     amp (s, 0.70f, 2.20f, 0.82f, 2.20f, 0.6f);
     shape (s, 0.72f, 0.88f, 0.30f, 0.74f, 0.66f, 0.36f);
     material (s, MaterialType::Metal, MaterialType::Crystal, 0.56f);
-    topology (s, 1 /* RING */, 0.72f, 0.56f, 11423);
-    matter (s, 0.90f, 0.62f, 0.18f, 0.88f, 0.20f);
+    topology (s, 1 /* RING */, 0.72f, 0.56f, 3079);
+    matter (s, 0.90f, 0.62f, 0.18f, 0.88f, 0.76f);
     evolve (s, 0.0f, 0.0f, 0.22f, 0.0f, 0.46f, 0.30f, 0.0f, 0.24f, 0.50f);
-    set (s, Param::evolveScatterSeed, 11423);
+    set (s, Param::evolveScatterSeed, 3079);
     space (s, SpacePresets::Nebula, 0.44f, 0.66f, 0.60f, 0.36f);
 
     lfo (s, 1, 0.33f, 5 /* SMOOTH RANDOM */, 1.0f, false);
     lfo (s, 2, 0.08f, 0 /* SINE */, 1.0f, false);
-    chaos (s, 1, 1 /* BROWNIAN */, 0.50f, 0.50f, 0.58f, 0.5f, 11423);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.50f, 0.50f, 0.58f, 0.5f, 3079);
     env (s, 2, 1.40f, 3.00f, 0.55f, 2.40f, 0.6f);
     macros (s, 0.50f, 0.50f, 0.50f, 0.45f);
 
@@ -679,16 +679,16 @@ manager.addFactory ({ "Cymbal Weather", "TEXTURE", { "metallic", "bowed", "wide"
 
 manager.addFactory ({ "Buried Engine", "TEXTURE", { "dark", "pulsing", "distant", "low", "hollow" }, [] (PatchState& s)
 {
-    dust (s, 7 /* CLOUD */, 0.62f, 0.12f, 0.66f, 0.40f, 0.56f, 0.62f, 12011);
+    dust (s, 7 /* CLOUD */, 0.62f, 0.12f, 0.66f, 0.40f, 0.56f, 0.62f, 3271);
     amp (s, 0.60f, 2.20f, 0.84f, 1.80f, 0.55f);
     shape (s, 0.56f, 0.32f, 0.70f, 0.40f, 0.60f, 0.34f);
     material (s, MaterialType::Wood, MaterialType::Metal, 0.48f);
-    topology (s, 3 /* LATTICE */, 0.66f, 0.38f, 12011);
-    matter (s, 0.86f, 0.62f, 0.20f, 0.60f, 0.25f);
+    topology (s, 3 /* LATTICE */, 0.66f, 0.38f, 3271);
+    matter (s, 0.86f, 0.62f, 0.20f, 0.60f, 0.76f);
     evolve (s, 0.0f, 0.18f, 0.0f, 0.0f, 0.62f, 0.26f, 0.20f, 0.28f, 0.44f);
-    set (s, Param::evolveScatterSeed, 12011);
+    set (s, Param::evolveScatterSeed, 3271);
     fracture (s, 3 /* EVOLVE */, 0.40f, 0.38f, 0.30f, 0.58f, 0.34f, 0.44f, 0.62f, 0.16f, 0.46f,
-              0 /* 8 */, 2 /* 1/4 */, 4, 0.0f, 0 /* FORWARD */, 0.95f, 0.22f, 12011,
+              0 /* 8 */, 2 /* 1/4 */, 4, 0.0f, 0 /* FORWARD */, 0.95f, 0.22f, 3271,
               FractureShape { 8, 0.10f, 0.52f, 0.16f, 0.38f, 0.44f, 0.62f, 0.20f, 0.60f,
                               1.0f, 0.75f, 0.40f, 0.95f, kFallingTerrace, "XLXL", nullptr });
     space (s, SpacePresets::Machine, 0.40f, 0.62f, 0.14f, 0.40f);
@@ -696,7 +696,7 @@ manager.addFactory ({ "Buried Engine", "TEXTURE", { "dark", "pulsing", "distant"
     lfo (s, 1, 0.44f, 0 /* SINE */, 1.0f, false);
     lfo (s, 2, 0.11f, 5 /* SMOOTH RANDOM */, 1.0f, false);
     env (s, 2, 1.10f, 1.80f, 0.35f, 1.60f, 0.55f, true);
-    chaos (s, 1, 0 /* WALK */, 0.34f, 0.45f, 0.64f, 0.5f, 12011);
+    chaos (s, 1, 0 /* WALK */, 0.34f, 0.45f, 0.64f, 0.5f, 3271);
     macros (s, 0.50f, 0.30f, 0.45f, 0.50f);
 
     Routings r;
@@ -719,19 +719,19 @@ manager.addFactory ({ "Buried Engine", "TEXTURE", { "dark", "pulsing", "distant"
 
 manager.addFactory ({ "Simmer Skin", "TEXTURE", { "organic", "granular", "breathing", "mid", "wide" }, [] (PatchState& s)
 {
-    dust (s, 7 /* CLOUD */, 0.66f, 0.20f, 0.66f, 0.54f, 0.68f, 0.76f, 12497);
+    dust (s, 7 /* CLOUD */, 0.66f, 0.20f, 0.66f, 0.54f, 0.68f, 0.76f, 3457);
     amp (s, 0.35f, 1.70f, 0.86f, 1.60f, 0.5f);
     shape (s, 0.62f, 0.34f, 0.46f, 0.50f, 0.52f, 0.44f);
     material (s, MaterialType::Liquid, MaterialType::Membrane, 0.42f);
-    topology (s, 2 /* CLUSTERS */, 0.52f, 0.50f, 12497);
-    matter (s, 0.94f, 0.82f, 0.24f, 0.80f, 0.40f);
+    topology (s, 2 /* CLUSTERS */, 0.52f, 0.50f, 3457);
+    matter (s, 0.94f, 0.82f, 0.24f, 0.80f, 0.80f);
     evolve (s, 0.0f, 0.20f, 0.0f, 0.0f, 0.48f, 0.32f, 0.0f, 0.52f, 0.50f);
-    set (s, Param::evolveScatterSeed, 12497);
+    set (s, Param::evolveScatterSeed, 3457);
     space (s, SpacePresets::Dream, 0.40f, 0.52f, 0.54f, 0.34f);
 
     lfo (s, 1, 0.72f, 5 /* SMOOTH RANDOM */, 1.0f, false);
     lfo (s, 2, 0.29f, 0 /* SINE */, 1.0f, false);
-    chaos (s, 1, 4 /* TARGETS */, 1.90f, 0.55f, 0.50f, 0.5f, 12497);
+    chaos (s, 1, 4 /* TARGETS */, 1.90f, 0.55f, 0.50f, 0.5f, 3457);
     env (s, 2, 0.80f, 1.40f, 0.35f, 1.20f, 0.5f, true);
     macros (s, 0.55f, 0.45f, 0.40f, 0.50f);
 
@@ -755,23 +755,23 @@ manager.addFactory ({ "Simmer Skin", "TEXTURE", { "organic", "granular", "breath
 
 manager.addFactory ({ "Leaf Litter", "TEXTURE", { "wooden", "dry", "close", "rhythmic", "granular" }, [] (PatchState& s)
 {
-    dust (s, 5 /* CRACKLE */, 0.52f, 0.46f, 0.38f, 0.68f, 0.52f, 0.60f, 13007);
+    dust (s, 5 /* CRACKLE */, 0.52f, 0.46f, 0.38f, 0.68f, 0.52f, 0.60f, 3673);
     amp (s, 0.14f, 1.10f, 0.82f, 0.80f, 0.45f);
     shape (s, 0.50f, 0.44f, 0.44f, 0.46f, 0.42f, 0.52f);
     material (s, MaterialType::Wood, MaterialType::Organic, 0.38f);
-    topology (s, 3 /* LATTICE */, 0.48f, 0.44f, 13007);
-    matter (s, 0.96f, 0.84f, 0.26f, 0.66f, 0.35f);
+    topology (s, 3 /* LATTICE */, 0.48f, 0.44f, 3673);
+    matter (s, 0.96f, 0.84f, 0.26f, 0.66f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.46f, 0.34f, 0.0f, 0.62f, 0.46f);
-    set (s, Param::evolveScatterSeed, 13007);
+    set (s, Param::evolveScatterSeed, 3673);
     fracture (s, 2 /* TRANSIENT */, 0.42f, 0.40f, 0.38f, 0.60f, 0.18f, 0.20f, 0.34f, 0.50f, 0.28f,
-              1 /* 16 */, 4 /* 1/16 */, 8, 0.22f, 3 /* RANDOM */, 0.55f, 0.42f, 13007,
+              1 /* 16 */, 4 /* 1/16 */, 8, 0.22f, 3 /* RANDOM */, 0.55f, 0.42f, 3673,
               FractureShape { 16, 0.02f, 0.22f, 0.06f, 0.26f, 0.28f, 0.48f, 0.24f, 0.80f,
                               1.0f, 0.85f, 0.60f, 0.55f, nullptr, "XoLoXHo.", nullptr });
     space (s, SpacePresets::Chamber, 0.22f, 0.28f, 0.50f, 0.22f);
 
     lfo (s, 1, 0.94f, 5 /* SMOOTH RANDOM */, 1.0f, false);
     lfo (s, 2, 0.21f, 1 /* TRIANGLE */, 1.0f, false);
-    chaos (s, 1, 0 /* WALK */, 2.40f, 0.50f, 0.60f, 0.5f, 13007);
+    chaos (s, 1, 0 /* WALK */, 2.40f, 0.50f, 0.60f, 0.5f, 3673);
     macros (s, 0.55f, 0.45f, 0.25f, 0.50f);
 
     Routings r;
@@ -795,7 +795,7 @@ manager.addFactory ({ "Leaf Litter", "TEXTURE", { "wooden", "dry", "close", "rhy
 manager.addFactory ({ "Radio Ghosts", "TEXTURE", { "vocal", "noisy", "morphing", "distant", "formant" }, [] (PatchState& s)
 {
     wave (s, 2 /* FORMANT */, 0.40f, 0.50f, 0.44f, 2, 0.14f, 0.40f, 0, 0.50f);
-    dust (s, 0 /* WHITE */, 0.62f, 0.30f, 0.38f, 0.44f, 0.64f, 0.72f, 13513, 0.28f);
+    dust (s, 0 /* WHITE */, 0.62f, 0.30f, 0.38f, 0.44f, 0.64f, 0.72f, 3881, 0.28f);
     set (s, Param::sourceMode, 1 /* LAYER */);
     set (s, Param::impactLevel, 0.0f);
     set (s, Param::sampleLevel, 0.0f);
@@ -803,15 +803,15 @@ manager.addFactory ({ "Radio Ghosts", "TEXTURE", { "vocal", "noisy", "morphing",
     amp (s, 0.40f, 1.80f, 0.80f, 1.60f, 0.55f);
     shape (s, 0.58f, 0.54f, 0.40f, 0.60f, 0.54f, 0.34f);
     material (s, MaterialType::Organic, MaterialType::Void, 0.44f);
-    topology (s, 5 /* STAR */, 0.40f, 0.58f, 13513);
-    matter (s, 0.86f, 0.70f, 0.22f, 0.74f, 0.30f);
+    topology (s, 5 /* STAR */, 0.40f, 0.58f, 3881);
+    matter (s, 0.86f, 0.70f, 0.22f, 0.74f, 0.76f);
     evolve (s, 0.0f, 0.0f, 0.20f, 0.0f, 0.50f, 0.36f, 0.0f, 0.40f, 0.52f);
-    set (s, Param::evolveScatterSeed, 13513);
+    set (s, Param::evolveScatterSeed, 3881);
     space (s, SpacePresets::Orbit, 0.42f, 0.56f, 0.48f, 0.44f);
 
     lfo (s, 1, 0.58f, 5 /* SMOOTH RANDOM */, 1.0f, false);
     lfo (s, 2, 0.14f, 1 /* TRIANGLE */, 1.0f, false);
-    chaos (s, 1, 4 /* TARGETS */, 0.80f, 0.60f, 0.45f, 0.5f, 13513);
+    chaos (s, 1, 4 /* TARGETS */, 0.80f, 0.60f, 0.45f, 0.5f, 3881);
     env (s, 2, 1.00f, 1.80f, 0.40f, 1.40f, 0.55f, true);
     macros (s, 0.55f, 0.45f, 0.45f, 0.55f);
 
@@ -839,15 +839,15 @@ manager.addFactory ({ "Sand Drum", "TEXTURE", { "soft", "scraped", "breathing", 
     amp (s, 0.40f, 1.60f, 0.80f, 1.20f, 0.55f);
     shape (s, 0.54f, 0.26f, 0.58f, 0.42f, 0.50f, 0.46f);
     material (s, MaterialType::Membrane, MaterialType::String, 0.34f);
-    topology (s, 0 /* CHAIN */, 0.46f, 0.42f, 14009);
-    matter (s, 0.94f, 0.72f, 0.20f, 0.56f, 0.35f);
+    topology (s, 0 /* CHAIN */, 0.46f, 0.42f, 4079);
+    matter (s, 0.94f, 0.72f, 0.20f, 0.56f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.56f, 0.24f, 0.0f, 0.20f, 0.44f);
-    set (s, Param::evolveScatterSeed, 14009);
+    set (s, Param::evolveScatterSeed, 4079);
     space (s, SpacePresets::Chamber, 0.28f, 0.36f, 0.38f, 0.26f);
 
     lfo (s, 1, 0.24f, 0 /* SINE */, 1.0f, false);
     lfo (s, 2, 0.61f, 5 /* SMOOTH RANDOM */, 1.0f, false);
-    chaos (s, 1, 1 /* BROWNIAN */, 0.36f, 0.50f, 0.62f, 0.5f, 14009);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.36f, 0.50f, 0.62f, 0.5f, 4079);
     env (s, 2, 0.90f, 1.60f, 0.40f, 1.20f, 0.5f, true);
     macros (s, 0.50f, 0.40f, 0.30f, 0.50f);
 
@@ -871,7 +871,7 @@ manager.addFactory ({ "Sand Drum", "TEXTURE", { "soft", "scraped", "breathing", 
 manager.addFactory ({ "After Blast", "TEXTURE", { "dark", "huge", "impact", "drift", "hollow" }, [] (PatchState& s)
 {
     impact (s, 3 /* NOISE STRIKE */, 0.42f, 0.40f, 0.62f, 0.90f, 0.65f, 0.20f, 0.0f, 0.86f);
-    dust (s, 1 /* PINK */, 0.48f, 0.28f, 0.46f, 0.34f, 0.66f, 0.74f, 14503, 0.26f);
+    dust (s, 1 /* PINK */, 0.48f, 0.28f, 0.46f, 0.34f, 0.66f, 0.74f, 4271, 0.26f);
     set (s, Param::sourceMode, 1 /* LAYER */);
     set (s, Param::waveLevel, 0.0f);
     set (s, Param::sampleLevel, 0.0f);
@@ -879,16 +879,16 @@ manager.addFactory ({ "After Blast", "TEXTURE", { "dark", "huge", "impact", "dri
     amp (s, 0.006f, 2.60f, 0.42f, 3.00f, 0.7f);
     shape (s, 0.52f, 0.36f, 0.76f, 0.34f, 0.80f, 0.30f);
     material (s, MaterialType::Metal, MaterialType::Void, 0.50f);
-    topology (s, 2 /* CLUSTERS */, 0.58f, 0.40f, 14503);
-    matter (s, 0.90f, 0.60f, 0.34f, 0.78f, 0.30f);
+    topology (s, 2 /* CLUSTERS */, 0.58f, 0.40f, 4271);
+    matter (s, 0.90f, 0.60f, 0.34f, 0.78f, 0.76f);
     evolve (s, 0.0f, 0.24f, 0.0f, 0.0f, 0.66f, 0.26f, 0.0f, 0.16f, 0.38f);
-    set (s, Param::evolveScatterSeed, 14503);
+    set (s, Param::evolveScatterSeed, 4271);
     space (s, SpacePresets::Void, 0.56f, 0.90f, 0.30f, 0.46f);
 
     lfo (s, 1, 0.16f, 5 /* SMOOTH RANDOM */, 1.0f, true);
     lfo (s, 2, 0.07f, 0 /* SINE */, 1.0f, false);
     env (s, 1, 0.004f, 1.20f, 0.10f, 1.00f, 0.7f);
-    chaos (s, 1, 1 /* BROWNIAN */, 0.28f, 0.45f, 0.64f, 0.5f, 14503);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.28f, 0.45f, 0.64f, 0.5f, 4271);
     macros (s, 0.45f, 0.35f, 0.60f, 0.50f);
 
     Routings r;
@@ -915,17 +915,17 @@ manager.addFactory ({ "Stretched Tape", "TEXTURE", { "metallic", "morphing", "un
     amp (s, 0.50f, 2.20f, 0.80f, 2.00f, 0.55f);
     shape (s, 0.56f, 0.66f, 0.42f, 0.58f, 0.64f, 0.36f);
     material (s, MaterialType::Metal, MaterialType::String, 0.46f);
-    topology (s, 1 /* RING */, 0.56f, 0.48f, 15013);
-    matter (s, 0.82f, 0.62f, 0.22f, 0.70f, 0.35f);
+    topology (s, 1 /* RING */, 0.56f, 0.48f, 4463);
+    matter (s, 0.82f, 0.62f, 0.22f, 0.70f, 0.80f);
     evolve (s, 0.34f, 0.30f, 0.0f, 0.0f, 0.52f, 0.28f, 0.0f, 0.30f, 0.48f);
     set (s, Param::evolveBendPivot, 0.38f);
     set (s, Param::evolveBendRange, 0.42f);
-    set (s, Param::evolveScatterSeed, 15013);
+    set (s, Param::evolveScatterSeed, 4463);
     space (s, SpacePresets::Dream, 0.42f, 0.60f, 0.50f, 0.38f);
 
     lfo (s, 1, 0.20f, 0 /* SINE */, 1.0f, false);
     lfo (s, 2, 0.47f, 5 /* SMOOTH RANDOM */, 1.0f, false);
-    chaos (s, 1, 3 /* LORENZ */, 0.40f, 0.55f, 0.56f, 0.5f, 15013);
+    chaos (s, 1, 3 /* LORENZ */, 0.40f, 0.55f, 0.56f, 0.5f, 4463);
     env (s, 2, 1.10f, 2.60f, 0.60f, 2.00f, 0.6f);
     macros (s, 0.50f, 0.45f, 0.45f, 0.55f);
 

@@ -117,7 +117,7 @@ void StageComparisonView::resized()
     auto right = area.removeFromRight (juce::jmax (215, area.getWidth() * 26 / 100));
     area.removeFromRight (5);
 
-    controls.setBounds (right.removeFromTop (34));
+    controls.setBounds (right.removeFromTop (50));
     bypass.setBounds (controls.contentBounds().reduced (2, 0));
     right.removeFromTop (5);
     info.setBounds (right);

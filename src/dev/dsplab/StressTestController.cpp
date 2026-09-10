@@ -30,11 +30,10 @@ StressTestController::StressTestController (AntiMatrProcessor& p) : processor (p
 
     for (auto* t : { &runInfo, &measured })
     {
-        t->setRowHeight (14.0f);
-        t->setLabelWidthFraction (0.54f);
+        t->setRowHeight (13.0f);
+        t->setLabelWidthFraction (0.56f);
         panel.addAndMakeVisible (t);
     }
-    measured.setAccent (Theme::amber);
 
     addAndMakeVisible (panel);
     panel.setSubtitle (juce::String (StressTestGenerator::description (StressTest::SustainedNote)).toUpperCase());
@@ -188,12 +187,12 @@ void StressTestController::refreshStatus()
 
     runInfo.setRows ({
         { "State",      running ? "RUNNING" : "stopped" },
-        { "Elapsed",    juce::String (elapsed, 1) + " s" + (nominal > 0.0 ? " / " + juce::String (nominal, 1) + " s" : juce::String()) },
-        { "Length",     nominal > 0.0 ? juce::String (nominal, 1) + " s" : juce::String ("until stopped") },
+        { "Elapsed",    juce::String (elapsed, 1) + " s"
+                        + (nominal > 0.0 ? " / " + juce::String (nominal, 1) : juce::String (" (until stopped)")) },
         { "Notes held", juce::String (generator.notesHeld()) },
         { "Max voices", juce::String (verdict.maxVoices) },
         { "Max nodes",  juce::String (verdict.maxNodes) },
-        { "Samples",    juce::String (verdict.samples) },
+        { "Frames",     juce::String (verdict.samples) },
     });
     runInfo.clearRowColours();
     runInfo.setRowColour (0, running ? Theme::cyan : Theme::textDim);
@@ -204,7 +203,6 @@ void StressTestController::refreshStatus()
         { "Overruns",     juce::String ((int) overrunDelta) },
         { "Safety events",juce::String ((int) safetyDelta) },
         { "Non-finite",   juce::String (verdict.nonFinite) },
-        { "", "" },
         { "Verdict",      verdictText },
     });
     measured.clearRowColours();
@@ -214,7 +212,7 @@ void StressTestController::refreshStatus()
     if (overrunDelta > 0)          measured.setRowColour (2, Theme::amber);
     if (safetyDelta > 0)           measured.setRowColour (3, Theme::magenta);
     if (verdict.nonFinite > 0)     measured.setRowColour (4, Theme::magenta);
-    measured.setRowColour (6, verdictText == "FAIL" ? Theme::magenta
+    measured.setRowColour (5, verdictText == "FAIL" ? Theme::magenta
                               : verdictText == "WARN" ? Theme::amber
                               : verdictText == "PASS" ? Theme::cyan : Theme::textSecondary);
 }

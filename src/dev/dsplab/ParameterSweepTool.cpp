@@ -373,7 +373,7 @@ void ParameterSweepTool::resized()
 {
     auto area = getLocalBounds();
 
-    controls.setBounds (area.removeFromTop (52));
+    controls.setBounds (area.removeFromTop (56));
     {
         auto inner = controls.contentBounds();
         auto row = inner.removeFromTop (24);

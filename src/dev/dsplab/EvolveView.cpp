@@ -78,9 +78,24 @@ void EvolveView::updateFrame (const LabFrame& f)
     const auto& after  = captures.after;
 
     beforePlot.setNodes (before.valid ? before.nodes.data() : nullptr, before.numNodes, before.fundamentalHz);
-    afterPlot.setNodes (after.valid ? after.nodes.data() : nullptr, after.numNodes, after.fundamentalHz);
-    beforePlot.setSubtitle (before.valid ? before.describe() : juce::String ("capture on the MATTER tab"));
-    afterPlot.setSubtitle (after.valid ? after.describe() : juce::String ("capture on the MATTER tab"));
+    beforePlot.setTitle (before.valid ? "Before capture" : "Before capture  (empty)");
+    beforePlot.setSubtitle (before.valid ? before.describe()
+                                         : juce::String ("CAPTURE BEFORE ON THE MATTER TAB"));
+
+    // Without an AFTER capture the panel shows the live engine instead of
+    // nothing, labelled so it is never mistaken for a capture.
+    if (after.valid)
+    {
+        afterPlot.setNodes (after.nodes.data(), after.numNodes, after.fundamentalHz);
+        afterPlot.setTitle ("After capture");
+        afterPlot.setSubtitle (after.describe());
+    }
+    else
+    {
+        afterPlot.setNodes (f.snapshot.nodes, f.snapshot.numNodes, f.snapshot.fundamentalHz);
+        afterPlot.setTitle ("After capture  (empty - showing LIVE)");
+        afterPlot.setSubtitle ("LIVE ENGINE   " + juce::String (f.snapshot.numNodes) + " NODES");
+    }
 
     if (before.valid && after.valid)
     {
@@ -149,11 +164,11 @@ void EvolveView::resized()
     auto right = area.removeFromRight (juce::jmax (225, area.getWidth() * 28 / 100));
     area.removeFromRight (5);
 
-    abPanel.setBounds (right.removeFromTop (34));
+    abPanel.setBounds (right.removeFromTop (50));
     {
         auto inner = abPanel.contentBounds();
-        rawButton.setBounds (inner.removeFromLeft (inner.getWidth() / 2).reduced (2, 0));
-        evolvedButton.setBounds (inner.reduced (2, 0));
+        rawButton.setBounds (inner.removeFromLeft (inner.getWidth() / 2).reduced (2, 1));
+        evolvedButton.setBounds (inner.reduced (2, 1));
     }
     right.removeFromTop (5);
 

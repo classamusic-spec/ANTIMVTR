@@ -139,11 +139,11 @@ void SafetyView::resized()
     auto right = area.removeFromRight (juce::jmax (215, area.getWidth() * 28 / 100));
     area.removeFromRight (5);
 
-    controls.setBounds (right.removeFromTop (34));
+    controls.setBounds (right.removeFromTop (50));
     {
         auto inner = controls.contentBounds();
-        resetCounters.setBounds (inner.removeFromLeft (inner.getWidth() / 2).reduced (2, 0));
-        clearLog.setBounds (inner.reduced (2, 0));
+        resetCounters.setBounds (inner.removeFromLeft (inner.getWidth() / 2).reduced (2, 1));
+        clearLog.setBounds (inner.reduced (2, 1));
     }
     right.removeFromTop (5);
     summary.setBounds (right);

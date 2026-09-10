@@ -115,8 +115,9 @@ ParameterTraceView::ParameterTraceView()
         { "ID",       190, false }, { "GROUP",  70, false }, { "BASE",   66, true },
         { "MOD",       62, true },  { "EFFECT", 66, true },  { "MIN",    58, true },
         { "MAX",       58, true },  { "SMOOTH", 58, false }, { "KIND",   50, false },
-        { "MODULATABLE", 44, true }
+        { "CAN MOD",   62, false }
     });
+    selectedParam = paramIndex (Param::shapeDensity);
     table.onSelectionChanged = [this] (int row)
     {
         selectedParam = (row >= 0 && row < (int) visibleParams.size()) ? visibleParams[(size_t) row] : -1;
@@ -266,6 +267,20 @@ void ParameterTraceView::refreshTrace (const LabFrame& f)
 void ParameterTraceView::updateFrame (const LabFrame& f)
 {
     rebuildRows (f);
+
+    // Keep the table selection in step with the traced parameter so the view
+    // is never showing a trace for an invisible row.
+    if (! selectionSynced && selectedParam >= 0)
+    {
+        for (size_t i = 0; i < visibleParams.size(); ++i)
+            if (visibleParams[i] == selectedParam)
+            {
+                table.selectRow ((int) i);   // model row == index into visibleParams
+                selectionSynced = true;
+                break;
+            }
+    }
+
     refreshTrace (f);
 }
 

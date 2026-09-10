@@ -62,7 +62,7 @@ private:
     juce::ComboBox testBox;
     juce::TextButton startButton { "START" }, stopButton { "STOP" };
     LabPanel panel { "Stress tests  (\u00a784)" };
-    KeyValueTable runInfo { "Run" }, measured { "Measured" };
+    KeyValueTable runInfo, measured;
 
     double startTimeMs = 0.0;
     std::vector<StressAction> pending;

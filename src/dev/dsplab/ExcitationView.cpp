@@ -173,13 +173,13 @@ void ExcitationView::resized()
 {
     auto area = getLocalBounds();
 
-    auto top = area.removeFromTop (34);
+    auto top = area.removeFromTop (50);
     dryPanel.setBounds (top);
     auto inner = dryPanel.contentBounds();
     const int bw = juce::jmax (60, inner.getWidth() / (int) DryMode::Count - 4);
     for (auto& b : dryButtons)
     {
-        b.setBounds (inner.removeFromLeft (bw).reduced (1, 0));
+        b.setBounds (inner.removeFromLeft (bw).reduced (1, 1));
         inner.removeFromLeft (4);
     }
     area.removeFromTop (5);

@@ -257,11 +257,11 @@ void PerformanceView::resized()
     auto right = area.removeFromRight (juce::jmax (235, area.getWidth() * 30 / 100));
     area.removeFromRight (5);
 
-    controls.setBounds (right.removeFromTop (34));
+    controls.setBounds (right.removeFromTop (50));
     {
         auto inner = controls.contentBounds();
         profiling.setBounds (inner.removeFromLeft (inner.getWidth() / 2));
-        resetProfiler.setBounds (inner.reduced (2, 0));
+        resetProfiler.setBounds (inner.reduced (2, 1));
     }
     right.removeFromTop (5);
     engineInfo.setBounds (right.removeFromTop (juce::jmax (200, right.getHeight() * 46 / 100)));

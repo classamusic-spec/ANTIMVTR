@@ -198,7 +198,7 @@ void PresetValidatorView::resized()
 {
     auto area = getLocalBounds();
 
-    controls.setBounds (area.removeFromTop (44));
+    controls.setBounds (area.removeFromTop (52));
     {
         auto inner = controls.contentBounds();
         auto row = inner.removeFromTop (22);

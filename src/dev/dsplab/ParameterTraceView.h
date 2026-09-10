@@ -42,6 +42,7 @@ private:
 
     std::vector<int> visibleParams;      ///< model row -> parameter index
     int selectedParam = -1;
+    bool selectionSynced = false;
     juce::String filterText;
 
     static constexpr int kHistory = 300;

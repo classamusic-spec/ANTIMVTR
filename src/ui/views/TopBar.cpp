@@ -74,13 +74,6 @@ void TopBar::closeBrowser()
 
 void TopBar::timerCallback()
 {
-    // TEMPORARY (snapshot review only): open the browser overlay when requested by the environment.
-    static bool snapshotBrowserShown = false;
-    if (! snapshotBrowserShown && std::getenv ("ANTIMATR_SNAPSHOT_BROWSER") != nullptr && getParentComponent() != nullptr)
-    {
-        snapshotBrowserShown = true;
-        openBrowser();
-    }
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
     logo.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 4.0f));
 }

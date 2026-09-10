@@ -15,12 +15,15 @@ namespace
 
 //==============================================================================
 ParamPanel::ParamPanel (AntiMatrProcessor& p, const juce::String& title, const juce::String& subtitle, juce::Colour accent,
-                        std::vector<Param> params, int cols)
+                        std::vector<Param> params, int cols, const juce::String& labelPrefix)
     : AMPanel (title, subtitle, accent), processor (p), columns (cols)
 {
+    const juce::String prefix = (labelPrefix.isNotEmpty() ? labelPrefix : title).trim().toUpperCase() + " ";
     for (auto param : params)
     {
-        controls.push_back (std::make_unique<BoundControl> (processor.parameters(), param, accent));
+        juce::String label (ParameterRegistry::get (param).name);
+        if (label.toUpperCase().startsWith (prefix) && label.length() > prefix.length()) label = label.substring (prefix.length());
+        controls.push_back (std::make_unique<BoundControl> (processor.parameters(), param, accent, label));
         addAndMakeVisible (controls.back()->component());
     }
 }
@@ -73,6 +76,45 @@ void ParamPanel::resized()
 }
 
 //==============================================================================
+/** Explains the selected source: name, tagline and a short description. */
+class SourcePage::SourceInfo : public juce::Component
+{
+public:
+    void setSource (int s)
+    {
+        source = juce::jlimit (0, 4, s);
+        repaint();
+    }
+    void paint (juce::Graphics& g) override
+    {
+        static const char* names[]    = { "WAVE", "DUST", "IMPACT", "SAMPLE", "GESTURE" };
+        static const char* taglines[] = { "FRACTURED FORMS", "PARTICLE FIELD", "STRIKE FIELD", "IMPORTED MATTER", "LIVING GESTURE" };
+        static const char* bodies[] = {
+            "Wavetables scanned, morphed and stacked in unison. Cross-modulate with FM, PM, AM, ring and sync for hollow and metallic forms.",
+            "Coloured noise, crackle and impulse clouds. Density and grain set how many particles strike the matter; colour tilts the spectrum.",
+            "Short excitations: clicks, plucks, strikes and membrane hits. Hardness and brightness shape the transient, length its tail.",
+            "Any audio as energy: one-shot, looped, reversed or granular, pitched and spread across the field.",
+            "Bowed, scraped and rubbed excitation. Pressure, speed and roughness turn friction into motion." };
+        static const juce::Colour accents[] = { Theme::violet, Theme::blue, Theme::cyan, Theme::ivory, Theme::magenta };
+
+        auto b = getLocalBounds().toFloat();
+        draw::insetSurface (g, b, 8.0f);
+        auto area = b.reduced (12.0f, 10.0f);
+        const float titleH = juce::jlimit (11.0f, 15.0f, area.getHeight() * 0.14f);
+        draw::trackedText (g, names[source], area.removeFromTop (titleH * 1.4f), juce::Justification::centredLeft, Theme::displayFont (titleH, 0.2f), accents[source]);
+        draw::trackedText (g, taglines[source], area.removeFromTop (titleH * 1.1f), juce::Justification::centredLeft, Theme::captionFont (titleH * 0.62f), Theme::textSecondary);
+        area.removeFromTop (6.0f);
+        juce::AttributedString text;
+        text.append (bodies[source], Theme::bodyFont (juce::jlimit (10.5f, 12.5f, titleH * 0.85f)), Theme::textSecondary.brighter (0.15f));
+        text.setLineSpacing (3.0f);
+        juce::TextLayout layout;
+        layout.createLayout (text, area.getWidth());
+        layout.draw (g, area);
+    }
+private:
+    int source = 0;
+};
+
 SourcePage::SourcePage (AntiMatrProcessor& p)
     : processor (p),
       selector ({ { "Wave", Icon::Wave, Theme::violet }, { "Dust", Icon::Dust, Theme::blue }, { "Impact", Icon::Impact, Theme::cyan },
@@ -83,8 +125,10 @@ SourcePage::SourcePage (AntiMatrProcessor& p)
     wavePanel.setCompact (true);
     sourcePanel.addAndMakeVisible (selector);
     wavePanel.addAndMakeVisible (wave);
-    modeControl = std::make_unique<BoundControl> (processor.parameters(), Param::sourceMode, Theme::blue);
+    modeControl = std::make_unique<BoundControl> (processor.parameters(), Param::sourceMode, Theme::blue, "Mode");
     sourcePanel.addAndMakeVisible (modeControl->component());
+    info = std::make_unique<SourceInfo>();
+    sourcePanel.addAndMakeVisible (*info);
 
     auto* param = processor.parameters().getParameter (ParameterRegistry::get (Param::sourceSelected).id);
     selectorAttachment = std::make_unique<juce::ParameterAttachment> (*param, [this] (float v)
@@ -106,6 +150,11 @@ SourcePage::SourcePage (AntiMatrProcessor& p)
         modeParam->setValueNotifyingHost (modeParam->convertTo0to1 ((float) (((cur + dir) % n + n) % n)));
     };
     startTimerHz (30);
+}
+
+SourcePage::~SourcePage()
+{
+    stopTimer();
 }
 
 void SourcePage::rebuild (int source)
@@ -150,6 +199,7 @@ void SourcePage::rebuild (int source)
     }
     levelControl = std::make_unique<BoundControl> (processor.parameters(), level, Theme::blue, "Level");
     sourcePanel.addAndMakeVisible (levelControl->component());
+    info->setSource (source);
     static const juce::Colour accents[] = { Theme::violet, Theme::blue, Theme::cyan, Theme::ivory, Theme::magenta };
     wave.setAccent (accents[juce::jlimit (0, 4, source)]);
     resized();
@@ -169,6 +219,8 @@ void SourcePage::resized()
         auto row = c.removeFromTop (juce::jlimit (60, 90, c.getHeight() / 4));
         if (modeControl != nullptr) modeControl->component().setBounds (row.removeFromLeft (row.getWidth() / 2));
         if (levelControl != nullptr) levelControl->component().setBounds (row);
+        c.removeFromTop (gap);
+        if (info != nullptr) info->setBounds (c.removeFromTop (juce::jmin (c.getHeight(), 190)));
     }
     auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.38f));
     area.removeFromTop (gap);
@@ -440,9 +492,9 @@ SpacePage::SpacePage (AntiMatrProcessor& p) : processor (p)
         spacePanel.addAndMakeVisible (macros.back()->component());
     }
 
-    auto module = [this] (const juce::String& title, const juce::String& subtitle, std::optional<Param> on, std::vector<Param> params)
+    auto module = [this] (const juce::String& title, const juce::String& subtitle, std::optional<Param> on, std::vector<Param> params, const juce::String& prefix = {})
     {
-        auto m = std::make_unique<ParamPanel> (processor, title, subtitle, Theme::ivory, std::move (params));
+        auto m = std::make_unique<ParamPanel> (processor, title, subtitle, Theme::ivory, std::move (params), 0, prefix);
         m->setCompact (true);
         if (on.has_value()) m->setHeaderToggle (*on);
         addAndMakeVisible (*m);
@@ -451,12 +503,13 @@ SpacePage::SpacePage (AntiMatrProcessor& p) : processor (p)
     module ("Distortion", "", Param::spaceDistOn,    { Param::spaceDistMode, Param::spaceDistDrive, Param::spaceDistMix });
     module ("Chorus", "",     Param::spaceChorusOn,  { Param::spaceChorusRate, Param::spaceChorusDepth, Param::spaceChorusMix });
     module ("Delay", "",      Param::spaceDelayOn,   { Param::spaceDelayTime, Param::spaceDelaySync, Param::spaceDelayFeedback, Param::spaceDelayTone, Param::spaceDelayMix });
-    module ("Granular", "",   Param::spaceGrainOn,   { Param::spaceGrainSize, Param::spaceGrainDensity, Param::spaceGrainPitch, Param::spaceGrainMix });
+    module ("Granular", "",   Param::spaceGrainOn,   { Param::spaceGrainSize, Param::spaceGrainDensity, Param::spaceGrainPitch, Param::spaceGrainMix }, "Grain");
     module ("Shift", "",      Param::spaceShiftOn,   { Param::spaceShiftAmount, Param::spaceShiftMix });
     module ("Diffusion", "",  Param::spaceDiffuseOn, { Param::spaceDiffuseAmount });
     module ("Reverb", "",     Param::spaceReverbOn,  { Param::spaceReverbSize, Param::spaceReverbDecay, Param::spaceReverbDamp, Param::spaceReverbPredelay, Param::spaceReverbMod, Param::spaceReverbMix });
     module ("EQ", "",         std::nullopt,          { Param::spaceEqLow, Param::spaceEqMid, Param::spaceEqHigh });
     module ("Dynamics", "",   Param::spaceCompOn,    { Param::spaceCompAmount, Param::spaceLimiterOn });
+    for (auto& m : modules) if (auto* c = m->control (Param::spaceLimiterOn)) if (auto* t = c->toggle()) t->setLabel ("Limiter");
     startTimerHz (24);
 }
 
@@ -505,9 +558,9 @@ ModPage::ModPage (AntiMatrProcessor& p) : processor (p)
     tabs.setStyle (AMTab::Style::Strip);
     tabs.onChange = [this] (int i) { showTab (i); };
 
-    auto panel = [this] (std::vector<std::unique_ptr<ParamPanel>>& list, const juce::String& title, const juce::String& subtitle, std::vector<Param> params, int cols = 0)
+    auto panel = [this] (std::vector<std::unique_ptr<ParamPanel>>& list, const juce::String& title, const juce::String& subtitle, std::vector<Param> params, int cols = 0, const juce::String& prefix = {})
     {
-        auto pp = std::make_unique<ParamPanel> (processor, title, subtitle, Theme::amber, std::move (params), cols);
+        auto pp = std::make_unique<ParamPanel> (processor, title, subtitle, Theme::amber, std::move (params), cols, prefix);
         addChildComponent (*pp);
         list.push_back (std::move (pp));
     };
@@ -516,10 +569,10 @@ ModPage::ModPage (AntiMatrProcessor& p) : processor (p)
     panel (tabPanels[0], "LFO 2", "", { Param::lfo2Rate, Param::lfo2Shape, Param::lfo2Sync, Param::lfo2Division, Param::lfo2Phase, Param::lfo2Symmetry, Param::lfo2Depth, Param::lfo2Retrig, Param::lfo2Fade }, 5);
     panel (tabPanels[0], "LFO 3", "", { Param::lfo3Rate, Param::lfo3Shape, Param::lfo3Sync, Param::lfo3Division, Param::lfo3Phase, Param::lfo3Symmetry, Param::lfo3Depth, Param::lfo3Retrig, Param::lfo3Fade }, 5);
     panel (tabPanels[0], "LFO 4", "", { Param::lfo4Rate, Param::lfo4Shape, Param::lfo4Sync, Param::lfo4Division, Param::lfo4Phase, Param::lfo4Symmetry, Param::lfo4Depth, Param::lfo4Retrig, Param::lfo4Fade }, 5);
-    panel (tabPanels[1], "Envelope 1", "Modulation envelope", { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve, Param::env1Loop }, 6);
-    panel (tabPanels[1], "Envelope 2", "", { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve, Param::env2Loop }, 6);
-    panel (tabPanels[1], "Envelope 3", "", { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve, Param::env3Loop }, 6);
-    panel (tabPanels[1], "Envelope 4", "", { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve, Param::env4Loop }, 6);
+    panel (tabPanels[1], "Envelope 1", "Modulation envelope", { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve, Param::env1Loop }, 6, "Env 1");
+    panel (tabPanels[1], "Envelope 2", "", { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve, Param::env2Loop }, 6, "Env 2");
+    panel (tabPanels[1], "Envelope 3", "", { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve, Param::env3Loop }, 6, "Env 3");
+    panel (tabPanels[1], "Envelope 4", "", { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve, Param::env4Loop }, 6, "Env 4");
     panel (tabPanels[2], "Chaos 1", "Unstable generator", { Param::chaos1Type, Param::chaos1Rate, Param::chaos1Depth, Param::chaos1Stability, Param::chaos1Symmetry, Param::chaos1Seed }, 6);
     panel (tabPanels[2], "Chaos 2", "", { Param::chaos2Type, Param::chaos2Rate, Param::chaos2Depth, Param::chaos2Stability, Param::chaos2Symmetry, Param::chaos2Seed }, 6);
     panel (tabPanels[2], "Chaos 3", "", { Param::chaos3Type, Param::chaos3Rate, Param::chaos3Depth, Param::chaos3Stability, Param::chaos3Symmetry, Param::chaos3Seed }, 6);

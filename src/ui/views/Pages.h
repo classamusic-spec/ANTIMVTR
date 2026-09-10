@@ -41,7 +41,7 @@ class SourcePage : public juce::Component, private juce::Timer
 {
 public:
     explicit SourcePage (AntiMatrProcessor& p);
-    ~SourcePage() override { stopTimer(); }
+    ~SourcePage() override;
     void resized() override;
 
 private:
@@ -55,6 +55,8 @@ private:
     std::unique_ptr<BoundControl> modeControl, levelControl;
     AMPanel wavePanel { "Waveform", "", Theme::blue };
     AMWaveView wave;
+    class SourceInfo;
+    std::unique_ptr<SourceInfo> info;
     struct Section { std::unique_ptr<ParamPanel> panel; float weight; };
     std::vector<Section> sections;
     int currentSource = -1;

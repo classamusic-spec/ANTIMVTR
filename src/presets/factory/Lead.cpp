@@ -224,7 +224,7 @@ manager.addFactory ({ "Sung Wire", "LEAD", { "vocal", "formant", "organic", "mid
      .uni (ModSource::Macro2,    Param::shapeExcite,    0.200f)
      .uni (ModSource::Macro3,    Param::spaceMix,       0.300f)
      .uni (ModSource::Macro4,    Param::waveMorph,      0.400f);
-    sharedMacros (r, Param::ampRelease, Param::wavePM);
+    sharedMacros (r, Param::ampDecay, Param::wavePM);
     r.commit (s);
 }});
 
@@ -301,7 +301,7 @@ manager.addFactory ({ "Bowed Girder", "LEAD", { "dark", "low", "bowed", "metalli
      .uni (ModSource::Macro2,    Param::shapeSurface,     0.180f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::shapeCoupling,    0.300f);
-    sharedMacros (r, Param::ampRelease, Param::gestureRoughness);
+    sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
     r.commit (s);
 }});
 
@@ -380,7 +380,7 @@ manager.addFactory ({ "Ceramic Whistle", "LEAD", { "glassy", "blown", "air", "hi
      .uni (ModSource::Macro2,    Param::dustColor,     0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,      0.320f)
      .uni (ModSource::Macro4,    Param::dustLevel,     0.300f);
-    sharedMacros (r, Param::ampRelease, Param::dustJitter);
+    sharedMacros (r, Param::ampDecay, Param::dustJitter);
     r.commit (s);
 }});
 
@@ -456,7 +456,7 @@ manager.addFactory ({ "Amber Horn", "LEAD", { "warm", "wooden", "soft", "mid", "
      .uni (ModSource::Macro2,    Param::shapeExcite,  0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,     0.300f)
      .uni (ModSource::Macro4,    Param::shapeBlend,   0.400f);
-    sharedMacros (r, Param::ampRelease, Param::waveDetune);
+    sharedMacros (r, Param::spaceSize, Param::waveDetune);
     r.commit (s);
 }});
 
@@ -492,7 +492,7 @@ manager.addFactory ({ "Glacier Bow", "LEAD", { "cold", "glassy", "bowed", "wide"
      .uni (ModSource::Macro2,    Param::shapeForm,        0.180f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.340f)
      .uni (ModSource::Macro4,    Param::evolveMagnet,     0.300f);
-    sharedMacros (r, Param::spaceSize, Param::evolveScatter);
+    sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
     r.commit (s);
 }});
 
@@ -611,7 +611,7 @@ manager.addFactory ({ "Wolf Note", "LEAD", { "organic", "unstable", "bowed", "mi
      .uni (ModSource::Macro2,    Param::shapeSurface,     0.200f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveTear,       0.360f);
-    sharedMacros (r, Param::ampRelease, Param::chaos1Depth);
+    sharedMacros (r, Param::ampDecay, Param::chaos1Depth);
     r.commit (s);
 }});
 
@@ -645,7 +645,7 @@ manager.addFactory ({ "Neon Thread", "LEAD", { "synthetic", "cold", "bright", "h
      .uni (ModSource::Env1,      Param::gestureSpeed,     0.240f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.300f)
      .bi  (ModSource::KeyTrack,  Param::fractureTone,    -0.200f)
-     .bi  (ModSource::NoteRandom, Param::fractureSeed,    0.060f)
+     .bi  (ModSource::NoteRandom, Param::fractureSpread,  0.140f)
      .uni (ModSource::ModWheel,  Param::evolveBend,       0.300f)
      .uni (ModSource::Macro1,    Param::fractureEvolve,   0.380f)
      .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.320f)
@@ -690,7 +690,7 @@ manager.addFactory ({ "Tar Reed", "LEAD", { "dark", "morphing", "hollow", "low",
      .uni (ModSource::Macro2,    Param::shapeExcite,  0.220f)
      .uni (ModSource::Macro3,    Param::spaceMix,     0.300f)
      .uni (ModSource::Macro4,    Param::evolveMelt,   0.380f);
-    sharedMacros (r, Param::ampRelease, Param::evolveGravity);
+    sharedMacros (r, Param::spaceSize, Param::evolveGravity);
     r.commit (s);
 }});
 
@@ -768,7 +768,7 @@ manager.addFactory ({ "Paper Trumpet", "LEAD", { "organic", "blown", "granular",
      .uni (ModSource::Macro2,     Param::shapeTension, 0.260f)
      .uni (ModSource::Macro3,     Param::spaceMix,     0.300f)
      .uni (ModSource::Macro4,     Param::sampleGrain,  0.380f);
-    sharedMacros (r, Param::ampRelease, Param::sampleSpread);
+    sharedMacros (r, Param::ampDecay, Param::sampleSpread);
     r.commit (s);
 }});
 
@@ -847,7 +847,7 @@ manager.addFactory ({ "Rising Iron", "LEAD", { "metallic", "evolving", "bright",
      .uni (ModSource::Macro2,    Param::shapeExcite,    0.220f)
      .uni (ModSource::Macro3,    Param::spaceMix,       0.300f)
      .uni (ModSource::Macro4,    Param::evolveGravity, -0.300f);
-    sharedMacros (r, Param::ampRelease, Param::evolveScatter);
+    sharedMacros (r, Param::spaceSize, Param::waveScan);
     r.commit (s);
 }});
 
@@ -883,7 +883,7 @@ manager.addFactory ({ "Hollow Reed", "LEAD", { "wooden", "hollow", "blown", "dry
      .uni (ModSource::Macro2,     Param::gestureBandwidth, 0.320f)
      .uni (ModSource::Macro3,     Param::spaceMix,         0.340f)
      .uni (ModSource::Macro4,     Param::shapeForm,        0.300f);
-    sharedMacros (r, Param::ampRelease, Param::gestureRoughness);
+    sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
     r.commit (s);
 }});
 
@@ -966,7 +966,7 @@ manager.addFactory ({ "Bent Spire", "LEAD", { "glassy", "evolving", "cold", "hig
      .uni (ModSource::Macro2,    Param::shapeExcite,    0.220f)
      .uni (ModSource::Macro3,    Param::spaceMix,       0.300f)
      .uni (ModSource::Macro4,    Param::evolveBendRange, 0.360f);
-    sharedMacros (r, Param::ampRelease, Param::evolveBendCurve);
+    sharedMacros (r, Param::spaceSize, Param::evolveBendCurve);
     r.commit (s);
 }});
 }

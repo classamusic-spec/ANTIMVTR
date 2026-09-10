@@ -137,7 +137,7 @@ manager.addFactory ({ "Rain Membrane", "TEXTURE", { "organic", "granular", "brea
      .bi  (ModSource::Chaos1,     Param::dustJitter,    0.200f)
      .uni (ModSource::Env2,       Param::dustDensity,   0.240f)
      .uni (ModSource::Velocity,   Param::dustDensity,   0.180f)
-     .bi  (ModSource::NoteRandom, Param::dustSeed,      0.200f)
+     .bi  (ModSource::NoteRandom, Param::dustPosition,  0.220f)
      .bi  (ModSource::KeyTrack,   Param::dustColor,    -0.160f)
      .uni (ModSource::Macro1,     Param::lfo1Depth,     0.450f)
      .uni (ModSource::Macro1,     Param::evolveMotion,  0.300f)
@@ -320,7 +320,7 @@ manager.addFactory ({ "Frozen Choir", "TEXTURE", { "glassy", "cold", "drift", "a
      .bi  (ModSource::Chaos1,    Param::evolveScatter,  0.180f)
      .uni (ModSource::Env2,      Param::shapeSurface,   0.200f)
      .uni (ModSource::Velocity,  Param::dustGrain,      0.200f)
-     .bi  (ModSource::NoteRandom, Param::dustSeed,      0.240f)
+     .bi  (ModSource::NoteRandom, Param::dustPosition,  0.240f)
      .bi  (ModSource::KeyTrack,  Param::dustColor,     -0.140f)
      .uni (ModSource::Macro1,    Param::evolveMotion,   0.420f)
      .uni (ModSource::Macro2,    Param::dustColor,      0.320f)
@@ -364,7 +364,7 @@ manager.addFactory ({ "Vinyl Weather", "TEXTURE", { "dirty", "noisy", "breathing
      .uni (ModSource::Macro3,    Param::spaceMix,       0.300f)
      .uni (ModSource::Macro4,    Param::evolveCrush,    0.360f)
      .uni (ModSource::Macro4,    Param::sampleGrain,    0.240f);
-    sharedMacros (r, Param::spaceSize, Param::evolveScatter);
+    sharedMacros (r, Param::spaceSize, Param::sampleStart);
     r.commit (s);
 }});
 
@@ -428,7 +428,7 @@ manager.addFactory ({ "Insect Field", "TEXTURE", { "organic", "chaotic", "high",
      .bi  (ModSource::Chaos1,     Param::dustJitter,   0.220f)
      .bi  (ModSource::Chaos2,     Param::dustGrain,    0.180f)
      .uni (ModSource::Velocity,   Param::dustDensity,  0.200f)
-     .bi  (ModSource::NoteRandom, Param::dustSeed,     0.260f)
+     .bi  (ModSource::NoteRandom, Param::dustPosition, 0.260f)
      .bi  (ModSource::KeyTrack,   Param::dustColor,    0.180f)
      .uni (ModSource::Macro1,     Param::lfo1Rate,     0.160f)
      .uni (ModSource::Macro1,     Param::evolveMotion, 0.320f)
@@ -472,7 +472,7 @@ manager.addFactory ({ "Tape Shards", "TEXTURE", { "dirty", "synthetic", "rhythmi
      .bi  (ModSource::Chaos1,    Param::fractureSpread,   0.220f)
      .uni (ModSource::Velocity,  Param::fractureAmount,   0.240f)
      .bi  (ModSource::KeyTrack,  Param::fractureTone,    -0.200f)
-     .bi  (ModSource::NoteRandom, Param::fractureSeed,    0.140f)
+     .bi  (ModSource::NoteRandom, Param::fractureDelay,   0.160f)
      .uni (ModSource::Macro1,    Param::fractureSequence, 0.400f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.280f)
      .uni (ModSource::Macro2,    Param::dustColor,        0.320f)
@@ -673,7 +673,7 @@ manager.addFactory ({ "Cymbal Weather", "TEXTURE", { "metallic", "bowed", "wide"
      .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
      .uni (ModSource::Macro4,    Param::shapeCoupling,    0.340f)
      .uni (ModSource::Macro4,    Param::gestureRoughness, 0.260f);
-    sharedMacros (r, Param::spaceSize, Param::evolveScatter);
+    sharedMacros (r, Param::spaceSize, Param::evolveTear);
     r.commit (s);
 }});
 
@@ -713,7 +713,7 @@ manager.addFactory ({ "Buried Engine", "TEXTURE", { "dark", "pulsing", "distant"
      .uni (ModSource::Macro3,    Param::spaceMix,       0.300f)
      .uni (ModSource::Macro4,    Param::evolveCrush,    0.300f)
      .uni (ModSource::Macro4,    Param::fractureFeedback, 0.240f);
-    sharedMacros (r, Param::fractureDecay, Param::evolveScatter);
+    sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
     r.commit (s);
 }});
 
@@ -741,7 +741,7 @@ manager.addFactory ({ "Simmer Skin", "TEXTURE", { "organic", "granular", "breath
      .bi  (ModSource::Chaos1,     Param::dustPosition,  0.220f)
      .uni (ModSource::Env2,       Param::evolveMelt,    0.220f)
      .uni (ModSource::Velocity,   Param::dustDensity,   0.200f)
-     .bi  (ModSource::NoteRandom, Param::dustSeed,      0.220f)
+     .bi  (ModSource::NoteRandom, Param::dustJitter,    0.220f)
      .bi  (ModSource::KeyTrack,   Param::dustColor,    -0.180f)
      .uni (ModSource::Macro1,     Param::evolveMotion,  0.400f)
      .uni (ModSource::Macro1,     Param::lfo1Rate,      0.140f)
@@ -779,7 +779,7 @@ manager.addFactory ({ "Leaf Litter", "TEXTURE", { "wooden", "dry", "close", "rhy
      .bi  (ModSource::LFO2,       Param::dustGrain,        0.200f)
      .bi  (ModSource::Chaos1,     Param::dustJitter,       0.240f)
      .uni (ModSource::Velocity,   Param::dustDensity,      0.220f)
-     .bi  (ModSource::NoteRandom, Param::dustSeed,         0.240f)
+     .bi  (ModSource::NoteRandom, Param::dustPosition,     0.240f)
      .bi  (ModSource::KeyTrack,   Param::dustColor,        0.160f)
      .uni (ModSource::Macro1,     Param::fractureSequence, 0.380f)
      .uni (ModSource::Macro1,     Param::evolveMotion,     0.300f)

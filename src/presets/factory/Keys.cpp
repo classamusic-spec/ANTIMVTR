@@ -275,7 +275,20 @@ manager.addFactory ({ "Bell Choir", "KEYS", { "metallic", "bright", "struck", "h
     matter (s, 1.0f, 0.58f, 0.56f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.78f, 0.44f, 0.08f, 0.0f, 0.22f, 0.22f);
     set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
-    space (s, SpacePresets::Void, 0.40f, 0.70f, 0.45f, 0.30f);
+    FractureShape rack;
+    rack.fragments   = 16;
+    rack.delayLow    = 0.06f; rack.delayHigh    = 0.34f;
+    rack.feedbackLow = 0.12f; rack.feedbackHigh = 0.36f;
+    rack.decayLow    = 0.40f; rack.decayHigh    = 0.65f;
+    rack.spreadLow   = 0.35f; rack.spreadHigh   = 0.95f;
+    rack.panWidth    = 0.80f;
+    rack.probability = 0.85f;
+    rack.pitchCycle  = kOctaveTerrace;
+    rack.pattern     = "XLXHXLXH";
+    fracture (s, 0 /* SPECTRAL */, 0.35f, 0.24f, 0.70f, 0.25f, 0.25f, 0.30f, 0.55f, 0.55f, 0.06f,
+              1 /* 16 */, 3, 8, 0.0f, 0, 0.85f, 0.20f, 163, rack);
+
+    space (s, SpacePresets::Void, 0.36f, 0.70f, 0.45f, 0.28f);
 
     env (s, 1, 0.40f, 2.20f, 0.20f, 1.60f, 0.50f);
     macros (s, 0.25f, 0.40f, 0.40f, 0.45f);
@@ -288,7 +301,9 @@ manager.addFactory ({ "Bell Choir", "KEYS", { "metallic", "bright", "struck", "h
      .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.008f)
      .bi  (ModSource::NoteRandom,  Param::shapeForm,        0.040f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
+     .bi  (ModSource::KeyTrack,    Param::fractureTone,     0.150f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.350f)
+     .uni (ModSource::Macro1,      Param::fractureEvolve,   0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
      .uni (ModSource::Macro3,      Param::spaceSize,        0.250f)

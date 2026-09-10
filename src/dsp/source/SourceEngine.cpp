@@ -1,12 +1,16 @@
 #include "SourceEngine.h"
+#include "DustSource.h"
+#include "ImpactSource.h"
 
 namespace am
 {
 
 SourceEngine::SourceEngine()
 {
-    sources[(size_t) SourceType::Wave] = std::make_unique<WaveSource>();
-    // Dust, Impact, Sample and Gesture are registered by their modules in later phases.
+    sources[(size_t) SourceType::Wave]   = std::make_unique<WaveSource>();
+    sources[(size_t) SourceType::Dust]   = std::make_unique<DustSource>();
+    sources[(size_t) SourceType::Impact] = std::make_unique<ImpactSource>();
+    // Sample and Gesture are registered by their modules in later phases.
 }
 
 Param SourceEngine::levelParam (SourceType t) noexcept

@@ -11,7 +11,19 @@
                      [--note 60 --vel 100 --hold 1.5]            (single note)
                      [--seq "60:0:1.5,64:0.5:2.0"]               (note:start:end, seconds)
                      [--preset "Void Bloom"] [--set shape.form=0.7 ...]
-                     [--dry full|source|matter|evolve] [--json report.json]
+                     [--mod "lfo1>shape.decay:0.5" ...]           (modulation routings)
+                     [--bpm 120] [--dry full|source|matter|evolve] [--json report.json]
+
+    --mod adds one modulation routing per occurrence:
+
+        --mod "<source>><target>:<depth>[:uni|:bi][:<curve>]"
+
+    <source> is a permanent modulation source id (lfo1…lfo4, env1…env4,
+    chaos1…chaos4, macro1…macro8, velocity, keytrack, pressure, modwheel,
+    pitchbend, timbre, noterandom, gate), <target> a modulatable parameter id
+    and <depth> a signed fraction (-1…1) of the target's range. `uni` presents
+    the source as 0…1, `bi` (the default) as -1…1; the optional curve bends
+    the source (-1…1, 0 = linear).
 */
 
 #include <juce_core/juce_core.h>
@@ -22,6 +34,7 @@
 #include "dsp/SynthEngine.h"
 #include "presets/PresetManager.h"
 #include "state/StateManager.h"
+#include "state/ModRouting.h"
 
 using namespace am;
 
@@ -49,6 +62,34 @@ namespace
 
 namespace
 {
+    /** Parses one --mod "src>target:depth[:uni|:bi][:curve]" specification. */
+    bool parseModRouting (const juce::String& spec, am::ModRouting& out)
+    {
+        const auto sourceId = spec.upToFirstOccurrenceOf (">", false, false).trim();
+        const auto rest = spec.fromFirstOccurrenceOf (">", false, false);
+        if (sourceId.isEmpty() || rest.isEmpty()) return false;
+
+        juce::StringArray parts;
+        parts.addTokens (rest, ":", "");
+        if (parts.size() < 2) return false;
+
+        out.source = am::modSourceFromId (sourceId.toRawUTF8());
+        const auto target = am::ParameterRegistry::fromID (parts[0].trim().toStdString());
+        if (out.source == am::ModSource::None || ! target.has_value()) return false;
+        out.target = *target;
+        out.depth = parts[1].getFloatValue();
+        out.bipolar = true;
+        out.curve = 0.0f;
+        for (int i = 2; i < parts.size(); ++i)
+        {
+            const auto option = parts[i].trim().toLowerCase();
+            if (option == "uni") out.bipolar = false;
+            else if (option == "bi") out.bipolar = true;
+            else out.curve = option.getFloatValue();
+        }
+        return am::ModRoutingTable::isValid (out);
+    }
+
     struct NoteEvent { int note; double start; double end; float velocity; };
 
     struct Analysis
@@ -182,9 +223,21 @@ int main (int argc, char* argv[])
         }
     }
 
+    // Modulation routings (--mod), published exactly the way the plugin does it.
+    ModRoutingTable routings;
+    for (int i = 0; i < args.size(); ++i)
+    {
+        if (args[i].text != "--mod" || i + 1 >= args.size()) continue;
+        ModRouting r;
+        if (! parseModRouting (args[i + 1].text, r)) { std::cerr << "Bad --mod routing: " << args[i + 1].text << std::endl; return 2; }
+        if (routings.add (r) < 0) { std::cerr << "Rejected --mod routing: " << args[i + 1].text << std::endl; return 2; }
+    }
+    patch.mod = routings.toVar();
+
     SynthEngine engine;
     engine.prepare (sr, block);
     engine.control().resetTo (patch.params);
+    engine.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (routings));
 
     const auto dry = optionValue (args, "--dry");
     if (dry == "source") engine.diagnostics().dev.dryMode.store ((int) DryMode::SourceOnly);
@@ -208,6 +261,7 @@ int main (int argc, char* argv[])
 
     TransportInfo transport;
     transport.isPlaying = true;
+    if (hasOption (args, "--bpm")) transport.bpm = juce::jlimit (20.0, 300.0, optionValue (args, "--bpm").getDoubleValue());
     int eventIndex = 0;
     const auto startTime = juce::Time::getMillisecondCounterHiRes();
     for (int pos = 0; pos < totalSamples; pos += block)
@@ -261,6 +315,7 @@ int main (int argc, char* argv[])
     root->setProperty ("renderMs", renderMs);
     root->setProperty ("realtimeRatio", renderMs / (seconds * 1000.0));
     root->setProperty ("activeVoicesEnd", engine.activeVoices());
+    root->setProperty ("modRoutings", routings.size());
 
     juce::Array<juce::var> centroids; for (auto c : a.centroidTrack) centroids.add (c);
     root->setProperty ("centroidTrack", centroids);

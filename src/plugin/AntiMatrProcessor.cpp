@@ -24,6 +24,7 @@ AntiMatrProcessor::AntiMatrProcessor()
     abStates[0] = abStates[1] = PresetManager::initPatch();
     markPreset ("Init", { "basic" }, 0);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
+    synth.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (modRoutings));
 
     // The default parameter values become the curated NEBULA rack, then follow the Space picker.
     {
@@ -70,6 +71,13 @@ void AntiMatrProcessor::setFractureTable (const FractureTable& table)
 {
     fractureTable = table;
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
+}
+
+void AntiMatrProcessor::setModRoutings (const ModRoutingTable& routings)
+{
+    modRoutings = routings;
+    synth.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (modRoutings));
+    sendChangeMessage();
 }
 
 AntiMatrProcessor::~AntiMatrProcessor()
@@ -224,6 +232,7 @@ PatchState AntiMatrProcessor::currentPatch() const
     PatchState s = extraState;
     s.params = currentParamValues();
     s.fracture = fractureTable.toVar();
+    s.mod = modRoutings.toVar();
     s.meta.name = presetName;
     s.meta.tags = presetTags;
     s.meta.pluginVersion = ANTIMATR_VERSION_STRING;
@@ -242,6 +251,8 @@ void AntiMatrProcessor::loadPatch (const PatchState& patch, bool notifyPresetCha
     extraState = patch;
     fractureTable = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
+    modRoutings = patch.mod.isVoid() ? ModRoutingTable() : ModRoutingTable::fromVar (patch.mod);
+    synth.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (modRoutings));
     suppressSpaceRecall = true;    // a patch carries its own rack values
     apvts.replaceState (StateManager::toParameterTree (patch.params, kParametersType));
     suppressSpaceRecall = false;

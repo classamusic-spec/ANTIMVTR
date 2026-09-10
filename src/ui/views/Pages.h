@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Panels.h"
+#include "ModRoutingPanel.h"
 #include "ui/components/AMTab.h"
 #include "ui/components/AMXYPad.h"
 #include "ui/components/AMStepEditor.h"
@@ -24,6 +25,8 @@ public:
     /** Places a Bool parameter's toggle in the header (module on/off). */
     void setHeaderToggle (Param p);
     void setColumns (int c) { columns = c; resized(); }
+    /** Draws the live modulation rings on every knob in the panel. */
+    void refreshModRings (const ModulationSnapshot& s);
     void setHeroKnobs (bool hero);
     /** Per-parameter accent override. */
     void setAccentFor (Param p, juce::Colour c);
@@ -149,18 +152,22 @@ private:
 };
 
 //==============================================================================
-/** MOD page: LFOs, envelopes, chaos generators, macros, amp and master. */
-class ModPage : public juce::Component
+/** MOD page: routings, LFOs, envelopes, chaos generators, macros, amp and master. */
+class ModPage : public juce::Component, private juce::Timer
 {
 public:
     explicit ModPage (AntiMatrProcessor& p);
+    ~ModPage() override { stopTimer(); }
     void resized() override;
 
 private:
+    void timerCallback() override;
     void showTab (int index);
     AntiMatrProcessor& processor;
-    AMTabBar tabs { { "LFO", "Envelopes", "Chaos", "Macros", "Amp & Master" }, Theme::amber, { Icon::Lfo, Icon::Env, Icon::Chaos, Icon::Macro, Icon::Settings } };
+    AMTabBar tabs { { "Routings", "LFO", "Envelopes", "Chaos", "Macros", "Amp & Master" }, Theme::amber,
+                    { Icon::Grid, Icon::Lfo, Icon::Env, Icon::Chaos, Icon::Macro, Icon::Settings } };
     std::vector<std::vector<std::unique_ptr<ParamPanel>>> tabPanels;
+    std::unique_ptr<ModRoutingPanel> routings;
     int current = 0;
 };
 

@@ -4,6 +4,11 @@
     Usage (run under xvfb-run on headless Linux):
       AntiMatrSnapshot --out shot.png [--width 1600 --height 1000] [--wait 800] [--set id=value ...] [--labtab N]
                        [--page 0..7] [--note 60] [--preset "Void Bloom"]
+                       [--mod "lfo1>shape.decay:0.5" ...]
+
+    --mod adds a modulation routing before the editor opens, so the knob
+    modulation rings and the ROUTINGS panel can be captured with real state.
+    Same syntax as AntiMatrRender: "<source>><target>:<depth>[:uni|:bi][:curve]".
 
     The processor runs offline on the message thread so taps, meters and the
     visualizer show real engine state.
@@ -14,6 +19,7 @@
 #include "plugin/AntiMatrProcessor.h"
 #include "plugin/AntiMatrEditor.h"
 #include "dev/dsplab/DSPLabView.h"
+#include "state/ModRouting.h"
 
 namespace
 {
@@ -34,6 +40,32 @@ namespace
         for (int i = 0; i < args.size(); ++i)
             if (args[i].text == name || args[i].text.startsWith (name + "=")) return true;
         return false;
+    }
+
+    /** Parses one --mod "src>target:depth[:uni|:bi][:curve]" specification. */
+    bool parseModRouting (const juce::String& spec, am::ModRouting& out)
+    {
+        const auto sourceId = spec.upToFirstOccurrenceOf (">", false, false).trim();
+        const auto rest = spec.fromFirstOccurrenceOf (">", false, false);
+        juce::StringArray parts;
+        parts.addTokens (rest, ":", "");
+        if (sourceId.isEmpty() || parts.size() < 2) return false;
+
+        out.source = am::modSourceFromId (sourceId.toRawUTF8());
+        const auto target = am::ParameterRegistry::fromID (parts[0].trim().toStdString());
+        if (out.source == am::ModSource::None || ! target.has_value()) return false;
+        out.target = *target;
+        out.depth = parts[1].getFloatValue();
+        out.bipolar = true;
+        out.curve = 0.0f;
+        for (int i = 2; i < parts.size(); ++i)
+        {
+            const auto option = parts[i].trim().toLowerCase();
+            if (option == "uni") out.bipolar = false;
+            else if (option == "bi") out.bipolar = true;
+            else out.curve = option.getFloatValue();
+        }
+        return am::ModRoutingTable::isValid (out);
     }
 }
 
@@ -75,6 +107,19 @@ public:
                 else
                     std::cerr << "Unknown parameter: " << id << std::endl;
             }
+        }
+
+        // Modulation routings (--mod), published exactly the way the editor does it.
+        {
+            am::ModRoutingTable routings;
+            for (int i = 0; i < args.size(); ++i)
+            {
+                if (args[i].text != "--mod" || i + 1 >= args.size()) continue;
+                am::ModRouting r;
+                if (parseModRouting (args[i + 1].text, r) && routings.add (r) >= 0) continue;
+                std::cerr << "Bad --mod routing: " << args[i + 1].text << std::endl;
+            }
+            if (! routings.isEmpty()) processor->setModRoutings (routings);
         }
 
         processor->prepareToPlay (48000.0, 512);

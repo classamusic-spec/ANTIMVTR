@@ -3,6 +3,10 @@
 #include "AMDrawing.h"
 #include "AMAnimator.h"
 #include "AMModRing.h"
+#include "AMModAssign.h"
+#include "dsp/mod/ModulationSnapshot.h"
+
+#include <optional>
 
 namespace am::ui
 {
@@ -17,10 +21,12 @@ namespace am::ui
     Attach to a host parameter with juce::AudioProcessorValueTreeState::SliderAttachment.
     modRing() exposes the modulation display (base / range / current).
 */
-class AMKnob : public juce::Slider
+class AMKnob : public juce::Slider,
+               private juce::ChangeListener
 {
 public:
     explicit AMKnob (const juce::String& label = {}, juce::Colour accent = Theme::cyan);
+    ~AMKnob() override;
 
     void setLabel (const juce::String& text);
     void setAccent (juce::Colour c);
@@ -38,6 +44,13 @@ public:
     /** Modulation ring (base value follows the knob automatically). */
     AMModRing& modRing() noexcept { return ring; }
 
+    /** The parameter this knob drives. Set it to take part in modulation assignment and display. */
+    void setModTarget (std::optional<Param> p);
+    std::optional<Param> getModTarget() const noexcept { return modTarget; }
+
+    /** Draws the live modulation from the engine's snapshot. Returns false when nothing is routed here. */
+    bool refreshModRing (const ModulationSnapshot& snapshot);
+
     /** Optional callback for the right-click menu ("Reset" is always present). */
     std::function<void (juce::PopupMenu&)> onContextMenu;
 
@@ -54,11 +67,14 @@ public:
     float labelHeight() const;
 
 private:
+    void changeListenerCallback (juce::ChangeBroadcaster*) override { repaint(); }
     void showContextMenu();
     float proportion() const;
+    bool isAssignTarget() const noexcept;
 
     juce::String label, labelUpper;
     juce::Colour accent;
+    std::optional<Param> modTarget;
     bool bipolar = false;
     bool hero = false;
     bool dragging = false;

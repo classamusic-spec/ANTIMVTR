@@ -6,6 +6,7 @@
 #include "LabWidgets.h"
 #include "MatterCapture.h"
 #include "MatterInspector.h"
+#include "ModulationView.h"
 #include "ParameterSweepTool.h"
 #include "ParameterTraceView.h"
 #include "PerformanceView.h"
@@ -61,7 +62,7 @@ public:
     /** Tab order. OVERVIEW..SAFETY match the §70 list; the tools follow. */
     enum Tab
     {
-        Overview = 0, Source, Matter, Evolve, Fracture, Mod, Space,
+        Overview = 0, Source, Matter, Evolve, Fracture, Mod, Trace, Space,
         Performance, Safety, Sweep, Presets, Events, NumTabs
     };
 
@@ -102,7 +103,8 @@ private:
     MatterInspector matterView;
     EvolveView evolveView;
     FractureView fractureView;
-    ParameterTraceView modView;
+    ModulationView modView;
+    ParameterTraceView traceView;
     SpaceView spaceView;
     PerformanceView performanceView;
     SafetyView safetyView;

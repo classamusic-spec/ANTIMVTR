@@ -95,6 +95,8 @@ public:
     /** Hides the label column (compact placements such as the nav bar). */
     void setShowLabel (bool b) { showLabel = b; repaint(); }
     void setShowValue (bool b) { showValue = b; repaint(); }
+    /** Bipolar sliders fill from the centre of the track instead of the left end. */
+    void setBipolar (bool b) { bipolar = b; repaint(); }
     void mouseDown (const juce::MouseEvent& e) override;
     void mouseDrag (const juce::MouseEvent& e) override;
     void mouseEnter (const juce::MouseEvent&) override;
@@ -103,7 +105,7 @@ public:
 private:
     juce::String label;
     juce::Colour accent;
-    bool showLabel = true, showValue = true;
+    bool showLabel = true, showValue = true, bipolar = false;
     Eased hover;
     Animator anim { *this, { &hover } };
 };

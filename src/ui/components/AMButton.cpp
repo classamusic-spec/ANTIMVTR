@@ -210,13 +210,21 @@ void AMSlider::paint (juce::Graphics& g)
     g.setColour (Theme::knobTrack);
     g.drawLine (track.getX(), y, track.getRight(), y, 2.0f);
 
-    // lit portion
-    if (p > 0.002f)
+    // lit portion (from the centre when the range is bipolar)
     {
-        juce::Path fill;
-        fill.startNewSubPath (track.getX(), y);
-        fill.lineTo (x, y);
-        draw::glowPath (g, fill, accent, 2.0f, 9.0f, 0.45f + 0.55f * lit);
+        const float origin = bipolar ? track.getCentreX() : track.getX();
+        if (bipolar)
+        {
+            g.setColour (Theme::textDim.withAlpha (0.7f));
+            g.fillRect (origin - 0.5f, y - 3.0f, 1.0f, 6.0f);
+        }
+        if (std::abs (x - origin) > 0.6f)
+        {
+            juce::Path fill;
+            fill.startNewSubPath (origin, y);
+            fill.lineTo (x, y);
+            draw::glowPath (g, fill, accent, 2.0f, 9.0f, 0.45f + 0.55f * lit);
+        }
     }
 
     // white thumb with a soft accent halo

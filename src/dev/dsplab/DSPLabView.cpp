@@ -11,7 +11,7 @@ namespace
 {
     const char* kTabNames[] =
     {
-        "OVERVIEW", "SOURCE", "MATTER", "EVOLVE", "FRACTURE", "MOD", "SPACE",
+        "OVERVIEW", "SOURCE", "MATTER", "EVOLVE", "FRACTURE", "MOD", "TRACE", "SPACE",
         "PERFORMANCE", "SAFETY", "SWEEP", "PRESETS", "EVENTS"
     };
 
@@ -200,6 +200,7 @@ LabView* DSPLabView::viewForTab (int index) const
         case Evolve:      return &self->evolveView;
         case Fracture:    return &self->fractureView;
         case Mod:         return &self->modView;
+        case Trace:       return &self->traceView;
         case Space:       return &self->spaceView;
         case Performance: return &self->performanceView;
         case Safety:      return &self->safetyView;

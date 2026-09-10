@@ -92,6 +92,9 @@ void SourcePanel::timerCallback()
     const int mode = paramChoice (processor.currentParamValues(), mp);
     const auto choices = paramChoices (mp);
     wave.setCaption (choices[juce::jlimit (0, choices.size() - 1, mode)]);
+
+    const auto& mod = latestModulation (processor);
+    for (auto& k : knobs) k->refreshModRing (mod);
 }
 
 //==============================================================================
@@ -151,12 +154,20 @@ void ShapePanel::resized()
 
 void ShapePanel::timerCallback()
 {
-    if (! isShowing() || advanced) return;
-    // The ring shows where the engine's effective value sits relative to the knob (smoothing / modulation).
+    if (! isShowing()) return;
+    const auto& mod = latestModulation (processor);
+    if (advanced)
+    {
+        for (auto& c : advancedControls) c->refreshModRing (mod);
+        return;
+    }
+    // The ring shows the routed modulation; without any, it falls back to where the engine's
+    // effective (smoothed) value sits relative to the knob.
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
     const float values[] = { vs.density, vs.form, vs.mass, vs.tension, vs.decay, vs.surface };
     for (int i = 0; i < 6; ++i)
-        simpleKnobs[(size_t) i]->knob.modRing().setCurrent (values[i]);
+        if (! simpleKnobs[(size_t) i]->refreshModRing (mod))
+            simpleKnobs[(size_t) i]->knob.modRing().setCurrent (values[i]);
 }
 
 //==============================================================================
@@ -354,6 +365,9 @@ void FracturePanel::timerCallback()
     spectrum.setActivity (vs.fractureOn ? vs.fractureActivity : 0.0f);
     spectrum.setMagnitudes (bands.data(), AMSpectrumView::kBands);
     setActivity (vs.fractureOn ? vs.fractureActivity * 0.8f : 0.0f);
+
+    const auto& mod = latestModulation (processor);
+    for (auto& k : knobs) k->refreshModRing (mod);
 }
 
 //==============================================================================
@@ -467,6 +481,9 @@ void SpacePanel::timerCallback()
     picker.activity = juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f);
     picker.repaint();
     setActivity (vs.spaceActivity * 0.5f);
+
+    const auto& mod = latestModulation (processor);
+    for (auto& k : knobs) k->refreshModRing (mod);
 }
 
 } // namespace am::ui

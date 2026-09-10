@@ -71,18 +71,14 @@ void AMKnob::valueChanged()
 
 float AMKnob::labelHeight() const
 {
-    return labelUpper.isNotEmpty() ? juce::jlimit (10.0f, 22.0f, (float) getHeight() * 0.19f) : 0.0f;
+    return layout::knobFootprint ((float) getWidth(), (float) getHeight(), hero, labelUpper.isNotEmpty()).labelHeight;
 }
 
 juce::Rectangle<float> AMKnob::knobBounds() const
 {
-    auto b = getLocalBounds().toFloat();
-    const float labelH = labelHeight();
-    const float cap = hero ? 158.0f : 118.0f;
-    const float d = juce::jmin (b.getWidth(), b.getHeight() - labelH - 2.0f, cap) * 0.99f;
-    const float groupH = d + (labelH > 0.0f ? labelH + 2.0f : 0.0f);
-    const float top = b.getY() + juce::jmax (0.0f, (b.getHeight() - groupH) * 0.5f);
-    return { b.getCentreX() - d * 0.5f, top, d, d };
+    const auto b = getLocalBounds().toFloat();
+    const auto f = layout::knobFootprint (b.getWidth(), b.getHeight(), hero, labelUpper.isNotEmpty());
+    return { b.getCentreX() - f.diameter * 0.5f, b.getY() + f.top, f.diameter, f.diameter };
 }
 
 void AMKnob::resized()
@@ -108,11 +104,19 @@ void AMKnob::paint (juce::Graphics& g)
     const float trackW = geo.trackWidth;
     const auto arcBounds = geo.arc;
     const auto body = geo.body;
+    // Hover is taken from where the pointer actually is, not from the eased value
+    // alone: a knob that loses its mouse-exit (a page hidden under the pointer, a
+    // panel that rebuilt its controls) would otherwise keep showing its value for
+    // ever, and the label would never come back.
+    const bool pointerOn = dragging || (isShowing() && isMouseOverOrDragging (true));
+    if (! pointerOn && hover.target != 0.0f) anim.animate (hover, 0.0f);
+    const float reach = pointerOn ? hover.value : 0.0f;
+
     // Hover lifts the sheen and the ring glow; dragging lifts them a little further.
-    const float lit = juce::jmax (hover.value * 0.72f, dragging ? 1.0f : 0.0f);
+    const float lit = juce::jmax (reach * 0.72f, dragging ? 1.0f : 0.0f);
     // The label and the value swap places, so their cross-fade has to reach the ends:
     // a partial fade leaves both of them printed on top of each other.
-    const float textLit = juce::jmax (hover.value, dragging ? 1.0f : 0.0f);
+    const float textLit = juce::jmax (reach, dragging ? 1.0f : 0.0f);
     const float glowAmount = juce::jlimit (0.0f, 1.0f, 0.20f + 0.30f * activity + 0.40f * lit);
     const float valueWeight = bipolar ? std::abs (p - 0.5f) * 2.0f : p;
     const auto pair = Theme::accentPair (accent);
@@ -215,6 +219,12 @@ void AMKnob::paint (juce::Graphics& g)
             draw::trackedText (g, labelUpper, labelArea, juce::Justification::centred,
                                draw::fitFont (Theme::labelFont (h), labelUpper, labelArea.getWidth() - 2.0f), Theme::textSecondary.withAlpha (1.0f - textLit));
     }
+}
+
+void AMKnob::visibilityChanged()
+{
+    // A knob hidden under the pointer never gets its mouse exit, so it clears here.
+    if (! isShowing()) { hover.snap (0.0f); dragging = false; }
 }
 
 void AMKnob::mouseEnter (const juce::MouseEvent& e) { anim.animate (hover, 1.0f); juce::Slider::mouseEnter (e); }

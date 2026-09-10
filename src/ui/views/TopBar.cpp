@@ -181,14 +181,34 @@ void TopBar::paint (juce::Graphics& g)
     g.setGradientFill (sep);
     g.fillRect (b.withTop (b.getBottom() - 1.0f));
 
-    // Preset window: a readout cut into the chassis, lit from inside.
+    // Preset window: a readout set into a machined bezel, backlit from behind.
     auto pill = presetArea.toFloat();
     const float corner = pill.getHeight() * 0.5f;
+    const float bezel = juce::jlimit (2.5f, 6.0f, pill.getHeight() * 0.12f);
+
+    {
+        auto frame = pill.expanded (bezel);
+        draw::SlabStyle style;
+        style.top    = Theme::panelTop.brighter (0.22f);
+        style.bottom = Theme::panel.darker (0.1f);
+        style.shadow = 0.9f;
+        style.shadowRadius = bezel * 1.2f;
+        style.brush  = 1.0f;
+        draw::raisedSlab (g, frame, corner + bezel, style);
+    }
+
     draw::insetWell (g, pill, corner, Theme::panelInset, 1.0f);
-    draw::softLight (g, pill.getCentre(), pill.getWidth() * 0.4f, Theme::blue, 0.06f);
-    draw::screenGlass (g, pill, corner, 0.85f);
-    g.setColour (Theme::border);
-    g.drawRoundedRectangle (pill.reduced (0.6f), corner - 0.6f, 1.0f);
+    // The backlight behind the glass: brightest at the middle, where the name sits.
+    {
+        juce::ColourGradient back (Theme::blue.withAlpha (0.10f), pill.getCentreX(), pill.getCentreY(),
+                                   Theme::blue.withAlpha (0.0f), pill.getCentreX() + pill.getWidth() * 0.5f, pill.getCentreY(), true);
+        back.addColour (0.5, Theme::blue.withAlpha (0.035f));
+        g.setGradientFill (back);
+        g.fillRoundedRectangle (pill.reduced (1.0f), corner - 1.0f);
+    }
+    draw::screenGlass (g, pill, corner, 0.9f);
+    g.setColour (juce::Colours::black.withAlpha (0.55f));
+    g.drawRoundedRectangle (pill.reduced (0.4f), corner - 0.4f, 1.0f);
 
     const float h = juce::jlimit (10.0f, 14.0f, pill.getHeight() * 0.36f);
     const auto nameArea = pill.reduced (pill.getHeight() + 4.0f, 0.0f);

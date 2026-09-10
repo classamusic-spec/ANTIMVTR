@@ -201,17 +201,23 @@ inline void contactShadow (juce::Graphics& g, juce::Rectangle<float> bounds, flo
     }
 }
 
-/** Contact shadow beneath a circular control. */
+/**
+    Contact shadow beneath a circular control.
+
+    The reach is deliberately short and grows slowly, because a shadow that
+    scales with the control turns into a hard crescent offset from it — a
+    second, misaligned ring rather than the thing sitting on the panel.
+*/
 inline void contactShadowEllipse (juce::Graphics& g, juce::Rectangle<float> circle, float radius, float strength = 1.0f)
 {
     if (radius < 0.5f || strength <= 0.01f) return;
-    const int steps = juce::jlimit (3, 9, (int) (radius * 0.8f));
+    const int steps = juce::jlimit (4, 10, (int) (radius * 1.6f));
     for (int i = steps; i >= 1; --i)
     {
         const float t = (float) i / (float) steps;
         const float spread = radius * t;
-        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.22f * strength * (1.0f - t) * (1.0f - t) + 0.02f * strength)));
-        g.fillEllipse (circle.expanded (spread * 0.55f).translated (spread * 0.28f, spread * 0.55f));
+        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.16f * strength * (1.0f - t) * (1.0f - t) + 0.012f * strength)));
+        g.fillEllipse (circle.expanded (spread * 0.45f).translated (spread * 0.16f, spread * 0.34f));
     }
 }
 
@@ -472,24 +478,39 @@ inline void domeBody (juce::Graphics& g, juce::Rectangle<float> circle, juce::Co
     if (r < 1.0f) return;
 
     if (shadow > 0.01f)
-        contactShadowEllipse (g, circle, juce::jlimit (2.5f, 18.0f, r * 0.34f), shadow * 1.25f);
+        contactShadowEllipse (g, circle, juce::jlimit (2.0f, 6.5f, r * 0.16f), shadow);
 
     // The dome. The light strikes the upper left of the cap and the surface turns
     // away from it toward the lower right, so the two sides must be a long way
     // apart in tone: anything gentler reads as a hole in the panel, not a cap on it.
-    juce::ColourGradient body (base.brighter (1.35f + 0.45f * lit), c.x + kLightX * r * 0.66f, c.y + kLightY * r * 0.62f,
-                               base.darker (0.88f), c.x - kLightX * r * 0.90f, c.y - kLightY * r * 0.88f, true);
-    body.addColour (0.30, base.brighter (0.62f + 0.18f * lit));
-    body.addColour (0.58, base.brighter (0.02f));
-    body.addColour (0.80, base.darker (0.55f));
+    const juce::Point<float> litPoint (c.x + kLightX * r * 0.58f, c.y + kLightY * r * 0.54f);
+    const juce::Point<float> awayPoint (c.x - kLightX * r * 1.05f, c.y - kLightY * r * 1.02f);
+
+    juce::ColourGradient body (base.brighter (1.05f + 0.40f * lit), litPoint.x, litPoint.y,
+                               juce::Colour (0xff06070c), awayPoint.x, awayPoint.y, true);
+    body.addColour (0.22, base.brighter (0.50f + 0.16f * lit));
+    body.addColour (0.46, base.brighter (0.0f));
+    body.addColour (0.70, base.darker (0.62f));
     g.setGradientFill (body);
     g.fillEllipse (circle);
+
+    // Thickness: the far side of the cap turns away from the light and falls into
+    // shadow. This is the pass that makes the body read as an object rather than a
+    // disc, and it is what the glass spheres get too.
+    {
+        juce::ColourGradient depth (juce::Colours::transparentBlack, litPoint.x, litPoint.y,
+                                    juce::Colours::black.withAlpha (0.70f), awayPoint.x, awayPoint.y, true);
+        depth.addColour (0.40, juce::Colours::transparentBlack);
+        depth.addColour (0.68, juce::Colours::black.withAlpha (0.26f));
+        g.setGradientFill (depth);
+        g.fillEllipse (circle);
+    }
 
     // Ambient bounce along the lower-right edge keeps the dome from going flat black.
     {
         juce::ColourGradient bounce (juce::Colours::transparentBlack, c.x, c.y,
-                                     base.brighter (0.55f).withAlpha (0.30f), c.x - kLightX * r, c.y - kLightY * r, true);
-        bounce.addColour (0.74, juce::Colours::transparentBlack);
+                                     base.brighter (0.65f).withAlpha (0.26f), c.x - kLightX * r, c.y - kLightY * r, true);
+        bounce.addColour (0.80, juce::Colours::transparentBlack);
         g.setGradientFill (bounce);
         g.fillEllipse (circle);
     }
@@ -516,21 +537,21 @@ inline void domeBody (juce::Graphics& g, juce::Rectangle<float> circle, juce::Co
         g.strokePath (rim, juce::PathStrokeType (juce::jmax (0.8f, rimW * 0.45f)));
     }
 
-    // Specular bloom in the upper-left third: a broad sheen, then a tighter core.
-    softLight (g, { c.x + kLightX * r * 0.44f, c.y + kLightY * r * 0.40f }, r * 0.80f, juce::Colours::white, 0.16f + 0.09f * lit);
+    // Specular bloom in the upper-left third: a broad sheen, then a tight highlight.
+    softLight (g, { c.x + kLightX * r * 0.44f, c.y + kLightY * r * 0.40f }, r * 0.78f, juce::Colours::white, 0.13f + 0.08f * lit);
     {
         // A soft ellipse, squashed and tilted along the light direction, is the sheen.
-        const juce::Point<float> sc (c.x + kLightX * r * 0.42f, c.y + kLightY * r * 0.38f);
+        const juce::Point<float> sc (c.x + kLightX * r * 0.46f, c.y + kLightY * r * 0.42f);
         juce::Graphics::ScopedSaveState save (g);
-        g.addTransform (juce::AffineTransform::rotation (-0.62f, sc.x, sc.y).scaled (1.0f, 0.55f, sc.x, sc.y));
-        softLight (g, sc, r * 0.58f, juce::Colours::white, 0.20f + 0.10f * lit);
-        // The sheen itself: a defined bloom, not a smear.
-        juce::ColourGradient core (juce::Colours::white.withAlpha (0.30f + 0.16f * lit), sc.x, sc.y,
-                                   juce::Colours::transparentWhite, sc.x + r * 0.30f, sc.y, true);
-        core.addColour (0.55, juce::Colours::white.withAlpha (0.17f + 0.09f * lit));
-        core.addColour (0.82, juce::Colours::white.withAlpha (0.035f));
+        g.addTransform (juce::AffineTransform::rotation (-0.62f, sc.x, sc.y).scaled (1.0f, 0.52f, sc.x, sc.y));
+        softLight (g, sc, r * 0.54f, juce::Colours::white, 0.20f + 0.10f * lit);
+        // The highlight itself: small and defined, so the eye reads a surface.
+        juce::ColourGradient core (juce::Colours::white.withAlpha (0.56f + 0.24f * lit), sc.x, sc.y,
+                                   juce::Colours::transparentWhite, sc.x + r * 0.24f, sc.y, true);
+        core.addColour (0.38, juce::Colours::white.withAlpha (0.30f + 0.14f * lit));
+        core.addColour (0.74, juce::Colours::white.withAlpha (0.06f));
         g.setGradientFill (core);
-        g.fillEllipse (sc.x - r * 0.30f, sc.y - r * 0.30f, r * 0.60f, r * 0.60f);
+        g.fillEllipse (sc.x - r * 0.24f, sc.y - r * 0.24f, r * 0.48f, r * 0.48f);
     }
 
     g.setColour (juce::Colours::black.withAlpha (0.55f));

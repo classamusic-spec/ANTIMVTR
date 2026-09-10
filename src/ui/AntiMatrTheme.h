@@ -49,7 +49,7 @@ struct Theme
     static inline const juce::Colour ivory   { 0xfff1e7d3 };
     static inline const juce::Colour amber   { 0xffffb46b };
 
-    static inline const juce::Colour knobBase  { 0xff20252f };
+    static inline const juce::Colour knobBase  { 0xff1a1f28 };
     static inline const juce::Colour knobTrack { 0xff0b0d13 };
 
     /** Accent for a section, used to colour knobs and glows consistently. */

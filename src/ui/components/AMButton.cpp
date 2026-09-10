@@ -94,15 +94,12 @@ void AMIconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
 
     if (outlined)
     {
-        // A small round key seated in the panel.
+        // A small round key sunk into its own seat, like the panel screws.
+        draw::insetWell (g, circle, s * 0.5f, Theme::panelInset, 1.0f);
         if (down)
-        {
-            draw::insetWell (g, circle.reduced (1.0f), s * 0.5f, Theme::panelInset, 0.9f);
-        }
+            draw::insetWell (g, circle.reduced (s * 0.10f), s * 0.4f, Theme::panelInset, 0.9f);
         else
-        {
-            draw::domeBody (g, circle.reduced (1.0f), Theme::knobBase.darker (0.45f), lit * 0.7f, 0.8f);
-        }
+            draw::domeBody (g, circle.reduced (s * 0.10f), Theme::knobBase.darker (0.35f), lit * 0.7f, 0.7f);
     }
     if (lit > 0.02f)
     {

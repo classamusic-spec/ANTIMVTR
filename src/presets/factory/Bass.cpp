@@ -114,6 +114,375 @@ manager.addFactory ({ "Rust Sub", "BASS", { "bass", "sub", "gritty", "gesture" }
     sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
     r.commit (s);
 }});
+
+//--------------------------------------------------------------------------
+// A steel cable pulled sideways and let go. The chain topology passes the
+// energy down the run, and a quiet spectral FRACTURE puts an octave-up ghost
+// on top of the fundamental — which is what keeps the note on a phone speaker.
+manager.addFactory ({ "Cable Pull", "BASS", { "metallic", "plucked", "dirty", "close", "low" }, [] (PatchState& s)
+{
+    impact (s, 2 /* PLUCK */, 0.62f, 0.58f, 0.30f, 0.72f, 0.40f, 0.10f);
+    amp (s, 0.002f, 0.75f, 0.74f, 0.24f, 0.35f);
+    set (s, Param::masterGain, -2.0f);
+    shape (s, 0.34f, 0.16f, 0.74f, 0.52f, 0.50f, 0.34f);
+    material (s, MaterialType::String, MaterialType::Metal, 0.38f);
+    topology (s, 0 /* CHAIN */, 0.34f, 0.42f, 61);
+    matter (s, 0.88f, 0.64f, 0.62f, 0.30f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.26f, 0.56f, 0.0f, 0.0f, 0.20f, 0.10f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    set (s, Param::masterMode, 1 /* MONO */);
+    set (s, Param::masterGlide, 0.04f);
+    space (s, SpacePresets::Chamber, 0.14f, 0.26f, 0.48f, 0.18f);
+
+    FractureShape f;
+    f.fragments = 8;
+    f.delayLow = 0.02f; f.delayHigh = 0.12f;
+    f.feedbackLow = 0.10f; f.feedbackHigh = 0.25f;
+    f.decayLow = 0.30f; f.decayHigh = 0.45f;
+    f.spreadLow = 0.10f; f.spreadHigh = 0.45f;
+    f.gainLow = 0.35f; f.gainHigh = 1.15f;
+    f.panWidth = 0.25f;
+    f.pitchCycle = kOctaveTerrace;
+    f.pattern = "XHXHXHXH";
+    fracture (s, 0 /* SPECTRAL */, 0.52f, 0.44f, 0.30f, 0.20f, 0.15f, 0.16f, 0.38f, 0.70f, 0.10f,
+              0 /* 8 */, 4 /* 1/16 */, 8, 0.0f, 0 /* FORWARD */, 1.0f, 0.08f, 137, f);
+
+    env (s, 1, 0.001f, 0.30f, 0.05f, 0.20f, 0.3f);
+    lfo (s, 1, 5.50f, 0 /* SINE */, 1.0f, true, 0.20f);
+    macros (s, 0.20f, 0.40f, 0.20f, 0.45f);
+
+    Routings r;
+    r.uni (ModSource::Env1,       Param::shapeSurface,    0.280f)
+     .uni (ModSource::Env1,       Param::fractureMix,     0.180f)
+     .bi  (ModSource::LFO1,       Param::shapeTension,    0.030f)
+     .uni (ModSource::Velocity,   Param::shapeStrike,     0.320f)
+     .uni (ModSource::Velocity,   Param::impactBrightness, 0.240f)
+     .bi  (ModSource::KeyTrack,   Param::shapeMass,      -0.180f)
+     .uni (ModSource::NoteRandom, Param::impactRandom,    0.140f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,    0.300f)
+     .uni (ModSource::Macro1,     Param::lfo1Rate,        0.100f)
+     .uni (ModSource::Macro2,     Param::impactBrightness, 0.340f)
+     .uni (ModSource::Macro2,     Param::fractureMix,     0.220f)
+     .uni (ModSource::Macro3,     Param::spaceMix,        0.240f)
+     .uni (ModSource::Macro4,     Param::shapeSurface,    0.320f)
+     .uni (ModSource::Macro4,     Param::shapeTension,    0.200f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+//--------------------------------------------------------------------------
+// LAYER — a plank hit flat with the heel of a hand, and an octave-down wave
+// sitting directly underneath it. The knock carries the pitch and the note's
+// edge; the wave carries the weight. Neither works on its own down here.
+manager.addFactory ({ "Plank Drop", "BASS", { "wooden", "struck", "dark", "sub", "impact" }, [] (PatchState& s)
+{
+    wave (s, 0 /* BASIC */, 0.12f, 0.10f, 0.0f, 1, 0.03f, 0.10f, -1, 0.45f);
+    impact (s, 6 /* MEMBRANE HIT */, 0.60f, 0.52f, 0.34f, 0.70f, 0.45f, 0.14f, 0.0f, 0.95f);
+    set (s, Param::sourceMode, 1 /* LAYER */);
+    set (s, Param::dustLevel, 0.0f);
+    set (s, Param::sampleLevel, 0.0f);
+    set (s, Param::gestureLevel, 0.0f);
+    amp (s, 0.003f, 0.80f, 0.70f, 0.28f, 0.30f);
+    set (s, Param::masterGain, -3.0f);
+    shape (s, 0.30f, 0.22f, 0.80f, 0.38f, 0.44f, 0.30f);
+    material (s, MaterialType::Wood, MaterialType::Membrane, 0.42f);
+    topology (s, 2 /* CLUSTERS */, 0.28f, 0.34f, 173);
+    matter (s, 0.80f, 0.56f, 0.58f, 0.28f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.64f, 0.0f, 0.0f, 0.24f, 0.08f);
+    set (s, Param::masterMode, 1 /* MONO */);
+    set (s, Param::masterGlide, 0.02f);
+    space (s, SpacePresets::Chamber, 0.12f, 0.22f, 0.40f, 0.16f);
+    set (s, Param::spaceEqMid, 2.5f);   // the knock lives here; it is what carries the pitch on a laptop
+
+    env (s, 1, 0.001f, 0.22f, 0.0f, 0.18f, 0.25f);
+    env (s, 2, 0.004f, 0.45f, 0.30f, 0.30f, 0.4f);
+    macros (s, 0.20f, 0.35f, 0.20f, 0.45f);
+
+    Routings r;
+    r.uni (ModSource::Env1,     Param::impactHardness,  0.300f)
+     .uni (ModSource::Env1,     Param::shapeSurface,    0.220f)
+     .uni (ModSource::Env2,     Param::waveLevel,       0.180f)
+     .uni (ModSource::Velocity, Param::shapeStrike,     0.320f)
+     .uni (ModSource::Velocity, Param::impactHardness,  0.240f)
+     .bi  (ModSource::KeyTrack, Param::waveLevel,      -0.260f)
+     .uni (ModSource::Macro1,   Param::evolveMotion,    0.280f)
+     .uni (ModSource::Macro1,   Param::impactRandom,    0.200f)
+     .uni (ModSource::Macro2,   Param::impactBrightness, 0.340f)
+     .uni (ModSource::Macro2,   Param::shapeExcite,     0.240f)
+     .uni (ModSource::Macro3,   Param::spaceMix,        0.240f)
+     .uni (ModSource::Macro4,   Param::waveLevel,       0.300f)
+     .uni (ModSource::Macro4,   Param::shapeMass,       0.200f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+//--------------------------------------------------------------------------
+// A drum skin with a finger dragged across it hard enough that the membrane
+// stops behaving. Dry friction into a membrane cluster, then a tube stage in
+// SPACE that the same pressure drives — lean on the key and it breaks up.
+manager.addFactory ({ "Driven Skin", "BASS", { "harsh", "dirty", "scraped", "close", "low" }, [] (PatchState& s)
+{
+    gesture (s, 4 /* FRICTION */, 0.62f, 0.30f, 0.42f, 0.30f, 0.20f, 0.30f);
+    amp (s, 0.015f, 0.80f, 0.86f, 0.30f, 0.4f);
+    set (s, Param::masterGain, 0.0f);
+    shape (s, 0.28f, 0.30f, 0.76f, 0.34f, 0.34f, 0.48f);
+    material (s, MaterialType::Membrane, MaterialType::Organic, 0.38f);
+    topology (s, 2 /* CLUSTERS */, 0.30f, 0.28f, 419);
+    matter (s, 0.90f, 0.44f, 0.30f, 0.26f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.30f, 0.60f, 0.0f, 0.12f, 0.28f, 0.14f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.08f);
+    space (s, SpacePresets::Machine, 0.18f, 0.24f, 0.44f, 0.22f);
+    set (s, Param::spaceDistMode, 1 /* TUBE */);
+    set (s, Param::spaceDistDrive, 0.38f);
+
+    env (s, 1, 0.006f, 0.45f, 0.35f, 0.30f, 0.35f);
+    lfo (s, 1, 6.20f, 1 /* TRIANGLE */, 1.0f, true, 0.25f);
+    chaos (s, 1, 2 /* LOGISTIC */, 2.40f, 0.35f, 0.82f, 0.5f, 811);
+    macros (s, 0.25f, 0.40f, 0.20f, 0.55f);
+
+    Routings r;
+    r.uni (ModSource::Env1,     Param::gestureSpeed,     0.280f)
+     .bi  (ModSource::LFO1,     Param::gesturePressure,  0.060f)
+     .bi  (ModSource::Chaos1,   Param::gestureRoughness, 0.120f)
+     .uni (ModSource::Velocity, Param::spaceDistDrive,   0.280f)
+     .uni (ModSource::Velocity, Param::gesturePressure,  0.220f)
+     .bi  (ModSource::KeyTrack, Param::gestureBandwidth, 0.220f)
+     .uni (ModSource::Macro1,   Param::gestureMotion,    0.320f)
+     .uni (ModSource::Macro1,   Param::evolveMotion,     0.240f)
+     .uni (ModSource::Macro2,   Param::gestureBandwidth, 0.320f)
+     .uni (ModSource::Macro2,   Param::spaceTone,        0.240f)
+     .uni (ModSource::Macro3,   Param::spaceMix,         0.240f)
+     .uni (ModSource::Macro4,   Param::spaceDistDrive,   0.340f)
+     .uni (ModSource::Macro4,   Param::gestureRoughness, 0.260f);
+    sharedMacros (r, Param::ampDecay, Param::chaos1Depth);
+    r.commit (s);
+}});
+
+//--------------------------------------------------------------------------
+// An upright bass bowed near the bridge, rosin and all. The bow keeps feeding
+// the string chain for as long as the key is down, so this is the one bass in
+// the set that sustains without a synthesiser's help.
+manager.addFactory ({ "Rosin Bow", "BASS", { "organic", "bowed", "warm", "roomy", "low" }, [] (PatchState& s)
+{
+    gesture (s, 0 /* BOW */, 0.56f, 0.34f, 0.24f, 0.36f, 0.22f, 0.26f);
+    amp (s, 0.06f, 0.90f, 0.82f, 0.40f, 0.45f);
+    set (s, Param::masterGain, -1.0f);
+    shape (s, 0.36f, 0.06f, 0.70f, 0.44f, 0.44f, 0.28f);
+    material (s, MaterialType::Organic, MaterialType::String, 0.52f);
+    topology (s, 0 /* CHAIN */, 0.38f, 0.44f, 233);
+    matter (s, 0.90f, 0.46f, 0.14f, 0.36f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.20f, 0.54f, 0.06f, 0.0f, 0.18f, 0.16f);
+    set (s, Param::evolveMagnetTarget, 6 /* CUSTOM */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.10f);
+    space (s, SpacePresets::Chamber, 0.22f, 0.36f, 0.46f, 0.20f);
+
+    lfo (s, 1, 4.60f, 0 /* SINE */, 1.0f, true, 0.60f);
+    env (s, 1, 0.05f, 0.60f, 0.55f, 0.40f, 0.4f);
+    macros (s, 0.30f, 0.35f, 0.25f, 0.45f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,     Param::shapePitch,       0.100f)
+     .uni (ModSource::Env1,     Param::gesturePressure,  0.240f)
+     .uni (ModSource::Env1,     Param::gestureBandwidth, 0.180f)
+     .uni (ModSource::Velocity, Param::gestureSpeed,     0.280f)
+     .uni (ModSource::Velocity, Param::shapeExcite,      0.200f)
+     .bi  (ModSource::KeyTrack, Param::gesturePosition,  0.220f)
+     .uni (ModSource::Macro1,   Param::gestureMotion,    0.340f)
+     .uni (ModSource::Macro1,   Param::lfo1Depth,        0.200f)
+     .uni (ModSource::Macro2,   Param::gestureBandwidth, 0.320f)
+     .uni (ModSource::Macro2,   Param::shapeExcite,      0.240f)
+     .uni (ModSource::Macro3,   Param::spaceMix,         0.260f)
+     .uni (ModSource::Macro4,   Param::gestureRoughness, 0.320f)
+     .uni (ModSource::Macro4,   Param::gesturePosition,  0.220f);
+    sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
+    r.commit (s);
+}});
+
+//--------------------------------------------------------------------------
+// A stone dropped down a dry well: the sample is the fall, the wood-and-void
+// object is the shaft. The lower you play it the longer the shaft gets, so
+// the note reads as depth rather than as pitch.
+manager.addFactory ({ "Well Stone", "BASS", { "hollow", "struck", "dark", "distant", "sub" }, [] (PatchState& s)
+{
+    sample (s, BuiltInSamples::Kind::StoneDrop, 0 /* ONE SHOT */, 0.0f, 0.80f, 0.22f, 0.30f, 48, 0.90f);
+    amp (s, 0.004f, 0.90f, 0.72f, 0.38f, 0.3f);
+    set (s, Param::masterGain, 0.0f);
+    shape (s, 0.32f, 0.28f, 0.82f, 0.30f, 0.52f, 0.26f);
+    material (s, MaterialType::Wood, MaterialType::Void, 0.46f);
+    topology (s, 2 /* CLUSTERS */, 0.32f, 0.30f, 587);
+    matter (s, 0.86f, 0.40f, 0.36f, 0.40f);
+    evolve (s, 0.0f, 0.14f, 0.0f, 0.0f, 0.66f, 0.10f, 0.0f, 0.16f, 0.18f);
+    set (s, Param::masterMode, 1 /* MONO */);
+    set (s, Param::masterGlide, 0.03f);
+    space (s, SpacePresets::Void, 0.24f, 0.52f, 0.34f, 0.24f);
+
+    env (s, 1, 0.002f, 0.40f, 0.10f, 0.28f, 0.3f);
+    lfo (s, 1, 0.60f, 5 /* SMOOTH RANDOM */, 1.0f, true, 0.30f);
+    macros (s, 0.25f, 0.30f, 0.30f, 0.45f);
+
+    Routings r;
+    r.uni (ModSource::Env1,     Param::shapeSurface,   0.240f)
+     .uni (ModSource::Env1,     Param::sampleGrain,    0.180f)
+     .bi  (ModSource::LFO1,     Param::sampleStart,    0.050f)
+     .uni (ModSource::Velocity, Param::shapeStrike,    0.300f)
+     .uni (ModSource::Velocity, Param::sampleLevel,    0.200f)
+     .bi  (ModSource::KeyTrack, Param::shapeDecay,    -0.240f)
+     .uni (ModSource::Macro1,   Param::evolveMotion,   0.300f)
+     .uni (ModSource::Macro1,   Param::evolveMelt,     0.220f)
+     .uni (ModSource::Macro2,   Param::shapeExcite,    0.320f)
+     .uni (ModSource::Macro2,   Param::spaceTone,      0.240f)
+     .uni (ModSource::Macro3,   Param::spaceMix,       0.280f)
+     .uni (ModSource::Macro3,   Param::spaceSize,      0.220f)
+     .uni (ModSource::Macro4,   Param::shapeMass,      0.280f)
+     .uni (ModSource::Macro4,   Param::sampleStart,    0.200f);
+    sharedMacros (r, Param::ampDecay, Param::sampleGrain);
+    r.commit (s);
+}});
+
+//--------------------------------------------------------------------------
+// A bridge girder hit with a hammer, heard from underneath. The star topology
+// hangs everything off one central node, so the strike is one event rather
+// than a chord of them, and the wood in the blend stops it ringing forever.
+manager.addFactory ({ "Bridge Iron", "BASS", { "metallic", "struck", "harsh", "close", "low" }, [] (PatchState& s)
+{
+    impact (s, 4 /* METAL STRIKE */, 0.70f, 0.64f, 0.34f, 0.76f, 0.35f, 0.16f);
+    amp (s, 0.002f, 0.80f, 0.76f, 0.28f, 0.3f);
+    set (s, Param::masterGain, -1.5f);
+    shape (s, 0.40f, 0.58f, 0.70f, 0.56f, 0.52f, 0.40f);
+    material (s, MaterialType::Metal, MaterialType::Wood, 0.48f);
+    topology (s, 5 /* STAR */, 0.44f, 0.36f, 743);
+    matter (s, 0.88f, 0.68f, 0.66f, 0.34f);
+    evolve (s, 0.0f, 0.0f, 0.16f, 0.0f, 0.58f, 0.10f, 0.0f, 0.30f, 0.16f);
+    set (s, Param::evolveScatterSeed, 1277);
+    set (s, Param::masterMode, 1 /* MONO */);
+    set (s, Param::masterGlide, 0.02f);
+    space (s, SpacePresets::Machine, 0.16f, 0.30f, 0.42f, 0.20f);
+    set (s, Param::spaceDistDrive, 0.24f);
+
+    FractureShape f;
+    f.fragments = 8;
+    f.delayLow = 0.03f; f.delayHigh = 0.20f;
+    f.feedbackLow = 0.08f; f.feedbackHigh = 0.20f;
+    f.decayLow = 0.25f; f.decayHigh = 0.40f;
+    f.spreadLow = 0.15f; f.spreadHigh = 0.55f;
+    f.gainLow = 0.30f; f.gainHigh = 0.80f;
+    f.panWidth = 0.35f;
+    f.probability = 0.75f;
+    f.pattern = "XHoHXHoH";
+    fracture (s, 2 /* TRANSIENT */, 0.54f, 0.40f, 0.42f, 0.40f, 0.12f, 0.14f, 0.32f, 0.74f, 0.12f,
+              0 /* 8 */, 5 /* 1/32 */, 8, 0.0f, 0 /* FORWARD */, 0.75f, 0.25f, 1873, f);
+    set (s, Param::fracturePitch, 12.0f);   // the caught transients sit an octave up: that is the part a small speaker gets
+
+    env (s, 1, 0.001f, 0.26f, 0.0f, 0.20f, 0.25f);
+    macros (s, 0.25f, 0.45f, 0.20f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env1,       Param::shapeSurface,    0.300f)
+     .uni (ModSource::Env1,       Param::fractureMix,     0.200f)
+     .uni (ModSource::Velocity,   Param::shapeStrike,     0.320f)
+     .uni (ModSource::Velocity,   Param::spaceDistDrive,  0.200f)
+     .uni (ModSource::NoteRandom, Param::impactHardness,  0.180f)
+     .bi  (ModSource::KeyTrack,   Param::shapeDecay,     -0.220f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,    0.280f)
+     .uni (ModSource::Macro1,     Param::evolveTear,      0.200f)
+     .uni (ModSource::Macro2,     Param::impactBrightness, 0.340f)
+     .uni (ModSource::Macro2,     Param::fractureTone,    0.240f)
+     .uni (ModSource::Macro3,     Param::spaceMix,        0.240f)
+     .uni (ModSource::Macro4,     Param::spaceDistDrive,  0.320f)
+     .uni (ModSource::Macro4,     Param::shapeSurface,    0.240f);
+    sharedMacros (r, Param::ampDecay, Param::fractureRandom);
+    r.commit (s);
+}});
+
+//--------------------------------------------------------------------------
+// Gut strings on a wooden body, plucked with the flesh of the thumb. A ring
+// topology gives the body its own small feedback path, which is what puts the
+// woody bloom a few milliseconds after the pluck instead of on it.
+manager.addFactory ({ "Gut String", "BASS", { "wooden", "plucked", "warm", "close", "melodic" }, [] (PatchState& s)
+{
+    impact (s, 2 /* PLUCK */, 0.42f, 0.48f, 0.36f, 0.66f, 0.55f, 0.12f);
+    amp (s, 0.004f, 0.85f, 0.68f, 0.32f, 0.35f);
+    set (s, Param::masterGain, -2.0f);
+    shape (s, 0.38f, 0.10f, 0.68f, 0.40f, 0.52f, 0.32f);
+    material (s, MaterialType::Wood, MaterialType::String, 0.56f);
+    topology (s, 1 /* RING */, 0.46f, 0.48f, 307);
+    matter (s, 0.84f, 0.60f, 0.50f, 0.38f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.18f, 0.52f, 0.0f, 0.0f, 0.22f, 0.12f);
+    set (s, Param::evolveMagnetTarget, 6 /* CUSTOM */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.06f);
+    space (s, SpacePresets::Chamber, 0.20f, 0.32f, 0.50f, 0.18f);
+    set (s, Param::spaceEqHigh, 3.0f);
+
+    env (s, 1, 0.001f, 0.34f, 0.08f, 0.24f, 0.3f);
+    env (s, 2, 0.030f, 0.55f, 0.30f, 0.35f, 0.45f);
+    macros (s, 0.20f, 0.40f, 0.25f, 0.45f);
+
+    Routings r;
+    r.uni (ModSource::Env1,       Param::shapeSurface,    0.220f)
+     .uni (ModSource::Env2,       Param::shapeCoupling,   0.200f)
+     .uni (ModSource::Velocity,   Param::shapeStrike,     0.300f)
+     .uni (ModSource::Velocity,   Param::impactHardness,  0.260f)
+     .uni (ModSource::NoteRandom, Param::impactCurve,     0.160f)
+     .bi  (ModSource::KeyTrack,   Param::shapeMass,      -0.200f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,    0.280f)
+     .uni (ModSource::Macro1,     Param::shapeCoupling,   0.220f)
+     .uni (ModSource::Macro2,     Param::impactBrightness, 0.340f)
+     .uni (ModSource::Macro2,     Param::shapeExcite,     0.240f)
+     .uni (ModSource::Macro3,     Param::spaceMix,        0.260f)
+     .uni (ModSource::Macro4,     Param::shapeBlend,      0.300f)
+     .uni (ModSource::Macro4,     Param::shapeSurface,    0.220f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+//--------------------------------------------------------------------------
+// Mains hum with a fault in it, run through a metal-and-void object with no
+// order to its nodes. The electrical gesture sputters rather than sustains,
+// so the bass arrives with a buzz that never repeats the same way twice.
+manager.addFactory ({ "Live Wire", "BASS", { "synthetic", "dirty", "unstable", "dry", "low" }, [] (PatchState& s)
+{
+    gesture (s, 5 /* ELECTRICAL */, 0.54f, 0.44f, 0.36f, 0.28f, 0.30f, 0.34f);
+    amp (s, 0.008f, 0.70f, 0.80f, 0.26f, 0.35f);
+    set (s, Param::masterGain, -1.0f);
+    shape (s, 0.44f, 0.40f, 0.66f, 0.48f, 0.36f, 0.44f);
+    material (s, MaterialType::Metal, MaterialType::Void, 0.44f);
+    topology (s, 4 /* RANDOM */, 0.40f, 0.38f, 1039);
+    matter (s, 0.86f, 0.52f, 0.24f, 0.32f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.34f, 0.56f, 0.22f, 0.0f, 0.40f, 0.24f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    set (s, Param::evolveScatterSeed, 2311);
+    set (s, Param::masterMode, 1 /* MONO */);
+    set (s, Param::masterGlide, 0.02f);
+    space (s, SpacePresets::Machine, 0.14f, 0.20f, 0.50f, 0.24f);
+    set (s, Param::spaceDistMode, 3 /* CRUSH */);
+    set (s, Param::spaceDistDrive, 0.22f);
+
+    env (s, 1, 0.003f, 0.30f, 0.20f, 0.22f, 0.3f);
+    lfo (s, 1, 8.40f, 3 /* SQUARE */, 1.0f, true, 0.10f, 0.30f);
+    chaos (s, 1, 3 /* LORENZ */, 4.20f, 0.40f, 0.75f, 0.5f, 1523);
+    macros (s, 0.35f, 0.40f, 0.15f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env1,       Param::gestureBandwidth, 0.260f)
+     .bi  (ModSource::LFO1,       Param::gestureRoughness, 0.100f)
+     .bi  (ModSource::Chaos1,     Param::gestureSpeed,     0.180f)
+     .uni (ModSource::Velocity,   Param::gesturePressure,  0.280f)
+     .uni (ModSource::NoteRandom, Param::gesturePosition,  0.220f)
+     .bi  (ModSource::KeyTrack,   Param::gestureBandwidth, 0.200f)
+     .uni (ModSource::Macro1,     Param::evolveScatter,    0.280f)
+     .uni (ModSource::Macro1,     Param::gestureMotion,    0.320f)
+     .uni (ModSource::Macro2,     Param::gestureBandwidth, 0.320f)
+     .uni (ModSource::Macro2,     Param::spaceTone,        0.220f)
+     .uni (ModSource::Macro3,     Param::spaceMix,         0.240f)
+     .uni (ModSource::Macro4,     Param::spaceDistDrive,   0.300f)
+     .uni (ModSource::Macro4,     Param::gestureRoughness, 0.280f);
+    sharedMacros (r, Param::ampDecay, Param::chaos1Rate);
+    r.commit (s);
+}});
 }
 
 } // namespace am::FactoryContent

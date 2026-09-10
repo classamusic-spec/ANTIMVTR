@@ -29,7 +29,6 @@ public:
     void prepare (double sampleRate, int maxBlockSize)
     {
         sr = sampleRate;
-        maxBlock = maxBlockSize;
 
         oversampler = std::make_unique<juce::dsp::Oversampling<float>> (
             2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false);
@@ -161,7 +160,6 @@ private:
 
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
     double sr = 48000.0;
-    int maxBlock = 512;
     int mode = Soft, previousMode = Soft;
     float fade = 1.0f;
     SmoothParam drive, mix;

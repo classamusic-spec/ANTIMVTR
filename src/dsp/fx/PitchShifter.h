@@ -19,7 +19,6 @@ class PitchShifter
 public:
     void prepare (double sampleRate, float windowMs = 80.0f)
     {
-        sr = sampleRate;
         window = std::max (256.0f, windowMs * 0.001f * (float) sampleRate);
         line.prepare ((int) (window * 2.5f) + 64);
         reset();
@@ -55,7 +54,6 @@ public:
 
 private:
     DelayLine line;
-    double sr = 48000.0;
     float window = 4096.0f, phase = 0.0f, rate = 2.0f;
 };
 

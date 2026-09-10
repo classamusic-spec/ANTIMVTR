@@ -24,7 +24,13 @@ namespace am::FactoryContent
 //   2 BRIGHT     spectral tilt / opening
 //   3 SPACE      how far away it is
 //   4 CHARACTER  the one control this particular sound lives on
-//   5-8          patch specific (only wired when the sound needs them)
+//   5 LENGTH     how long the object rings after the key
+//   6 CHAOS      how unpredictable it is
+//   7-8          left free for the player
+//
+// MACRO 5 and MACRO 6 mean the same thing on every patch (see `sharedMacros`),
+// so a player who learns them on one preset knows them on all of them. Both sit
+// at zero as shipped: a macro adds to what the patch already is.
 //==============================================================================
 
 namespace
@@ -303,6 +309,23 @@ struct Routings
     void commit (PatchState& s) const { s.mod = table.toVar(); }
 };
 
+/**
+    MACRO 5 (LENGTH) and MACRO 6 (CHAOS) on every patch.
+
+    `lengthExtra` and `chaosExtra` add the one destination that makes the pair
+    mean something on this particular sound (a Fracture decay, a grain size, a
+    scatter seed's partner). Both macros ship at zero, so they only ever add.
+*/
+inline void sharedMacros (Routings& r, Param lengthExtra = Param::Count, Param chaosExtra = Param::Count)
+{
+    r.uni (ModSource::Macro5, Param::shapeDecay, 0.28f)
+     .uni (ModSource::Macro5, Param::ampRelease, 0.15f)
+     .uni (ModSource::Macro6, Param::evolveScatter, 0.30f);
+
+    if (lengthExtra != Param::Count) r.uni (ModSource::Macro5, lengthExtra, 0.25f);
+    if (chaosExtra  != Param::Count) r.uni (ModSource::Macro6, chaosExtra, 0.30f);
+}
+
 //--------------------------------------------------------------- fracture table
 /**
     A fragment table described by its musical intent instead of 32 × 8 numbers.
@@ -456,6 +479,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceSize,      0.200f)
          .uni (ModSource::Macro4, Param::shapeDensity,   0.250f)
          .uni (ModSource::Macro4, Param::evolveMagnet,   0.300f);
+        sharedMacros (r, Param::spaceSize, Param::chaos1Depth);
         r.commit (s);
     }});
 
@@ -490,6 +514,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::waveDetune,     0.260f)
          .uni (ModSource::Macro4, Param::shapeStereo,    0.150f);
+        sharedMacros (r, Param::spaceReverbDecay, Param::waveDetune);
         r.commit (s);
     }});
 
@@ -522,6 +547,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro2, Param::shapeExcite,    0.200f)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::dustDensity,    0.350f);
+        sharedMacros (r, Param::spaceSize, Param::dustJitter);
         r.commit (s);
     }});
 
@@ -561,6 +587,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.250f)
          .uni (ModSource::Macro4, Param::waveRing,       0.400f)
          .uni (ModSource::Macro4, Param::shapeSurface,   0.200f);
+        sharedMacros (r, Param::ampDecay, Param::evolveTear);
         r.commit (s);
     }});
 
@@ -596,6 +623,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.250f)
          .uni (ModSource::Macro4, Param::evolveTear,     0.400f)
          .uni (ModSource::Macro4, Param::evolveCrush,    0.200f);
+        sharedMacros (r, Param::ampDecay, Param::chaos1Depth);
         r.commit (s);
     }});
 
@@ -628,6 +656,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,        0.250f)
          .uni (ModSource::Macro4, Param::gestureRoughness, 0.400f)
          .uni (ModSource::Macro4, Param::shapeSurface,    0.250f);
+        sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
         r.commit (s);
     }});
 
@@ -663,6 +692,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.320f)
          .uni (ModSource::Macro4, Param::evolveMagnet,   0.350f)
          .uni (ModSource::Macro4, Param::shapeTension,   0.200f);
+        sharedMacros (r, Param::spaceSize, Param::impactRandom);
         r.commit (s);
     }});
 
@@ -695,6 +725,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::dustDensity,    0.350f)
          .uni (ModSource::Macro4, Param::dustGrain,      0.250f);
+        sharedMacros (r, Param::ampDecay, Param::dustJitter);
         r.commit (s);
     }});
 
@@ -731,6 +762,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::evolveBend,     0.250f)
          .uni (ModSource::Macro4, Param::shapeSurface,   0.200f);
+        sharedMacros (r, Param::ampDecay, Param::impactRandom);
         r.commit (s);
     }});
 
@@ -766,6 +798,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceFeedback,  0.200f)
          .uni (ModSource::Macro4, Param::evolveMagnet,   0.280f)
          .uni (ModSource::Macro4, Param::shapeForm,      0.150f);
+        sharedMacros (r, Param::spaceFeedback, Param::impactRandom);
         r.commit (s);
     }});
 
@@ -798,6 +831,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::evolveBend,     0.350f)
          .uni (ModSource::Macro4, Param::shapeTension,   0.180f);
+        sharedMacros (r, Param::ampDecay, Param::evolveTear);
         r.commit (s);
     }});
 
@@ -829,6 +863,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::evolveTear,     0.300f)
          .uni (ModSource::Macro4, Param::evolveCrush,    0.200f);
+        sharedMacros (r, Param::spaceFeedback, Param::impactRandom);
         r.commit (s);
     }});
 
@@ -869,6 +904,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::waveSync,       0.400f)
          .uni (ModSource::Macro4, Param::evolveBend,     0.200f);
+        sharedMacros (r, Param::ampDecay, Param::evolveTear);
         r.commit (s);
     }});
 
@@ -904,6 +940,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::gestureRoughness, 0.350f)
          .uni (ModSource::Macro4, Param::shapeSurface,   0.180f);
+        sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
         r.commit (s);
     }});
 
@@ -939,6 +976,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::waveFM,         0.250f)
          .uni (ModSource::Macro4, Param::evolveBend,     0.250f);
+        sharedMacros (r, Param::spaceSize, Param::waveScan);
         r.commit (s);
     }});
 
@@ -976,6 +1014,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::gestureRoughness, 0.400f)
          .uni (ModSource::Macro4, Param::shapeSurface,   0.250f);
+        sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
         r.commit (s);
     }});
 
@@ -1009,6 +1048,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::sampleGrain,    0.350f)
          .uni (ModSource::Macro4, Param::sampleSpread,   0.250f);
+        sharedMacros (r, Param::spaceSize, Param::sampleSpread);
         r.commit (s);
     }});
 
@@ -1044,6 +1084,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::fractureAmount, 0.350f)
          .uni (ModSource::Macro4, Param::evolveCrush,    0.200f);
+        sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
         r.commit (s);
     }});
 
@@ -1078,6 +1119,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::shapeMass,      0.300f)
          .uni (ModSource::Macro4, Param::shapeDecay,     0.200f);
+        sharedMacros (r, Param::ampDecay, Param::impactRandom);
         r.commit (s);
     }});
 
@@ -1112,6 +1154,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::fractureAmount, 0.300f)
          .uni (ModSource::Macro4, Param::impactRate,     0.300f);
+        sharedMacros (r, Param::fractureDecay, Param::impactRandom);
         r.commit (s);
     }});
 
@@ -1142,6 +1185,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::shapeMass,      0.280f)
          .uni (ModSource::Macro4, Param::evolveMelt,     0.250f);
+        sharedMacros (r, Param::ampDecay, Param::impactRandom);
         r.commit (s);
     }});
 
@@ -1180,6 +1224,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.250f)
          .uni (ModSource::Macro4, Param::evolveMelt,     0.300f)
          .uni (ModSource::Macro4, Param::shapeDecay,     0.150f);
+        sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
         r.commit (s);
     }});
 
@@ -1214,6 +1259,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::evolveTear,     0.300f)
          .uni (ModSource::Macro4, Param::gestureRoughness, 0.300f);
+        sharedMacros (r, Param::spaceSize, Param::chaos1Depth);
         r.commit (s);
     }});
 
@@ -1247,6 +1293,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceSize,      0.150f)
          .uni (ModSource::Macro4, Param::waveDetune,     0.300f)
          .uni (ModSource::Macro4, Param::shapeDensity,   0.200f);
+        sharedMacros (r, Param::spaceSize, Param::waveDetune);
         r.commit (s);
     }});
 
@@ -1287,6 +1334,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::fractureAmount, 0.300f)
          .uni (ModSource::Macro4, Param::fractureFeedback, 0.200f);
+        sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
         r.commit (s);
     }});
 
@@ -1322,6 +1370,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::evolveTear,     0.300f)
          .uni (ModSource::Macro4, Param::evolveCrush,    0.250f);
+        sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
         r.commit (s);
     }});
 
@@ -1357,6 +1406,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::evolveMelt,     0.300f)
          .uni (ModSource::Macro4, Param::evolveCrush,    0.250f);
+        sharedMacros (r, Param::fractureDecay, Param::sampleSpread);
         r.commit (s);
     }});
 
@@ -1397,6 +1447,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::fractureSpread, 0.350f)
          .uni (ModSource::Macro4, Param::fractureFeedback, 0.200f);
+        sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
         r.commit (s);
     }});
 
@@ -1433,6 +1484,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::fractureSpread, 0.300f)
          .uni (ModSource::Macro4, Param::fractureSwing,  0.250f);
+        sharedMacros (r, Param::fractureDecay, Param::fractureSwing);
         r.commit (s);
     }});
 
@@ -1469,6 +1521,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::fractureProbability, -0.300f)
          .uni (ModSource::Macro4, Param::fractureSpread, 0.300f);
+        sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
         r.commit (s);
     }});
 
@@ -1508,6 +1561,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::evolveBend,     0.300f)
          .uni (ModSource::Macro4, Param::evolveMagnet,   0.250f);
+        sharedMacros (r, Param::spaceSize, Param::evolveTear);
         r.commit (s);
     }});
 
@@ -1540,6 +1594,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.250f)
          .uni (ModSource::Macro4, Param::evolveMelt,     0.350f)
          .uni (ModSource::Macro4, Param::shapeMass,      0.200f);
+        sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
         r.commit (s);
     }});
 
@@ -1574,6 +1629,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::evolveBend,     0.300f)
          .uni (ModSource::Macro4, Param::evolveTear,     0.250f);
+        sharedMacros (r, Param::spaceSize, Param::sampleSpread);
         r.commit (s);
     }});
 
@@ -1614,6 +1670,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.280f)
          .uni (ModSource::Macro4, Param::fractureAmount, 0.300f)
          .uni (ModSource::Macro4, Param::evolveTear,     0.250f);
+        sharedMacros (r, Param::fractureDecay, Param::waveScan);
         r.commit (s);
     }});
 
@@ -1649,6 +1706,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceSize,      0.150f)
          .uni (ModSource::Macro4, Param::evolveBend,     0.300f)
          .uni (ModSource::Macro4, Param::sampleGrain,    0.250f);
+        sharedMacros (r, Param::spaceSize, Param::sampleSpread);
         r.commit (s);
     }});
 
@@ -1681,6 +1739,7 @@ void registerAll (PresetManager& manager)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::evolveMagnet,   0.300f)
          .uni (ModSource::Macro4, Param::shapeTension,   0.180f);
+        sharedMacros (r, Param::spaceSize, Param::evolveMelt);
         r.commit (s);
     }});
 }

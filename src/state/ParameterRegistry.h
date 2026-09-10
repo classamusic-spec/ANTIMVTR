@@ -64,6 +64,11 @@ struct ParamDesc
     MutationCategory mutation;
     SmoothingKind    smoothing;
 
+    /** True for parameters the engine reads once per block, after the voices are summed
+        (the Fracture, Space and Master stages, and the voice allocator's own settings).
+        A per-voice modulation source cannot reach these through a voice's parameter copy. */
+    bool  isPostVoice() const noexcept { return group == ParamGroup::Fracture || group == ParamGroup::Space || group == ParamGroup::Master; }
+
     int   numChoices() const noexcept;
     bool  isDiscrete() const noexcept { return kind != ParamKind::Float; }
     float clampValue (float v) const noexcept;

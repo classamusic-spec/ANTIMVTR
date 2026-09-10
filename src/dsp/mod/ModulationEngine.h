@@ -37,14 +37,19 @@ struct ModPlan
 {
     static constexpr int kMax = ModRoutingTable::kMaxRoutings;
 
-    int numMono = 0, numPoly = 0, numPolyTargets = 0;
-    uint32_t polySources = 0;     ///< bit (int) ModSource set for every per-voice source in use
+    int numMono = 0, numPoly = 0, numPolyTargets = 0, numPostVoice = 0;
+    uint32_t polySources = 0;     ///< bit (int) ModSource set for every per-voice source a voice must advance
 
     std::array<CompiledRouting, kMax> mono {};
     std::array<CompiledRouting, kMax> poly {};
     std::array<uint16_t, kMax> polyTargets {};
 
-    bool isEmpty() const noexcept { return numMono == 0 && numPoly == 0; }
+    /** Per-voice sources aimed at a parameter that is read after the voice sum (Fracture, Space,
+        Master). A voice's own parameter copy can never reach those stages, so they are applied
+        once per block from the most recently started voice — the note the player is holding. */
+    std::array<CompiledRouting, kMax> postVoice {};
+
+    bool isEmpty() const noexcept { return numMono == 0 && numPoly == 0 && numPostVoice == 0; }
     bool usesSource (ModSource s) const noexcept { return (polySources & (1u << (uint32_t) s)) != 0; }
 };
 
@@ -162,7 +167,8 @@ public:
     void noteStarted() noexcept { retriggerRequest.store (true, std::memory_order_release); }
 
     /** Advances the global sources and adds every mono contribution to `graph`. */
-    void process (ControlGraph& graph, int numSamples, const TransportInfo& transport) noexcept;
+void process (ControlGraph& graph, int numSamples, const TransportInfo& transport,
+                  const VoiceModulator* newestVoice = nullptr) noexcept;
 
     /** How many samples the engine wants per control slice (the whole block when idle). */
     int controlBlockSize (int blockSize) const noexcept

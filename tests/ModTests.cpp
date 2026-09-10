@@ -202,7 +202,7 @@ namespace
     }
 
     /** Renders `seconds` of audio through the engine, returning the peak / non-finite count. */
-    struct RenderResult { float peak = 0.0f; int nonFinite = 0; double realtimeRatio = 0.0; };
+    struct RenderResult { float peak = 0.0f, rms = 0.0f; int nonFinite = 0; double realtimeRatio = 0.0; };
 
     RenderResult renderEngine (SynthEngine& engine, const ParamValues& params, double sampleRate, int blockSize,
                                double seconds, const std::vector<int>& notes, float velocity, double releaseAt)
@@ -213,6 +213,7 @@ namespace
         transport.isPlaying = true;
 
         const int totalBlocks = (int) std::floor (seconds * sampleRate / (double) blockSize);
+        double sumSquares = 0.0; juce::int64 counted = 0;
         bool released = false;
         const double start = juce::Time::getMillisecondCounterHiRes();
 
@@ -239,11 +240,14 @@ namespace
                 {
                     if (! std::isfinite (d[i])) { ++result.nonFinite; continue; }
                     result.peak = juce::jmax (result.peak, std::abs (d[i]));
+                    sumSquares += (double) d[i] * (double) d[i];
+                    ++counted;
                 }
             }
         }
         const double elapsed = juce::Time::getMillisecondCounterHiRes() - start;
         result.realtimeRatio = elapsed / (seconds * 1000.0);
+        result.rms = counted > 0 ? (float) std::sqrt (sumSquares / (double) counted) : 0.0f;
         return result;
     }
 }
@@ -1091,6 +1095,53 @@ private:
     //==========================================================================
     void testEngineIntegration()
     {
+        beginTest ("Per-voice sources reach destinations that live after the voice sum");
+        {
+            // Fracture, Space and Master run once on the summed mix and read the global values, so a
+            // voice's own parameter copy can never reach them. Such a routing used to be accepted,
+            // draw its ring in the matrix and change nothing at all.
+            constexpr double sr = 48000.0;
+            constexpr int block = 128;
+            constexpr float quietGain = -48.0f;   // low enough that the lift cannot reach the limiter
+
+            auto levelWith = [&] (ModSource source, float depth)
+            {
+                SynthEngine engine;
+                engine.prepare (sr, block);
+                ParamValues params = defaultParams();
+                setParam (params, Param::masterGain, quietGain);
+                setParam (params, Param::ampVelocity, 0.0f);   // isolate the routing from velocity's own gain
+                engine.control().resetTo (params);
+
+                if (depth != 0.0f)
+                {
+                    auto table = std::make_unique<ModRoutingTable>();
+                    table->add ({ source, Param::masterGain, depth, 0.0f, false, true });
+                    engine.modulationEngine().publishRoutings (std::move (table));
+                }
+                // Note 84 so key tracking is at its top; it reads zero at its C3 centre by design.
+                return renderEngine (engine, params, sr, block, 1.5, { 84 }, 1.0f, -1.0);
+            };
+
+            auto levelDb = [] (const RenderResult& r) { return juce::Decibels::gainToDecibels (juce::jmax (1.0e-9f, r.rms)); };
+            const auto plain = levelWith (ModSource::Velocity, 0.0f);
+            const auto plainDb = levelDb (plain);
+
+            for (auto source : { ModSource::Velocity, ModSource::KeyTrack, ModSource::Env1, ModSource::Gate })
+            {
+                const auto lifted = levelWith (source, 0.4f);
+                expectEquals (lifted.nonFinite, 0);
+                expect (lifted.peak <= 1.0f);
+                expect (levelDb (lifted) > plainDb + 12.0f,
+                        "a per-voice source routed to master.gain did nothing: " + juce::String (levelDb (lifted), 2)
+                            + " dB vs " + juce::String (plainDb, 2) + " dB");
+            }
+
+            // Negative depth must pull the level down, not merely differ from the baseline.
+            expect (levelDb (levelWith (ModSource::Velocity, -0.2f)) < plainDb - 6.0f,
+                    "a negative depth to master.gain did not attenuate");
+        }
+
         beginTest ("Routings reach the engine, move the sound and publish a snapshot");
 
         constexpr double sr = 48000.0;

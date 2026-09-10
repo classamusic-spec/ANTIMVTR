@@ -21,6 +21,7 @@ void MasterSection::reset()
     envelope = 0.0f;
     currentReduction = 1.0f;
     dcEstimate = 0.0f;
+    snapGain = true;
 }
 
 void MasterSection::process (float* l, float* r, int n, const RenderContext& ctx, SafetyMonitor* safety)
@@ -31,8 +32,12 @@ void MasterSection::process (float* l, float* r, int n, const RenderContext& ctx
     if ((badL + badR) > 0 && safety != nullptr)
         safety->note (SafetyEvent::NaN, Subsystem::Master, -1, badL + badR);
 
-    // 2. Gain (dB → linear, smoothed).
-    gainSmoother.setTarget (dbToGain (ctx.param (Param::masterGain)));
+    // 2. Gain (dB → linear, smoothed). The first block after prepare/reset jumps straight to the
+    //    patch's gain: ramping up from unity would play the opening 20 ms of the first note at
+    //    full level however far down the patch has set the output.
+    const float targetGain = dbToGain (ctx.param (Param::masterGain));
+    gainSmoother.setTarget (targetGain);
+    if (snapGain) { gainSmoother.reset (targetGain); snapGain = false; }
 
     int clipped = 0;
     int limited = 0;

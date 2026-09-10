@@ -67,6 +67,13 @@ void SynthEngine::applyGlobalSettings (const ParamValues& params)
     modulation.setQuality (currentQuality);   // MODULATION: quality picks the control rate
 }
 
+const VoiceModulator* SynthEngine::newestVoiceModulator() const noexcept
+{
+    const int newest = voices.mostRecentVoice();
+    if (newest < 0 || newest >= kMaxVoices) return nullptr;
+    return &voices.voice (newest).modulator();
+}
+
 void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi,
                            const ParamValues& hostParams, const TransportInfo& transport)
 {
@@ -140,7 +147,7 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
                     PerformanceProfiler::Scoped t (diag.profiler, Subsystem::Modulation);
                     TransportInfo sliceTransport = transport;
                     sliceTransport.ppqPosition = transport.ppqPosition + (double) pos / sr * transport.bpm / 60.0;
-                    modulation.process (controlGraph, next - pos, sliceTransport);
+                    modulation.process (controlGraph, next - pos, sliceTransport, newestVoiceModulator());
                     controlGraph.update (hostParams, next - pos);
                 }
 

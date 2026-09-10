@@ -78,6 +78,9 @@ private:
     SampleHandoff sampleHandoff;
     bool          samplePublished = false;
 
+    /** The voice whose per-voice sources drive post-voice destinations (Fracture / Space / Master). */
+    const VoiceModulator* newestVoiceModulator() const noexcept;
+
     ControlGraph  controlGraph;
     ModulationEngine modulation;
     VoiceManager  voices;

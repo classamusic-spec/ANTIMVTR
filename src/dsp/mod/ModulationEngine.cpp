@@ -86,7 +86,13 @@ const ParamValues* VoiceModulator::process (const ParamValues& global, const Mod
                                             uint32_t paramGeneration) noexcept
 {
     numDeltas = 0;
-    if (plan == nullptr || plan->numPoly == 0 || numSamples <= 0) { copyValid = false; return &global; }
+    // The sources still have to run when the only routings that use them are aimed past the voice
+    // sum, otherwise the engine would read a frozen envelope from this voice.
+    if (plan == nullptr || numSamples <= 0 || (plan->numPoly == 0 && plan->polySources == 0))
+    {
+        copyValid = false;
+        return &global;
+    }
 
     sr = sampleRate > 0.0 ? sampleRate : sr;
     notes.update (note, paramValue (global, Param::masterBendRange));
@@ -98,6 +104,8 @@ const ParamValues* VoiceModulator::process (const ParamValues& global, const Mod
     for (int i = 0; i < kNumEnvelopes; ++i)
         if (plan->usesSource ((ModSource) ((int) ModSource::Env1 + i)))
             envelopes[(size_t) i].advance (ModEnvelope::settingsFor (global, i), numSamples, sr);
+
+    if (plan->numPoly == 0) { copyValid = false; return &global; }   // sources advanced, nothing to patch
 
     numDeltas = plan->numPolyTargets;
     for (int i = 0; i < numDeltas; ++i) deltas[(size_t) i] = 0.0f;
@@ -155,7 +163,7 @@ void ModulationEngine::reset()
 
 void ModulationEngine::compile (const ParamValues& params) noexcept
 {
-    plan.numMono = plan.numPoly = plan.numPolyTargets = 0;
+    plan.numMono = plan.numPoly = plan.numPolyTargets = plan.numPostVoice = 0;
     plan.polySources = 0;
     targeted.fill (0);
     monoMod.fill (0.0f);
@@ -189,6 +197,16 @@ void ModulationEngine::compile (const ParamValues& params) noexcept
 
         if (modSourceIsPerVoice (r.source, params))
         {
+            // Fracture, Space and Master run once on the summed mix and read the global values,
+            // so a voice's own parameter copy cannot reach them. Apply the routing from the newest
+            // voice instead of silently dropping it.
+            if (d.isPostVoice())
+            {
+                plan.polySources |= (1u << (uint32_t) r.source);
+                plan.postVoice[(size_t) plan.numPostVoice++] = c;
+                continue;
+            }
+
             int slot = -1;
             for (int t = 0; t < plan.numPolyTargets; ++t)
                 if (plan.polyTargets[(size_t) t] == c.target) { slot = t; break; }
@@ -234,7 +252,8 @@ void ModulationEngine::beginBlock (const ParamValues& params) noexcept
         for (auto& l : lfos) l.retrigger();
 }
 
-void ModulationEngine::process (ControlGraph& graph, int numSamples, const TransportInfo& transport) noexcept
+void ModulationEngine::process (ControlGraph& graph, int numSamples, const TransportInfo& transport,
+                               const VoiceModulator* newestVoice) noexcept
 {
     if (numSamples <= 0) return;
     const auto& p = graph.values();   // last slice's effective values (so sources can modulate sources)
@@ -250,11 +269,26 @@ void ModulationEngine::process (ControlGraph& graph, int numSamples, const Trans
 
     for (int i = 0; i < plan.numMono; ++i)
         monoMod[(size_t) plan.mono[(size_t) i].target] = 0.0f;
+    for (int i = 0; i < plan.numPostVoice; ++i)
+        monoMod[(size_t) plan.postVoice[(size_t) i].target] = 0.0f;
 
     for (int i = 0; i < plan.numMono; ++i)
     {
         const auto& r = plan.mono[(size_t) i];
         const float amount = shapeContribution (r, value ((ModSource) r.source));
+        if (! std::isfinite (amount)) continue;
+        graph.addModulation (paramFromIndex ((int) r.target), amount);
+        monoMod[(size_t) r.target] += amount;
+    }
+
+    // Post-voice destinations follow the most recently started voice: its velocity, key position,
+    // envelopes and retriggered LFOs are the ones the player last acted on. With no voice at all
+    // the routing contributes nothing, which leaves the parameter at its host value.
+    for (int i = 0; i < plan.numPostVoice; ++i)
+    {
+        if (newestVoice == nullptr) break;
+        const auto& r = plan.postVoice[(size_t) i];
+        const float amount = shapeContribution (r, newestVoice->value ((ModSource) r.source));
         if (! std::isfinite (amount)) continue;
         graph.addModulation (paramFromIndex ((int) r.target), amount);
         monoMod[(size_t) r.target] += amount;

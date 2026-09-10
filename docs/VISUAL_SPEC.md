@@ -82,14 +82,16 @@ the end of the row in a dim monospaced-feeling face.
 
 This is the identity of the product and deserves the most work.
 
-* A **circular metal bezel** occupies the centre column: a thick ring drawn as a
-  brushed-metal gradient (light at the top, dark at the bottom, with a second
-  narrow highlight arc near the top edge so it reads as curved). Around it, at
-  regular intervals, sit **bolt heads** in the same style as the panel screws.
-  The bezel has an outer shadow on the panel behind it and an inner shadow onto
-  the glass.
-* Left and right of the bezel, two short **vertical light bars** glow warm
-  amber-white, like the instrument's status lamps, each with a soft bloom.
+* A **circular metal bezel** occupies the centre column: a thick ring of dark
+  gunmetal, drawn as a brushed-metal gradient (light at the top, dark at the
+  bottom, with a second narrow highlight arc near the top edge so it reads as
+  curved). The ring is visibly **segmented into plates** with fine seams between
+  them, and **bolt heads** sit at the seams in the same style as the panel
+  screws. The bezel casts an outer shadow onto the panel behind it and an inner
+  shadow onto the glass.
+* At the nine and three o'clock positions, mounted on the bezel, two short
+  **vertical light bars** glow warm amber-white with a soft bloom that spills
+  onto the metal around them — the instrument's status lamps.
 * Inside the bezel sits the **glass**: after the object is drawn, the glass is
   composited over it as
   * a broad diagonal specular sweep from the upper-left, low opacity, white,
@@ -98,22 +100,60 @@ This is the identity of the product and deserves the most work.
   * a very subtle chromatic fringe at the extreme edge,
   * optional slow-moving faint smudges so the glass feels real, never dirty.
   The glass must never wash out the object: it is a highlight layer, not a haze.
-* Behind the glass, the **ANTI-MATTER object**: a roughly spherical mass of
-  bright filaments — long, smooth, curving strands in blue, violet and magenta
-  that orbit and weave around a **dark, almost black core**. The strands are
-  brightest where they cross in front of the core and fade where they pass
-  behind it, which is what sells the depth. Small bright nodes sit where strands
-  meet. Around and between them float **small translucent spheres/bubbles** and
-  fine particles, drifting slowly, catching the light. The whole mass rotates
-  slowly and breathes with the audio.
+* Behind the glass, the **ANTI-MATTER object**. This is the hero of the product
+  and must be built with real care. It is not a wireframe and not a particle
+  fountain: it is a **liquid-light organism suspended in a sphere**.
+  * **Ribbons, not lines.** The strands are wide, smooth, tapering **ribbons of
+    liquid light** — think silk caught in slow water, or an aurora folded into a
+    ball. Each ribbon has a bright molten core with a soft translucent bloom
+    either side, its width swelling in the middle and tapering to nothing at the
+    ends, and its brightness varying along its length. They must never read as
+    a stroked polyline of constant width.
+  * **Colour along the length.** A ribbon shifts hue as it travels: cyan into
+    blue into violet into magenta into pink. Different ribbons start at
+    different points in that range so the mass reads as iridescent rather than
+    tinted.
+  * **Genuine depth.** The ribbons follow paths on and around an implicit sphere
+    in 3D, and are painted back to front. A ribbon behind the core is dimmed,
+    desaturated, blurred and thinned; a ribbon in front is bright, saturated,
+    sharp and wide, and casts a faint shadow onto what is behind it. This
+    front/back difference is what makes the object look solid rather than
+    printed on the glass.
+  * **The core.** At the centre sits a **dark, irregular, organic mass** — not a
+    circle. Its silhouette is a slowly deforming blob with soft lobes, almost
+    black, with a faint violet rim where the light wraps around it. Ribbons
+    disappear behind it cleanly. It opens and closes with MASS.
+  * **Liquid behaviour.** The whole organism must feel like a fluid: ribbons
+    stretch and thin when pulled, bulge where they slow, coalesce and separate,
+    and the surface has a slight surface-tension wobble. Motion is smooth and
+    continuous, never stepping, with the ribbons advecting along a slowly
+    evolving flow field rather than following fixed circles.
+  * **Particles and bubbles.** Two populations float in the sphere: fine bright
+    **sparkles** like stars, scattered through the volume, twinkling as they
+    pass in and out of the light; and larger **translucent bubbles** with a rim
+    highlight and a small specular dot, drifting slowly, scaled and dimmed by
+    their depth. Bubbles nearer the front are larger and softer.
+  * **Reaction.** Size and brightness follow level. Ribbon count and density
+    follow Shape density. The core opens with mass. Tension tightens the orbits
+    and thins the ribbons; surface roughens their edges. Evolve deforms them:
+    bend curves them, melt makes them sag and run, tear splits a ribbon into two
+    that drift apart, magnet pulls them onto shared paths, scatter jitters them,
+    freeze stops the flow dead, crush quantises them into angular segments. A
+    Fracture hit throws a burst of sparkles outward.
+  * The object rotates slowly and breathes with the audio even at rest, so the
+    instrument never looks asleep.
 * The object reacts to the engine: overall size and brightness follow level,
   strand count and density follow Shape density, the core opens and closes with
   mass, the strands deform and tear with the Evolve operators, and the particles
   scatter on Fracture.
-* Below the bezel sits a **plinth**: a wide, shallow metal base with a brushed
-  gradient and a bright rim, carrying the engraved wordmark **ANTI-MATR** and
-  under it **SOUND BEYOND MATTER** in small letterspaced caps. A glowing arc of
-  accent light spills from under the plinth onto the panel.
+* Below the bezel sits a **plinth**: a wide, shallow elliptical metal base, like
+  a machined stand the sphere rests in. It has a brushed gradient, a bright
+  chrome rim catching the light along its top edge, and a darker recessed face
+  carrying the engraved wordmark **ANTI-MATR** with **SOUND BEYOND MATTER** in
+  small letterspaced caps beneath it. Engraving means the text is cut in: a dark
+  fill with a light lower edge, not a bright overlay. A **glowing blue arc**
+  spills from beneath the plinth onto the panel, brightest directly under the
+  sphere.
 * Small labels flank the top of the porthole: `INHALE / IDEA` on the left,
   `EXHALE / EVOLVE` on the right, dim and letterspaced.
 

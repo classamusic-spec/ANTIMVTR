@@ -53,6 +53,11 @@ const float* Wavetables::blepTable() noexcept
     return sharedCache().blep.data();
 }
 
+const float* Wavetables::blampTable() noexcept
+{
+    return sharedCache().blamp.data();
+}
+
 float Wavetables::framePosition (int bankIndex, float position) noexcept
 {
     const auto& b = bank (bankIndex);
@@ -70,7 +75,8 @@ void Wavetables::renderDisplayFrame (int bankIndex, float position, float morph,
     const float fpos = framePosition (bankIndex, position);
     const int   frameA = juce::jlimit (0, b.numFrames - 2, (int) fpos);
     const float blend  = juce::jlimit (0.0f, 1.0f, fpos - (float) frameA);
-    const float pivot  = waveMorphPivot (morph);
+    const float amount = waveMorphAmount (morph);
+    const float* sine  = sharedCache().sine.data();
 
     const float* fa = level.frame (frameA);
     const float* fb = level.frame (frameA + 1);
@@ -78,7 +84,7 @@ void Wavetables::renderDisplayFrame (int bankIndex, float position, float morph,
     const float step = 1.0f / (float) numSamples;
     for (int i = 0; i < numSamples; ++i)
     {
-        const float phase = waveMorphWarp ((float) i * step, pivot);
+        const float phase = waveMorphWarp ((float) i * step, amount, sine);
         out[i] = waveReadFrames (fa, fb, blend, level.mask, level.lengthF, phase);
     }
 }

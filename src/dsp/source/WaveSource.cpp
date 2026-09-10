@@ -53,8 +53,9 @@ void WaveSource::prepare (double sampleRate, int)
 
     // Builds the shared, immutable table cache on first use. Message thread.
     Wavetables::prewarm();
-    sineTab = Wavetables::sineTable();
-    blepTab = Wavetables::blepTable();
+    sineTab  = Wavetables::sineTable();
+    blepTab  = Wavetables::blepTable();
+    blampTab = Wavetables::blampTable();
 
     reset();
 }
@@ -95,7 +96,7 @@ void WaveSource::noteOn (const NoteState& note, const ParamValues& params)
     }
 
     scanPhase = 0.0;
-    fadeCounter = kFadeLength;
+    fadeCounter = kFadeLength + kLatencySamples;
     primed = false;
     lastEnergy = 0.0f;
 }
@@ -110,8 +111,9 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
     if (sineTab == nullptr || blepTab == nullptr)
     {
         Wavetables::prewarm();
-        sineTab = Wavetables::sineTable();
-        blepTab = Wavetables::blepTable();
+        sineTab  = Wavetables::sineTable();
+        blepTab  = Wavetables::blepTable();
+        blampTab = Wavetables::blampTable();
     }
 
     //--------------------------------------------------------------- parameters
@@ -134,7 +136,8 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
     const float syncAmt  = clamp01 (ctx.param (Param::waveSync));
     const float modRatio = juce::jlimit (0.25f, 16.0f, ctx.param (Param::waveModRatio));
 
-    if (! primed)
+    const bool firstBlock = ! primed;
+    if (firstBlock)
     {
         smPosition = position; smMorph = morph;
         smAm = amAmt; smRing = ringAmt; smFm = fmAmt; smPm = pmAmt;
@@ -181,6 +184,16 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
     }
     for (int i = unison; i < kMaxUnison; ++i) { targetL[i] = 0.0f; targetR[i] = 0.0f; }
 
+    // The first block after a note-on snaps to the target gains (the raised
+    // cosine guard below removes the click) so the attack does not depend on
+    // the host block size.
+    if (firstBlock)
+        for (int i = 0; i < kMaxUnison; ++i)
+        {
+            oscs[(size_t) i].gainL = targetL[i];
+            oscs[(size_t) i].gainR = targetR[i];
+        }
+
     //-------------------------------------------------------------- modulation
     const bool  syncOn = syncAmt > 0.002f;
     const float slaveRatio = 1.0f + syncCurveOf (syncAmt) * (modRatio - 1.0f);
@@ -196,6 +209,11 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
     // content past Nyquist. Capped at 3 octaves so heavy FM stays usable.
     float modBright = 1.0f + fmDepthMax + pmDepthMax * 6.2831853f * modRatio;
     modBright = juce::jlimit (1.0f, 8.0f, modBright);
+
+    // Hard sync: keeping the slave table an octave below its Nyquist limit
+    // shrinks every higher-order term the BLEP/BLAMP pair cannot correct, and
+    // costs almost no character because the sync buzz comes from the reset.
+    if (syncOn) modBright *= 1.0f + 1.6f * syncCurveOf (syncAmt);
     const float warpSlope = waveMorphSlope (juce::jmax (morph, smMorph));
 
     //-------------------------------------------------------------------- scan
@@ -244,7 +262,7 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
             const float fp = p * frameScale;
             const int   fi = juce::jlimit (0, numFrames - 2, (int) fp);
             const float fb = juce::jlimit (0.0f, 1.0f, fp - (float) fi);
-            const float pivot = waveMorphPivot (mph);
+            const float warpAmount = waveMorphAmount (mph);
 
             const float* aA = lvA.frame (fi);
             const float* bA = aA + lvA.length;
@@ -264,7 +282,7 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
 
             auto readAt = [&] (double ph) noexcept -> float
             {
-                const float w = waveMorphWarp (wavePhaseWrap ((float) ph + pmOff), pivot);
+                const float w = waveMorphWarp (wavePhaseWrap ((float) ph + pmOff), warpAmount, sineTab);
                 float y = waveReadFrames (aA, bA, fb, lvA.mask, lvA.lengthF, w);
                 if (mipCross)
                 {
@@ -282,7 +300,7 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
             phase += step;
 
             bool  didReset = false;
-            float resetFrac = 0.0f, jump = 0.0f;
+            float resetFrac = 0.0f, jump = 0.0f, slopeJump = 0.0f;
 
             if (syncOn && incM > 1.0e-9)
             {
@@ -292,7 +310,16 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
                     const double d = juce::jlimit (0.0, 0.999999, (master - 1.0) / incM);
                     master -= 1.0;
                     const double atReset = prevPhase + step * (1.0 - d);
-                    jump = readAt (0.0) - readAt (atReset);
+
+                    // Step and slope discontinuity of the reset, corrected below
+                    // with a BLEP / BLAMP pair so hard sync stays band limited.
+                    const float before = readAt (atReset);
+                    const float after  = readAt (0.0);
+                    jump = after - before;
+                    const double h = step * 0.5;
+                    slopeJump = (readAt (h) - readAt (-h))
+                              - (readAt (atReset + h) - readAt (atReset - h));
+
                     phase = d * step;
                     resetFrac = (float) d;
                     didReset = true;
@@ -304,17 +331,21 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
 
             //---- band-limited step correction --------------------------------
             o.rawRing[ring & kWaveBlepRingMask] = raw;
-            if (didReset && jump != 0.0f)
+            if (didReset && (jump != 0.0f || slopeJump != 0.0f))
             {
                 const float fpos = resetFrac * (float) kWaveBlepRes;
                 const int   di = juce::jlimit (0, kWaveBlepRes - 1, (int) fpos);
                 const float df = fpos - (float) di;
-                const float* t0 = blepTab + (size_t) (di * kWaveBlepLen);
-                const float* t1 = t0 + kWaveBlepLen;
+                const float* e0 = blepTab + (size_t) (di * kWaveBlepLen);
+                const float* e1 = e0 + kWaveBlepLen;
+                const float* a0 = blampTab + (size_t) (di * kWaveBlepLen);
+                const float* a1 = a0 + kWaveBlepLen;
                 for (int j = 0; j < kWaveBlepLen; ++j)
                 {
-                    const float rv = t0[j] + df * (t1[j] - t0[j]);
-                    o.corrRing[(ring + (uint32_t) j - (uint32_t) kWaveBlepZ) & kWaveBlepRingMask] += jump * rv;
+                    const float ev = e0[j] + df * (e1[j] - e0[j]);
+                    const float av = a0[j] + df * (a1[j] - a0[j]);
+                    o.corrRing[(ring + (uint32_t) j - (uint32_t) kWaveBlepZ) & kWaveBlepRingMask]
+                        += jump * ev + slopeJump * av;
                 }
             }
 
@@ -346,11 +377,13 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
     //---------------------------------------------------------- note-start fade
     if (fadeCounter > 0)
     {
+        constexpr int total = kFadeLength + kLatencySamples;
         const int m = juce::jmin (n, fadeCounter);
         for (int i = 0; i < m; ++i)
         {
-            const int c = kFadeLength - fadeCounter + i;
-            const float g = 0.5f - 0.5f * std::cos (kPiF * (float) c / (float) kFadeLength);
+            const int c = total - fadeCounter + i - kLatencySamples;   // samples of real audio
+            const float g = c <= 0 ? 0.0f
+                                   : 0.5f - 0.5f * std::cos (kPiF * (float) c / (float) kFadeLength);
             l[i] *= g; r[i] *= g;
         }
         fadeCounter -= m;

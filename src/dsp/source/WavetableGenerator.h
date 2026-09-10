@@ -18,6 +18,7 @@ struct WavetableCache
     std::array<WavetableBankData, kWaveNumBanks> banks {};
     std::array<float, kWaveSineSize> sine {};
     std::vector<float> blep;                               ///< (kWaveBlepRes + 1) * kWaveBlepLen
+    std::vector<float> blamp;                              ///< same geometry, ramp residual
     size_t bytes = 0;
 };
 
@@ -38,9 +39,9 @@ public:
     static void build (WavetableCache& cache);
     static const char* bankName (int index) noexcept;
 
-    /** Target RMS every frame is normalised to (peak-capped, see the .cpp). */
-    static constexpr float kTargetRms = 0.40f;
-    static constexpr float kPeakCap   = 1.30f;
+    /** Target RMS every frame is normalised to (see the .cpp). */
+    static constexpr float kTargetRms = 0.30f;
+    static constexpr float kPeakCap   = 2.00f;   ///< pathological-frame safety only
 };
 
 } // namespace am

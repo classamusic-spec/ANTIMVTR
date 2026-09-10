@@ -114,13 +114,15 @@ namespace
     {
         const bool odd = frame < 8;
         const int  i = odd ? frame : frame - 8;
-        const float e = 2.2f - 0.22f * (float) i;
+        const float e = 2.2f - 0.1857f * (float) i;      // 2.2 .. 0.9
 
         for (int k = 1; k <= kWaveMaxHarmonics; ++k)
         {
             const bool keep = odd ? ((k & 1) == 1) : (k == 1 || (k & 1) == 0);
             if (! keep) continue;
-            s.addSine (k, std::pow ((float) k, -e));
+            // The gentle exponential tail keeps the brightest frames musical
+            // instead of turning them into impulse trains.
+            s.addSine (k, std::pow ((float) k, -e) * std::exp (-(float) k / 300.0f));
         }
     }
 
@@ -205,7 +207,8 @@ namespace
         {
             const float ratio = std::pow (barModes[j], j == 0 ? 1.0f : stretch * 0.62f + 0.38f);
             const int   k = juce::jlimit (1, kWaveMaxHarmonics, (int) std::round (ratio));
-            const float amp = std::pow ((float) (j + 1), -0.85f) * (0.6f + 0.4f * rng.nextFloat());
+            const float amp = j == 0 ? 1.0f
+                                     : std::pow ((float) (j + 1), -0.85f) * (0.6f + 0.4f * rng.nextFloat());
             s.add (k, amp, rng.nextFloat() * kTwoPiF * u);
         }
 
@@ -226,11 +229,11 @@ namespace
     void spectralBins (int frame, FrameSpectrum& s)
     {
         const float u = (float) frame / (float) (kWaveFramesPerBank - 1);
-        const float tilt    = 1.5f - 1.15f * u;                 // 1.5 .. 0.35
+        const float tilt    = 1.5f - 0.8f * u;                  // 1.5 .. 0.7
         const float stretch = 1.0f + 0.16f * u;                 // spectral envelope stretch
         const float combDepth  = 0.95f * std::sin (kPiF * u);   // 0 at both ends
         const float combPeriod = 2.0f + 9.0f * u;
-        const float dispersion = 3.0f * u;
+        const float dispersion = 12.0f * u;   // quadratic phase: spreads the impulse into a chirp
 
         for (int k = 1; k <= kWaveMaxHarmonics; ++k)
         {
@@ -238,7 +241,7 @@ namespace
             float amp = std::pow (warped, -tilt);
             const float comb = 0.5f + 0.5f * std::cos (kTwoPiF * (float) k / combPeriod);
             amp *= 1.0f - combDepth * (1.0f - comb);
-            amp *= std::exp (-(float) k / 420.0f);
+            amp *= std::exp (-(float) k / 300.0f);
             if (amp < 1.0e-5f) continue;
             const float ph = -kPiF * 0.5f + dispersion * (float) (k * k) / 4096.0f;
             s.add (k, amp, ph);
@@ -315,7 +318,7 @@ namespace
             const float ra = rng.nextFloat();
             const float rp = rng.nextFloat();
             const float rd = rng.nextFloat();
-            if (rd > density) continue;
+            if (k > 1 && rd > density) continue;      // the fundamental always survives
             const float amp = (0.35f + 0.65f * ra) * std::pow ((float) k, -rolloff)
                             * std::exp (-(float) k / 500.0f);
             if (amp < 1.0e-6f) continue;
@@ -482,7 +485,21 @@ void WavetableGenerator::build (WavetableCache& cache)
         if (endValue > 1.0e-9f)
             for (auto& v : step) v /= endValue;
 
+        // The step residual, and its running integral: the ramp (BLAMP)
+        // residual that band-limits the slope change at a sync reset.
+        std::vector<float> residual ((size_t) (2 * half + 1), 0.0f);
+        std::vector<float> rampResidual ((size_t) (2 * half + 1), 0.0f);
+        double integral = 0.0;
+        for (int i = 0; i <= 2 * half; ++i)
+        {
+            const double t = (double) (i - half) / (double) kOversample;
+            residual[(size_t) i] = step[(size_t) i] - (t >= 0.0 ? 1.0f : 0.0f);
+            integral += (double) residual[(size_t) i] / (double) kOversample;
+            rampResidual[(size_t) i] = (float) integral;
+        }
+
         cache.blep.assign ((size_t) ((kWaveBlepRes + 1) * kWaveBlepLen), 0.0f);
+        cache.blamp.assign ((size_t) ((kWaveBlepRes + 1) * kWaveBlepLen), 0.0f);
         for (int d = 0; d <= kWaveBlepRes; ++d)
         {
             const float frac = (float) d / (float) kWaveBlepRes;
@@ -490,15 +507,16 @@ void WavetableGenerator::build (WavetableCache& cache)
             {
                 const float t = (float) (j - kWaveBlepZ) + frac;
                 const int idx = juce::jlimit (0, 2 * half, (int) std::round ((t + (float) kWaveBlepZ) * (float) kOversample));
-                const float ideal = t >= 0.0f ? 1.0f : 0.0f;
-                cache.blep[(size_t) (d * kWaveBlepLen + j)] = step[(size_t) idx] - ideal;
+                cache.blep[(size_t) (d * kWaveBlepLen + j)]  = residual[(size_t) idx];
+                cache.blamp[(size_t) (d * kWaveBlepLen + j)] = rampResidual[(size_t) idx];
             }
         }
     }
 
     cache.bytes = cache.storage.size() * sizeof (float)
                 + cache.sine.size() * sizeof (float)
-                + cache.blep.size() * sizeof (float);
+                + cache.blep.size() * sizeof (float)
+                + cache.blamp.size() * sizeof (float);
 }
 
 } // namespace am

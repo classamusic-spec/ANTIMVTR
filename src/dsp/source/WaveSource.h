@@ -73,8 +73,9 @@ private:
     int    fadeCounter = 0;
     float  lastEnergy = 0.0f;
 
-    const float* sineTab = nullptr;
-    const float* blepTab = nullptr;
+    const float* sineTab  = nullptr;
+    const float* blepTab  = nullptr;
+    const float* blampTab = nullptr;
 
     static constexpr int kFadeLength = 32;   ///< click guard on note start
 };

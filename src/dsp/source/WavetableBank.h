@@ -82,28 +82,56 @@ inline float wavePhaseWrap (float p) noexcept
     return p >= 1.0f ? 0.0f : (p < 0.0f ? 0.0f : p);
 }
 
-/**
-    MORPH — asymmetric phase warp (Casio-style phase distortion).
-
-    morph 0 leaves the frame untouched; morph 1 compresses the first half of
-    the cycle into the first 1/8 (slope 4), which pushes the spectrum up and
-    adds a formant/sync-like edge. `waveMorphSlope` reports the resulting
-    maximum time compression so the mip selection can stay band limited.
-*/
-inline float waveMorphPivot (float morph) noexcept
+/** Cheap wrap for values already known to be within (-1, 2). */
+inline float waveWrap01 (float p) noexcept
 {
-    return 0.5f - 0.375f * clamp01 (morph);
+    return p >= 1.0f ? p - 1.0f : (p < 0.0f ? p + 1.0f : p);
+}
+
+//==============================================================================
+// Modulator sine lookup (linear interpolation on a 4096-point table: the
+// residual error is below -120 dB, far under the table noise floor).
+
+constexpr int kWaveSineSize = 4096;
+constexpr uint32_t kWaveSineMask = (uint32_t) kWaveSineSize - 1u;
+
+inline float waveSineLookup (const float* table, float phase) noexcept
+{
+    const float fi = phase * (float) kWaveSineSize;
+    const int   i0 = (int) fi;
+    const float f  = fi - (float) i0;
+    const float a = table[(uint32_t) i0 & kWaveSineMask];
+    const float b = table[((uint32_t) i0 + 1u) & kWaveSineMask];
+    return a + f * (b - a);
+}
+
+//==============================================================================
+/**
+    MORPH — a smooth, asymmetric phase warp.
+
+        w(x) = x + (a / 2pi) * sin (2 pi x),   a = 1.6 * morph
+
+    Reading the frame through w compresses the first part of the cycle and
+    stretches the rest, which shifts formants and grows new partials the way
+    Casio-style phase distortion does. Unlike a piecewise-linear bend this
+    warp is smooth to every order, so it is pure phase modulation of the
+    table: its sidebands die away instead of leaving a 1/k^2 tail to alias.
+    `waveMorphSlope` reports the extra bandwidth so the mip selection can stay
+    band limited.
+*/
+inline float waveMorphAmount (float morph) noexcept
+{
+    return clamp01 (morph) * 1.6f;
 }
 
 inline float waveMorphSlope (float morph) noexcept
 {
-    return 0.5f / waveMorphPivot (morph);
+    return 1.0f + 1.4f * waveMorphAmount (morph);
 }
 
-inline float waveMorphWarp (float phase, float pivot) noexcept
+inline float waveMorphWarp (float phase, float amount, const float* sine) noexcept
 {
-    return phase < pivot ? 0.5f * phase / pivot
-                         : 0.5f + 0.5f * (phase - pivot) / (1.0f - pivot);
+    return waveWrap01 (phase + amount * 0.15915494f * waveSineLookup (sine, phase));
 }
 
 /**
@@ -186,8 +214,11 @@ public:
     /** 4096-point sine used by the FM / PM / AM / ring modulator. */
     static const float* sineTable() noexcept;
 
-    /** BLEP residual table used to band-limit hard-sync resets. */
+    /** BLEP residual table used to band-limit the hard-sync step. */
     static const float* blepTable() noexcept;
+
+    /** BLAMP residual table used to band-limit the hard-sync slope change. */
+    static const float* blampTable() noexcept;
 
     //==========================================================================
     /**
@@ -214,28 +245,11 @@ public:
 };
 
 //==============================================================================
-// Modulator sine lookup (linear interpolation on a 4096-point table: the
-// residual error is below -120 dB, far under the table noise floor).
-
-constexpr int kWaveSineSize = 4096;
-constexpr uint32_t kWaveSineMask = (uint32_t) kWaveSineSize - 1u;
-
-inline float waveSineLookup (const float* table, float phase) noexcept
-{
-    const float fi = phase * (float) kWaveSineSize;
-    const int   i0 = (int) fi;
-    const float f  = fi - (float) i0;
-    const float a = table[(uint32_t) i0 & kWaveSineMask];
-    const float b = table[((uint32_t) i0 + 1u) & kWaveSineMask];
-    return a + f * (b - a);
-}
-
-//==============================================================================
 // Band-limited step (BLEP) geometry for hard sync.
 
-constexpr int kWaveBlepZ    = 4;                    ///< half width in samples
+constexpr int kWaveBlepZ    = 16;                   ///< half width in samples (16 zero crossings)
 constexpr int kWaveBlepLen  = 2 * kWaveBlepZ;       ///< residual taps
-constexpr int kWaveBlepRes  = 64;                   ///< fractional-delay subdivisions
+constexpr int kWaveBlepRes  = 128;                  ///< fractional-delay subdivisions
 constexpr uint32_t kWaveBlepRingMask = (uint32_t) kWaveBlepLen - 1u;
 
 } // namespace am

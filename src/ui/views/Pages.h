@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Panels.h"
+#include "SourcePanels.h"
 #include "ui/components/AMTab.h"
 #include "ui/components/AMXYPad.h"
 #include "ui/components/AMStepEditor.h"
@@ -59,6 +60,9 @@ private:
     std::unique_ptr<SourceInfo> info;
     struct Section { std::unique_ptr<ParamPanel> panel; float weight; };
     std::vector<Section> sections;
+    // SAMPLE and GESTURE have dedicated panels instead of the generic sections.
+    std::unique_ptr<SamplePanel> samplePanel;
+    std::unique_ptr<GesturePanel> gesturePanel;
     int currentSource = -1;
     std::array<float, 1024> tapL {}, tapR {};
 };

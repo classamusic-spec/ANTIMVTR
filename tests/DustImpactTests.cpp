@@ -881,6 +881,8 @@ private:
         const auto wave = renderEngine (0, false);
         const auto dust = renderEngine (1, false);
         const auto impact = renderEngine (2, false);
+        const auto sample = renderEngine (3, false);     // SAMPLE and GESTURE joined the engine in Phase 15
+        const auto gesture = renderEngine (4, false);
 
         expect (rmsOf (wave) > 0.01, "WAVE is silent through SourceEngine");
         expect (rmsOf (dust) > 0.01, "DUST is silent through SourceEngine: " + juce::String (rmsOf (dust)));
@@ -894,7 +896,8 @@ private:
             double maxError = 0.0;
             for (int i = 0; i < layered.getNumSamples(); ++i)
             {
-                const double sum = (double) wave.getSample (0, i) + dust.getSample (0, i) + impact.getSample (0, i);
+                const double sum = (double) wave.getSample (0, i) + dust.getSample (0, i) + impact.getSample (0, i)
+                                 + sample.getSample (0, i) + gesture.getSample (0, i);
                 maxError = juce::jmax (maxError, std::abs (sum - (double) layered.getSample (0, i)));
             }
             expect (maxError < 1.0e-5, "LAYER is not the sum of the sources, max error " + juce::String (maxError));

@@ -162,6 +162,8 @@ void SourcePage::rebuild (int source)
     if (source == currentSource) return;
     currentSource = source;
     sections.clear();
+    samplePanel.reset();
+    gesturePanel.reset();
     auto add = [this] (const juce::String& title, const juce::String& subtitle, std::vector<Param> params, float weight, int cols = 0)
     {
         Section s;
@@ -183,12 +185,13 @@ void SourcePage::rebuild (int source)
             level = Param::impactLevel;
             break;
         case 3:
-            add ("Sample", "Imported matter", { Param::sampleMode, Param::sampleStart, Param::sampleEnd, Param::sampleGrain, Param::sampleSpread }, 0.62f, 5);
-            add ("Pitch", "", { Param::samplePitch, Param::sampleRoot, Param::sampleKeytrack }, 0.38f, 3);
+            samplePanel = std::make_unique<SamplePanel> (processor);
+            addAndMakeVisible (*samplePanel);
             level = Param::sampleLevel;
             break;
         case 4:
-            add ("Gesture", "Living gesture", { Param::gestureMode, Param::gesturePressure, Param::gestureSpeed, Param::gestureRoughness, Param::gesturePosition, Param::gestureMotion, Param::gestureBandwidth }, 1.0f, 4);
+            gesturePanel = std::make_unique<GesturePanel> (processor);
+            addAndMakeVisible (*gesturePanel);
             level = Param::gestureLevel;
             break;
         default:
@@ -222,10 +225,24 @@ void SourcePage::resized()
         c.removeFromTop (gap);
         if (info != nullptr) info->setBounds (c.removeFromTop (juce::jmin (c.getHeight(), 190)));
     }
+    // SAMPLE owns the whole right side: its own waveform carries the start/end handles.
+    wavePanel.setVisible (samplePanel == nullptr);
+    if (samplePanel != nullptr)
+    {
+        samplePanel->setBounds (area);
+        return;
+    }
+
     auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.38f));
     area.removeFromTop (gap);
     wavePanel.setBounds (top);
     wave.setBounds (wavePanel.contentBounds());
+
+    if (gesturePanel != nullptr)
+    {
+        gesturePanel->setBounds (area);
+        return;
+    }
 
     float total = 0.0f;
     for (auto& s : sections) total += s.weight;

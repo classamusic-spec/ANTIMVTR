@@ -13,6 +13,7 @@
                      [--preset "Void Bloom"] [--set shape.form=0.7 ...]
                      [--dry full|source|matter|evolve] [--json report.json]
                      [--sample path.wav | --sample builtin:3]      (SAMPLE source data)
+                     [--analyze]                                  (ANALYZE -> MATTER on that sample)
 */
 
 #include <juce_core/juce_core.h>
@@ -22,6 +23,7 @@
 
 #include "dsp/SynthEngine.h"
 #include "dsp/source/SampleData.h"
+#include "dsp/source/SampleAnalyzer.h"
 #include "presets/PresetManager.h"
 #include "state/StateManager.h"
 
@@ -189,26 +191,38 @@ int main (int argc, char* argv[])
     engine.control().resetTo (patch.params);
 
     // SAMPLE source data: a built-in ("builtin:N") or any audio file.
+    SampleRef sample;
     if (hasOption (args, "--sample"))
     {
         const auto spec = optionValue (args, "--sample");
         if (spec.startsWithIgnoreCase ("builtin:"))
         {
-            engine.publishSample (BuiltInSamples::create (spec.fromFirstOccurrenceOf (":", false, false).getIntValue()));
+            sample = BuiltInSamples::create (spec.fromFirstOccurrenceOf (":", false, false).getIntValue());
         }
         else
         {
             juce::String error;
-            if (auto loaded = loadSampleFile (juce::File::getCurrentWorkingDirectory().getChildFile (spec), &error))
-            {
-                engine.publishSample (std::move (loaded));
-            }
-            else
-            {
-                std::cerr << error << std::endl;
-                return 2;
-            }
+            sample = loadSampleFile (juce::File::getCurrentWorkingDirectory().getChildFile (spec), &error);
+            if (sample == nullptr) { std::cerr << error << std::endl; return 2; }
         }
+        engine.publishSample (sample);
+    }
+
+    // ANALYZE -> MATTER: shape Matter from the sample's own partials.
+    PartialTable analysis;
+    if (hasOption (args, "--analyze"))
+    {
+        if (sample == nullptr) { std::cerr << "--analyze needs --sample" << std::endl; return 2; }
+        analysis = SampleAnalyzer::analyse (*sample);
+        if (! analysis.isValid()) { std::cerr << "Could not analyze the sample" << std::endl; return 2; }
+        const auto fit = SampleAnalyzer::fitShape (analysis);
+        patch.params[(size_t) paramIndex (Param::shapeForm)] = fit.form;
+        patch.params[(size_t) paramIndex (Param::shapeTension)] = fit.tension;
+        patch.params[(size_t) paramIndex (Param::shapeDecay)] = fit.decay;
+        patch.params[(size_t) paramIndex (Param::shapeMass)] = fit.mass;
+        patch.params[(size_t) paramIndex (Param::shapeDensity)] = fit.density;
+        patch.params[(size_t) paramIndex (Param::shapeDistribution)] = fit.distribution;
+        engine.control().resetTo (patch.params);
     }
 
     const auto dry = optionValue (args, "--dry");
@@ -286,6 +300,26 @@ int main (int argc, char* argv[])
     root->setProperty ("renderMs", renderMs);
     root->setProperty ("realtimeRatio", renderMs / (seconds * 1000.0));
     root->setProperty ("activeVoicesEnd", engine.activeVoices());
+
+    if (analysis.isValid())
+    {
+        auto* a = new juce::DynamicObject();
+        a->setProperty ("fundamentalHz", analysis.fundamentalHz);
+        a->setProperty ("partials", analysis.count);
+        a->setProperty ("harmonicity", analysis.harmonicity);
+        a->setProperty ("noiseFloorDb", analysis.noiseFloorDb);
+        a->setProperty ("attackSeconds", analysis.attackSeconds);
+        const auto fit = SampleAnalyzer::fitShape (analysis);
+        a->setProperty ("form", fit.form);
+        a->setProperty ("tension", fit.tension);
+        a->setProperty ("decay", fit.decay);
+        a->setProperty ("mass", fit.mass);
+        a->setProperty ("density", fit.density);
+        juce::Array<juce::var> ratios;
+        for (int i = 0; i < juce::jmin (8, analysis.count); ++i) ratios.add (analysis.partials[(size_t) i].ratio);
+        a->setProperty ("topRatios", ratios);
+        root->setProperty ("analysis", juce::var (a));
+    }
 
     juce::Array<juce::var> centroids; for (auto c : a.centroidTrack) centroids.add (c);
     root->setProperty ("centroidTrack", centroids);

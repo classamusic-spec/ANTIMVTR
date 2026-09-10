@@ -171,6 +171,7 @@ struct RibbonSpan
     Engine reactions live here rather than in the painter:
 
       Density  → ribbon count and sample count
+      Form     → organic ribbons flatten into crisp, hard-shouldered bands
       Tension  → orbits tighten toward the sphere, ribbons thin
       Surface  → the two edges roughen independently
       Mass     → the core opens (see `coreRadius`)
@@ -411,17 +412,22 @@ public:
             // Taper: nothing at the ends, swelling through the middle. The second term
             // is the swell itself — without it the profile is a flat-topped strip and
             // the ribbon reads as a stroked polyline, which is exactly what it is not.
+            // FORM flattens the swell: organic matter makes soft, bellied ribbons,
+            // crystalline matter makes hard-shouldered bands with square ends.
             const float arch = liquid::clampf (std::sin (3.14159265f * s), 0.0f, 1.0f);
-            const float taper = std::pow (arch, 0.80f) * (0.66f + 0.52f * arch * arch);
+            const float taper = std::pow (arch, liquid::lerp (0.80f, 0.28f, p.form))
+                                * (0.66f + 0.52f * arch * arch * (1.0f - 0.8f * p.form));
 
             // Incompressibility: stretched here → thin; slowed here → bulge.
             const int i0 = i > 0 ? i - 1 : 0, i1 = i < n - 1 ? i + 1 : n - 1;
             const float localStep = (out[i1].p - out[i0].p).length() / (float) (i1 - i0 > 0 ? i1 - i0 : 1);
             const float stretch = liquid::clampf (meanStep / (localStep > 1.0e-6f ? localStep : 1.0e-6f), 0.45f, 1.9f);
 
-            // Surface tension: a slow travelling wobble along the ribbon.
-            const float wobble = 1.0f + 0.11f * std::sin (s * r.wobbleFreq * 6.2831853f
-                                                          + motion * (1.3f + 0.9f * p.life) + r.wobblePhase);
+            // Surface tension: a slow travelling wobble along the ribbon, which
+            // crystalline matter (FORM) barely has.
+            const float wobble = 1.0f + 0.11f * (1.0f - 0.75f * p.form)
+                                     * std::sin (s * r.wobbleFreq * 6.2831853f
+                                                 + motion * (1.3f + 0.9f * p.life) + r.wobblePhase);
 
             out[i].width = liquid::clampf (widthBase * taper * std::pow (stretch, 0.7f) * wobble, 0.0f, 0.70f);
 

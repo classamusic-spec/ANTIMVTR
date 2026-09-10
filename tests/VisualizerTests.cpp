@@ -304,6 +304,24 @@ public:
             expect (LiquidOrganism::sampleCount (high) > LiquidOrganism::sampleCount (low), "DENSITY does not add detail");
         }
 
+        beginTest ("Form flattens the ribbon's belly into a hard-shouldered band");
+        {
+            LiquidOrganism o (0x11B0Fu);
+            auto organic = defaultParams();  organic.form = 0.0f;
+            auto crystal = defaultParams();  crystal.form = 1.0f;
+            std::array<RibbonSample, kBuffer> a {}, b {};
+            const int n = o.buildRibbon (0, organic, noise, a.data(), kBuffer);
+            o.buildRibbon (0, crystal, noise, b.data(), kBuffer);
+            const int quarter = n / 4;
+            // A crystalline ribbon is already near full width a quarter of the way in,
+            // where the organic one is still swelling toward its middle.
+            const float organicShoulder = a[(size_t) quarter].width / juce::jmax (1.0e-6f, a[(size_t) (n / 2)].width);
+            const float crystalShoulder = b[(size_t) quarter].width / juce::jmax (1.0e-6f, b[(size_t) (n / 2)].width);
+            expect (crystalShoulder > organicShoulder + 0.08f, "FORM did not flatten the ribbon profile");
+            // Both still taper to nothing at the ends.
+            expect (b[0].width <= 0.02f && b[(size_t) (n - 1)].width <= 0.02f, "a crystalline ribbon does not taper");
+        }
+
         beginTest ("Mass opens the core");
         {
             auto shut = defaultParams(); shut.mass = 0.0f;

@@ -237,8 +237,10 @@ void SampleSource::spawnGrain()
     g.age = 0;
     g.rate = rate;
 
-    // Scatter around the cloud centre; never outside the selection.
-    const double scatter = (double) p.spread * (double) grainRng.nextBipolar() * juce::jmin (length * 0.5, 0.5 * sample->sampleRate);
+    // Scatter around the cloud centre; never outside the selection. Even at
+    // spread 0 the grains breathe a little, at 1 they cover the whole selection.
+    const double reach = (0.12 + 0.88 * (double) p.spread) * length * 0.5;
+    const double scatter = (double) grainRng.nextBipolar() * reach;
     double start = cloudPos + scatter;
     const double span = juce::jmax (1.0, length - (double) g.length * rate);
     if (start < startFrame) start += span;

@@ -49,6 +49,7 @@ void GestureSource::prepare (double sampleRate, int maxBlockSize)
     tone.prepare (sr);
     pulseLp.prepare (sr);
     breathLp.prepare (sr);
+    pulseDc.prepare (sr, 60.0f);
     dcL.prepare (sr, 12.0f);
     dcR.prepare (sr, 12.0f);
 
@@ -80,7 +81,7 @@ void GestureSource::reset()
     comb.fill (0.0f);
     combWrite = 0; combDelay = 1; combDepth = 0.0f;
     pink.reset(); tilt.reset(); band.reset(); formant1.reset(); formant2.reset(); tone.reset();
-    pulseLp.reset(); breathLp.reset(); dcL.reset(); dcR.reset();
+    pulseLp.reset(); breathLp.reset(); pulseDc.reset(); dcL.reset(); dcR.reset();
     lastEnergy = 0.0f;
 }
 
@@ -151,7 +152,7 @@ void GestureSource::updateFilters()
 
     // Per-mode output trim: every gesture leaves this source at a comparable
     // level so switching mode changes character, not loudness.
-    static constexpr float kTrim[(int) Mode::Count] = { 1.30f, 5.2f, 0.24f, 0.95f, 2.10f, 28.0f };
+    static constexpr float kTrim[(int) Mode::Count] = { 1.30f, 5.2f, 0.24f, 0.95f, 0.95f, 28.0f };
     modeTrim = kTrim[(size_t) juce::jlimit (0, (int) Mode::Count - 1, (int) p.mode)];
     tonalBand = p.mode == Mode::Bow || p.mode == Mode::Electrical;
 
@@ -159,10 +160,11 @@ void GestureSource::updateFilters()
     //      band is normalised to unit peak gain (not unit noise gain) so a
     //      pitched gesture keeps its level as the band tightens, and the raw
     //      signal is blended back in as the band opens.
-    const float q = expMap (1.0f - p.bandwidth, 0.5f, 14.0f);
+    const float q = expMap (1.0f - p.bandwidth, 0.45f, 8.0f);
     band.set (f0, q);
     bandGain = tonalBand ? 1.0f / juce::jmax (0.5f, q) : band.bandpassNoiseGain();
-    dryMix = p.bandwidth * p.bandwidth * 0.7f;
+    // Wide keeps the whole spectrum, narrow focuses everything into the band.
+    dryMix = std::pow (p.bandwidth, 1.3f) * 0.85f;
 
     // ---- position: contact point comb tuned to the note. 0.5 is neutral.
     const float period = (float) sr / juce::jmax (20.0f, f0);
@@ -195,7 +197,9 @@ void GestureSource::updateFilters()
             break;
 
         case Mode::Friction:
+            // Roughness opens the rasp: dull scuff to a bright, torn scrape.
             tilt.set (900.0f, -0.35f + 1.15f * p.roughness);
+            tone.set (juce::jlimit (200.0f, (float) sr * 0.40f, expMap (p.roughness, 2000.0f, 12000.0f)), 0.8f);
             break;
 
         case Mode::Electrical:
@@ -218,9 +222,9 @@ inline float GestureSource::renderBow() noexcept
     if (bowPhase >= 1.0)
     {
         bowPhase -= 1.0;
-        const float base = 0.30f + 0.40f * pressureEff;
+        const float base = 0.16f + 0.44f * pressureEff;   // bow contact: a short stick is spiky and rich
         bowGrip = juce::jlimit (0.10f, 0.90f, base * (1.0f + p.roughness * 0.4f * shapeRng.nextBipolar()));
-        bowSlipNoise = p.roughness * (0.4f + 0.6f * shapeRng.nextFloat());
+        bowSlipNoise = p.roughness * p.roughness * (0.4f + 0.6f * shapeRng.nextFloat());
     }
 
     const float grip = bowGrip;
@@ -236,7 +240,7 @@ inline float GestureSource::renderBow() noexcept
 
     // Friction noise lives in the slip, where the string is sliding.
     if (bowPhase >= (double) grip)
-        v += noiseRng.nextBipolar() * bowSlipNoise * 1.1f;
+        v += noiseRng.nextBipolar() * bowSlipNoise * 1.6f;
 
     bowLp += bowLpCoeff * (v - bowLp);
     return bowLp * 0.75f;
@@ -313,7 +317,7 @@ inline float GestureSource::renderFriction() noexcept
         eventCountdown = juce::jmax (2.0, sr / rate * (0.6 + 0.8 * (double) eventRng.nextFloat()));
     }
 
-    const float w = tilt.process (noiseRng.nextBipolar());
+    const float w = tone.lowpass (tilt.process (noiseRng.nextBipolar())) * tone.lowpassNoiseGain();
     const float drive = 1.0f + 5.0f * pressureEff;
     const float rasp = fastTanh (w * drive);
     return rasp * grainSum * 0.7f;
@@ -337,7 +341,7 @@ inline float GestureSource::renderElectrical() noexcept
     }
 
     const float fizz = noiseRng.nextBipolar() * 0.11f * p.roughness * sputter;
-    return pulseLp.process (impulse) * 0.9f + fizz;
+    return pulseDc.process (pulseLp.process (impulse)) * 0.9f + fizz;
 }
 
 inline float GestureSource::applyComb (float x) noexcept
@@ -372,7 +376,7 @@ void GestureSource::finalise (float* l, float* r, int n, const RenderContext& ct
     {
         dcL.reset(); dcR.reset();
         pink.reset(); tilt.sanitise(); band.reset(); tone.reset();
-        formant1.reset(); formant2.reset(); pulseLp.reset(); breathLp.reset();
+        formant1.reset(); formant2.reset(); pulseLp.reset(); pulseDc.reset(); breathLp.reset();
         comb.fill (0.0f);
         bowLp = 0.0f;
         for (auto& g : grains) g.active = false;

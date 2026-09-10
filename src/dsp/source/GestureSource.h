@@ -123,7 +123,9 @@ private:
     excitation::TiltFilter       tilt;
     excitation::Svf              band, formant1, formant2, tone;
     excitation::ExciterLowpass   pulseLp, breathLp;
-    excitation::DcBlocker        dcL, dcR;
+    // Each spark leaves the low pass with unit area; without its own high pass the
+    // random walk of a sparse pulse train shows up as sub-audio wander.
+    excitation::DcBlocker        pulseDc, dcL, dcR;
     float bandGain = 1.0f, dryMix = 0.0f, modeTrim = 1.0f;
     bool  tonalBand = false;   ///< pitched modes normalise the band by its peak gain, noisy ones by its noise gain
 

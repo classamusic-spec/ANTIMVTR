@@ -1,13 +1,9 @@
 #include "PresetManager.h"
+#include "FactoryContent.h"
 #include "dsp/fx/SpacePresets.h"
 
 namespace am
 {
-
-namespace
-{
-    inline void set (PatchState& s, Param p, float v) { s.params[(size_t) paramIndex (p)] = ParameterRegistry::get (p).clampValue (v); }
-}
 
 PresetManager::PresetManager()
 {
@@ -30,42 +26,10 @@ void PresetManager::addFactory (FactoryPreset preset)
 
 void PresetManager::registerBuiltIns()
 {
-    // Phase 0 reference patches. The full factory library is generated in
-    // src/presets/FactoryContent.cpp in later phases; these ensure the
-    // preset path works end to end from the very first build.
+    // "Init" is the blank object every other patch is a departure from; the
+    // reference library itself lives in FactoryContent.cpp.
     addFactory ({ "Init", "INIT", { "basic" }, [] (PatchState& s) { s = initPatch(); } });
-
-    addFactory ({ "Void Bloom", "PAD", { "pad", "evolving", "cinematic" }, [] (PatchState& s)
-    {
-        s.meta.name = "Void Bloom"; s.meta.category = "PAD"; s.meta.tags = { "pad", "evolving", "cinematic" };
-        set (s, Param::ampAttack, 0.8f);  set (s, Param::ampRelease, 2.5f);
-        set (s, Param::waveUnison, 4);    set (s, Param::waveDetune, 0.22f); set (s, Param::waveSpread, 0.8f);
-        set (s, Param::shapeDensity, 0.65f); set (s, Param::shapeForm, 0.35f); set (s, Param::shapeMass, 0.55f);
-        set (s, Param::shapeTension, 0.4f);  set (s, Param::shapeDecay, 0.7f); set (s, Param::shapeSurface, 0.25f);
-        set (s, Param::evolveMelt, 0.3f);    set (s, Param::evolveMagnet, 0.4f);
-        set (s, Param::spaceType, 0); set (s, Param::spaceMix, 0.45f); set (s, Param::spaceSize, 0.7f);
-    }});
-
-    addFactory ({ "Carbon Bass", "BASS", { "bass", "organic" }, [] (PatchState& s)
-    {
-        s.meta.name = "Carbon Bass"; s.meta.category = "BASS"; s.meta.tags = { "bass", "organic" };
-        set (s, Param::ampAttack, 0.002f); set (s, Param::ampDecay, 0.4f); set (s, Param::ampSustain, 0.7f); set (s, Param::ampRelease, 0.15f);
-        set (s, Param::waveOctave, -1);   set (s, Param::shapeDensity, 0.3f); set (s, Param::shapeForm, 0.15f);
-        set (s, Param::shapeMass, 0.8f);   set (s, Param::shapeTension, 0.35f); set (s, Param::shapeDecay, 0.35f);
-        set (s, Param::shapeSurface, 0.45f); set (s, Param::masterMode, 2);    set (s, Param::masterGlide, 0.08f);
-        set (s, Param::spaceType, 2); set (s, Param::spaceMix, 0.12f);
-    }});
-
-    addFactory ({ "Crystal Ghost", "KEYS", { "keys", "bells", "crystal" }, [] (PatchState& s)
-    {
-        s.meta.name = "Crystal Ghost"; s.meta.category = "KEYS"; s.meta.tags = { "keys", "bells", "crystal" };
-        set (s, Param::sourceSelected, 2); // IMPACT
-        set (s, Param::ampAttack, 0.001f); set (s, Param::ampDecay, 1.5f); set (s, Param::ampSustain, 0.0f); set (s, Param::ampRelease, 1.2f);
-        set (s, Param::shapeMaterialA, 0); set (s, Param::shapeDensity, 0.45f); set (s, Param::shapeForm, 0.75f);
-        set (s, Param::shapeMass, 0.25f);  set (s, Param::shapeTension, 0.7f); set (s, Param::shapeDecay, 0.85f);
-        set (s, Param::shapeSurface, 0.1f); set (s, Param::evolveMagnet, 0.6f);
-        set (s, Param::spaceType, 6); set (s, Param::spaceMix, 0.4f);
-    }});
+    FactoryContent::registerAll (*this);
 }
 
 PatchState PresetManager::buildFactory (int index) const
@@ -74,9 +38,23 @@ PatchState PresetManager::buildFactory (int index) const
     if (index >= 0 && index < (int) factory.size())
     {
         const auto& f = factory[(size_t) index];
+        const auto beforeBuild = s.params;
         f.build (s);
-        // Every factory patch carries the curated rack of its Space type unless the builder set the rack itself.
+
+        // Every factory patch carries the curated rack of its Space type unless
+        // the builder set the rack itself: the curated values are applied first
+        // and then the individual rack parameters the builder touched are put
+        // back, so a patch can lean on a Space and still tighten one module.
+        const auto afterBuild = s.params;
         SpacePresets::apply (paramChoice (s.params, Param::spaceType), s.params);
+        for (const auto& d : ParameterRegistry::all())
+        {
+            if (d.group != ParamGroup::Space) continue;
+            const size_t i = (size_t) paramIndex (d.param);
+            if (afterBuild[i] != beforeBuild[i])
+                s.params[i] = afterBuild[i];
+        }
+
         s.meta.name = f.name;
         s.meta.category = f.category;
         s.meta.tags = f.tags;

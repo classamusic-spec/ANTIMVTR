@@ -139,6 +139,86 @@ inline int gridColumns (int count, int width, int height) noexcept
 
 //==============================================================================
 /**
+    The margin a panel keeps inside its own bounds so its drop shadow has
+    somewhere to fall. Nothing may paint outside a component, so the slab is
+    drawn this far in and the shadow lands in the margin.
+*/
+inline float panelShadowMargin (float width, float height) noexcept
+{
+    if (width <= 0.0f || height <= 0.0f) return 0.0f;
+    return juce::jlimit (3.0f, 7.0f, juce::jmin (width, height) * 0.013f);
+}
+
+/** Inner padding of a panel: the gutter its title and content sit in. */
+inline float panelPadding (float width) noexcept
+{
+    return juce::jlimit (8.0f, 22.0f, width * 0.042f);
+}
+
+/**
+    The four screws that bolt a panel to the chassis: where their centres sit and
+    how big their heads are. `headerLeft` is the first x a title may use without
+    touching the top-left screw, and it is always inside the panel's padding.
+*/
+struct PanelHardware
+{
+    float inset = 0.0f;    ///< distance from each edge to a screw centre
+    float radius = 0.0f;   ///< screw head radius (0 when the panel is too small to bolt down)
+
+    float headerLeft() const noexcept { return inset + radius; }
+    bool  isEmpty() const noexcept { return radius <= 0.0f; }
+};
+
+inline PanelHardware panelHardware (float width, float height) noexcept
+{
+    PanelHardware h;
+    const float small = juce::jmin (width, height);
+    if (small < 26.0f) return h;
+    h.radius = juce::jlimit (2.0f, 4.0f, small * 0.0085f);
+    h.inset  = juce::jlimit (6.0f, 13.0f, small * 0.024f);
+    return h;
+}
+
+//==============================================================================
+/**
+    How a horizontal slider divides its row: a label column, the capsule track
+    and a right-aligned value column, plus the sizes of the track and its handle.
+
+    The track is inset by the handle's radius at both ends so the handle never
+    leaves the row, whatever the value.
+*/
+struct SliderRow
+{
+    float labelWidth = 0.0f, valueWidth = 0.0f;
+    float trackX = 0.0f, trackWidth = 0.0f;
+    float trackHeight = 0.0f, handleRadius = 0.0f;
+
+    float labelX() const noexcept { return 0.0f; }
+    float valueX() const noexcept { return trackX + trackWidth + handleRadius + 3.0f; }
+    /** Centre of the handle for a normalised position. */
+    float handleX (float proportion) const noexcept { return trackX + trackWidth * juce::jlimit (0.0f, 1.0f, proportion); }
+};
+
+inline SliderRow sliderRow (float width, float height, bool withLabel, bool withValue) noexcept
+{
+    SliderRow r;
+    if (width <= 0.0f || height <= 0.0f) return r;
+    r.labelWidth = withLabel ? juce::jmin (width * 0.24f, 92.0f) : 0.0f;
+    r.valueWidth = withValue ? juce::jmin (width * 0.16f, 58.0f) : 0.0f;
+    r.handleRadius = juce::jlimit (4.5f, 9.0f, height * 0.24f);
+    r.trackHeight = juce::jlimit (4.0f, 11.0f, r.handleRadius * 1.15f);
+
+    const float middle = juce::jmax (0.0f, width - r.labelWidth - r.valueWidth);
+    const float margin = r.handleRadius + 3.0f;
+    // A row too narrow for the handle keeps a zero-length track rather than a
+    // negative one: the handle then sits still instead of drawing outside the row.
+    r.trackWidth = juce::jmax (0.0f, middle - margin * 2.0f);
+    r.trackX = r.labelWidth + juce::jmin (margin, middle * 0.5f);
+    return r;
+}
+
+//==============================================================================
+/**
     Concentric radii of a knob, from the rim inwards: the modulation orbit, a
     clear moat, the value arc and the sphere body. All values are diameters in
     the same units as `diameter`, which is the knob's square footprint.

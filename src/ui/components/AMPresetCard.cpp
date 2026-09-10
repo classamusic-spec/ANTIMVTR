@@ -32,8 +32,6 @@ void AMPresetCard::drawArt (juce::Graphics& g, juce::Rectangle<float> a, const j
     juce::Graphics::ScopedSaveState save (g);
     juce::Path clip; clip.addRoundedRectangle (a, corner);
     g.reduceClipRegion (clip);
-    g.setColour (juce::Colour (0xff050509));
-    g.fillRect (a);
 
     juce::Random rng (seed);
     const auto c = a.getCentre();
@@ -156,12 +154,15 @@ void AMPresetCard::paint (juce::Graphics& g)
 
     auto area = b.reduced (juce::jmin (12.0f, b.getWidth() * 0.06f));
     auto art = area.removeFromTop (area.getHeight() * 0.5f);
+    draw::insetWell (g, art, corner * 0.7f, juce::Colour (0xff05050a));
     drawArt (g, art, category, name.hashCode() & 0x7fff, juce::jmax (on, hv * 0.5f), corner * 0.7f);
+    draw::screenGlass (g, art, corner * 0.7f, 0.9f);
 
     area.removeFromTop (juce::jmin (10.0f, area.getHeight() * 0.1f));
     const float nameH = juce::jlimit (9.0f, 14.0f, area.getHeight() * 0.22f);
     auto nameArea = area.removeFromTop (nameH * 1.5f);
-    draw::trackedText (g, name, nameArea, juce::Justification::centredLeft, Theme::displayFont (nameH, 0.14f),
+    draw::trackedText (g, name.toUpperCase(), nameArea, juce::Justification::centredLeft,
+                       draw::fitFont (Theme::labelFontStrong (nameH), name.toUpperCase(), nameArea.getWidth()),
                        Theme::textPrimary.interpolatedWith (accent, 0.3f * on));
     if (on > 0.5f)
     {

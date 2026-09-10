@@ -72,7 +72,7 @@ void AMWaveView::paint (juce::Graphics& g)
         const float norm = peak > 0.001f ? 0.9f / juce::jmax (peak, 0.25f) : 0.0f;
         trace.clear();
         fill.clear();
-        fill.startNewSubPath (inner.getX(), inner.getCentreY());
+        fill.startNewSubPath (inner.getX(), inner.getBottom());
         for (int i = 0; i < n; ++i)
         {
             const float x = inner.getX() + inner.getWidth() * (float) i / (float) (n - 1);
@@ -80,10 +80,13 @@ void AMWaveView::paint (juce::Graphics& g)
             if (i == 0) trace.startNewSubPath (x, y); else trace.lineTo (x, y);
             fill.lineTo (x, y);
         }
-        fill.lineTo (inner.getRight(), inner.getCentreY());
+        // The fill hangs under the trace and fades out toward the floor of the screen.
+        fill.lineTo (inner.getRight(), inner.getBottom());
         fill.closeSubPath();
 
-        juce::ColourGradient grad (accent.withAlpha (0.16f + 0.1f * energy), 0.0f, inner.getY(), accent.withAlpha (0.02f), 0.0f, inner.getBottom(), false);
+        juce::ColourGradient grad (accent.withAlpha (0.22f + 0.12f * energy), 0.0f, inner.getY(),
+                                   accent.withAlpha (0.0f), 0.0f, inner.getBottom(), false);
+        grad.addColour (0.55, accent.withAlpha (0.06f));
         g.setGradientFill (grad);
         g.fillPath (fill);
         draw::glowPath (g, trace, accent, 1.3f, 8.0f, 0.45f + 0.55f * energy);
@@ -96,6 +99,8 @@ void AMWaveView::paint (juce::Graphics& g)
             g.strokePath (trace, juce::PathStrokeType (1.0f));
         }
     }
+
+    draw::screenGlass (g, b, corner, 1.0f);
 
     // arrows
     if (arrows)
@@ -140,26 +145,21 @@ void AMSpectrumView::setMagnitudes (const float* mags, int count)
 
 void AMSpectrumView::buildMountain (juce::Path& p, const std::array<float, kBands>& src, juce::Rectangle<float> inner, float scale) const
 {
+    // A skyline, not a curve: every band is a flat top with vertical risers
+    // either side of it, which is what the reference display looks like.
     p.clear();
-    p.startNewSubPath (inner.getX(), inner.getBottom() + 2.0f);
-    auto pointAt = [&] (int i)
+    const float step = inner.getWidth() / (float) kBands;
+    const float floorY = inner.getBottom() + 2.0f;
+    p.startNewSubPath (inner.getX(), floorY);
+    for (int i = 0; i < kBands; ++i)
     {
-        const float u = (float) i / (float) (kBands - 1);
-        const float v = juce::jlimit (0.0f, 1.0f, src[(size_t) juce::jlimit (0, kBands - 1, i)] * scale);
-        return juce::Point<float> (inner.getX() + inner.getWidth() * u, inner.getBottom() - v * inner.getHeight() * 0.9f);
-    };
-    // smooth ridge through midpoints for a mountain-like silhouette
-    auto prev = pointAt (0);
-    p.lineTo (prev);
-    for (int i = 1; i < kBands; ++i)
-    {
-        const auto cur = pointAt (i);
-        const auto mid = (prev + cur) * 0.5f;
-        p.quadraticTo (prev, mid);
-        prev = cur;
+        const float v = juce::jlimit (0.0f, 1.0f, src[(size_t) i] * scale);
+        const float x0 = inner.getX() + step * (float) i;
+        const float y = inner.getBottom() - v * inner.getHeight() * 0.9f;
+        p.lineTo (x0, y);
+        p.lineTo (x0 + step, y);
     }
-    p.lineTo (prev);
-    p.lineTo (inner.getRight(), inner.getBottom() + 2.0f);
+    p.lineTo (inner.getRight(), floorY);
     p.closeSubPath();
 }
 
@@ -167,64 +167,78 @@ void AMSpectrumView::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
     const float corner = juce::jmin (10.0f, b.getHeight() * 0.1f);
-    draw::insetSurface (g, b, corner);
+    draw::insetWell (g, b, corner);
 
     auto inner = b.reduced (6.0f, 6.0f);
-    juce::Graphics::ScopedSaveState save (g);
-    g.reduceClipRegion (b.reduced (1.0f).toNearestInt());
+    {
+        juce::Graphics::ScopedSaveState save (g);
+        g.reduceClipRegion (b.reduced (1.0f).toNearestInt());
 
-    // fragment grid + horizontal hairlines
-    g.setColour (juce::Colours::white.withAlpha (0.04f));
-    for (int i = 1; i < fragments; ++i)
-    {
-        const float x = inner.getX() + inner.getWidth() * (float) i / (float) fragments;
-        g.drawLine (x, inner.getY(), x, inner.getBottom(), 1.0f);
-    }
-    g.setColour (juce::Colours::white.withAlpha (0.025f));
-    for (int i = 1; i < 4; ++i)
-    {
-        const float y = inner.getY() + inner.getHeight() * (float) i / 4.0f;
-        g.drawLine (inner.getX(), y, inner.getRight(), y, 1.0f);
-    }
-
-    // layered translucent mountains: haze (violet, slowest), peak-hold (blue), live (magenta)
-    buildMountain (haze, ghost, inner, 1.0f);
-    {
-        juce::ColourGradient grad (Theme::violet.withAlpha (0.22f), 0.0f, inner.getY(), Theme::violet.withAlpha (0.02f), 0.0f, inner.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillPath (haze);
-    }
-    buildMountain (hold, slow, inner, 0.97f);
-    {
-        juce::ColourGradient grad (Theme::blue.withAlpha (0.42f), 0.0f, inner.getY(), Theme::blue.withAlpha (0.04f), 0.0f, inner.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillPath (hold);
-        g.setColour (Theme::cyan.withAlpha (0.55f));
-        g.strokePath (hold, juce::PathStrokeType (1.0f));
-    }
-    buildMountain (live, bands, inner, 0.9f);
-    {
-        juce::ColourGradient grad (accent.withAlpha (0.48f), 0.0f, inner.getY(), Theme::violet.withAlpha (0.05f), 0.0f, inner.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillPath (live);
-        draw::glowPath (g, live, accent.withAlpha (0.85f), 1.0f, 5.0f, 0.25f + 0.6f * activity);
-    }
-
-    // baseline
-    g.setColour (accent.withAlpha (0.35f));
-    g.drawLine (inner.getX(), inner.getBottom(), inner.getRight(), inner.getBottom(), 1.0f);
-
-    // sparkle dots at band peaks when active
-    if (activity > 0.05f)
-    {
-        for (int i = 0; i < kBands; i += 4)
+        // fragment grid + horizontal hairlines
+        g.setColour (juce::Colours::white.withAlpha (0.04f));
+        for (int i = 1; i < fragments; ++i)
         {
-            const float u = (float) i / (float) (kBands - 1);
-            const float x = inner.getX() + inner.getWidth() * u;
-            const float y = inner.getBottom() - juce::jlimit (0.0f, 1.0f, slow[(size_t) i] * 0.97f) * inner.getHeight() * 0.9f;
-            draw::glowDot (g, { x, y }, 1.3f, Theme::textPrimary, 0.5f * activity);
+            const float x = inner.getX() + inner.getWidth() * (float) i / (float) fragments;
+            g.drawLine (x, inner.getY(), x, inner.getBottom(), 1.0f);
+        }
+        g.setColour (juce::Colours::white.withAlpha (0.025f));
+        for (int i = 1; i < 4; ++i)
+        {
+            const float y = inner.getY() + inner.getHeight() * (float) i / 4.0f;
+            g.drawLine (inner.getX(), y, inner.getRight(), y, 1.0f);
+        }
+
+        // Two colours across the width: cool blue on the left, magenta on the right.
+        auto acrossFill = [&] (float alphaLeft, float alphaRight)
+        {
+            juce::ColourGradient grad (Theme::blue.withAlpha (alphaLeft), inner.getX(), inner.getCentreY(),
+                                       accent.withAlpha (alphaRight), inner.getRight(), inner.getCentreY(), false);
+            grad.addColour (0.5, Theme::violet.withAlpha ((alphaLeft + alphaRight) * 0.5f));
+            g.setGradientFill (grad);
+        };
+
+        // The slow ghost sits behind as a haze.
+        buildMountain (haze, ghost, inner, 1.0f);
+        acrossFill (0.10f, 0.12f);
+        g.fillPath (haze);
+
+        // Peak hold: translucent fill with a bright top edge.
+        buildMountain (hold, slow, inner, 0.97f);
+        acrossFill (0.20f, 0.22f);
+        g.fillPath (hold);
+        acrossFill (0.55f, 0.60f);
+        g.strokePath (hold, juce::PathStrokeType (1.0f));
+
+        // Live: brighter fill, bright top edge, and a glow that follows activity.
+        buildMountain (live, bands, inner, 0.9f);
+        acrossFill (0.34f, 0.40f);
+        g.fillPath (live);
+        if (activity > 0.02f)
+        {
+            acrossFill (0.16f * activity, 0.20f * activity);
+            g.strokePath (live, juce::PathStrokeType (4.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+        acrossFill (0.95f, 0.98f);
+        g.strokePath (live, juce::PathStrokeType (1.3f));
+
+        // baseline
+        g.setColour (accent.withAlpha (0.3f));
+        g.drawLine (inner.getX(), inner.getBottom(), inner.getRight(), inner.getBottom(), 1.0f);
+
+        // sparkle dots at band peaks when active
+        if (activity > 0.05f)
+        {
+            for (int i = 0; i < kBands; i += 4)
+            {
+                const float x = inner.getX() + inner.getWidth() * ((float) i + 0.5f) / (float) kBands;
+                const float y = inner.getBottom() - juce::jlimit (0.0f, 1.0f, slow[(size_t) i] * 0.97f) * inner.getHeight() * 0.9f;
+                const float u = (float) i / (float) (kBands - 1);
+                draw::glowDot (g, { x, y }, 1.3f, Theme::blue.interpolatedWith (accent, u), 0.5f * activity);
+            }
         }
     }
+
+    draw::screenGlass (g, b, corner, 1.0f);
 }
 
 } // namespace am::ui

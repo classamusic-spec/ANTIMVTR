@@ -161,6 +161,8 @@ void AMXYPad::paint (juce::Graphics& g)
     draw::trackedText (g, xLabel, bottom, juce::Justification::centredLeft, Theme::labelFont (h), Theme::textSecondary);
     draw::trackedText (g, formatX ? formatX (px) : juce::String (px, 2), bottom, juce::Justification::centredRight,
                        Theme::valueFont (h + 1.0f), Theme::textValue.interpolatedWith (accent, 0.35f + 0.4f * lit));
+    draw::screenGlass (g, f, corner, 0.9f);
+
     {
         juce::Graphics::ScopedSaveState save (g);
         auto left = juce::Rectangle<float> (f.getX() - labelH, f.getY(), labelH, f.getHeight());

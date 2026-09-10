@@ -256,6 +256,104 @@ public:
 };
 
 //==============================================================================
+class PanelHardwareTests : public juce::UnitTest
+{
+public:
+    PanelHardwareTests() : juce::UnitTest ("Panel hardware", "uilayout") {}
+
+    void runTest() override
+    {
+        // Every panel size the editor actually produces, from the widest slab on the
+        // 1600 x 1000 layout down to the compact effect panels at 1100 x 690.
+        const float widths[]  = { 120.0f, 180.0f, 260.0f, 330.0f, 458.0f, 540.0f, 780.0f, 1160.0f, 1560.0f };
+        const float heights[] = { 40.0f, 60.0f, 90.0f, 140.0f, 230.0f, 300.0f, 470.0f, 780.0f };
+
+        beginTest ("Screws sit wholly inside the slab, four of them, without touching");
+        for (float w : widths)
+            for (float h : heights)
+            {
+                const auto hw = panelHardware (w, h);
+                const juce::String at = " at " + juce::String (w) + "x" + juce::String (h);
+                if (hw.isEmpty()) continue;
+                expect (hw.inset - hw.radius >= 1.0f, "screw head hangs off the edge" + at);
+                expect (hw.inset + hw.radius < juce::jmin (w, h) * 0.5f, "opposite screws overlap" + at);
+                expect (hw.radius >= 2.0f && hw.radius <= 4.0f, "screw head is the wrong size" + at);
+            }
+
+        beginTest ("A title never collides with the screw above it");
+        for (float w : widths)
+            for (float h : heights)
+                expect (panelHardware (w, h).headerLeft() <= panelPadding (w) + 0.01f,
+                        "the top-left screw reaches into the header at " + juce::String (w) + "x" + juce::String (h));
+
+        beginTest ("Hardware grows with the panel and then stops");
+        expect (panelHardware (200.0f, 200.0f).radius <= panelHardware (900.0f, 900.0f).radius, "a bigger panel has smaller screws");
+        expect (panelHardware (200.0f, 200.0f).inset <= panelHardware (900.0f, 900.0f).inset, "a bigger panel has tighter screws");
+        expectEquals (panelHardware (4000.0f, 4000.0f).radius, panelHardware (900.0f, 900.0f).radius);
+
+        beginTest ("A panel too small to bolt down carries no screws");
+        expect (panelHardware (18.0f, 12.0f).isEmpty());
+        expect (panelHardware (0.0f, 0.0f).isEmpty());
+        expect (panelHardware (-40.0f, 90.0f).isEmpty());
+    }
+};
+
+//==============================================================================
+class SliderRowTests : public juce::UnitTest
+{
+public:
+    SliderRowTests() : juce::UnitTest ("Slider row layout", "uilayout") {}
+
+    void runTest() override
+    {
+        const float widths[]  = { 60.0f, 90.0f, 140.0f, 200.0f, 320.0f, 480.0f, 900.0f };
+        const float heights[] = { 14.0f, 18.0f, 22.0f, 28.0f, 36.0f, 48.0f };
+
+        beginTest ("Label, track and value keep to their own columns");
+        for (float w : widths)
+            for (float h : heights)
+                for (bool label : { false, true })
+                    for (bool value : { false, true })
+                    {
+                        const auto r = sliderRow (w, h, label, value);
+                        const juce::String at = " at " + juce::String (w) + "x" + juce::String (h);
+                        expect (r.trackX >= r.labelWidth - 0.01f, "the track starts inside the label" + at);
+                        expect (r.trackX + r.trackWidth <= w - r.valueWidth + 0.01f, "the track runs into the value" + at);
+                        expect (r.labelWidth >= 0.0f && r.valueWidth >= 0.0f && r.trackWidth >= 0.0f, "a negative column" + at);
+                    }
+
+        beginTest ("The handle stays inside the row at both ends of the travel");
+        for (float w : widths)
+            for (float h : heights)
+            {
+                const auto r = sliderRow (w, h, true, true);
+                const juce::String at = " at " + juce::String (w) + "x" + juce::String (h);
+                expect (r.handleX (0.0f) - r.handleRadius >= -0.01f, "the handle leaves the row on the left" + at);
+                expect (r.handleX (1.0f) + r.handleRadius <= w + 0.01f, "the handle leaves the row on the right" + at);
+                expect (r.trackHeight <= h, "the track is taller than its row" + at);
+                expect (r.trackHeight <= r.handleRadius * 2.0f, "the handle is thinner than the groove it runs in" + at);
+            }
+
+        beginTest ("Hiding the label and the value gives the track the whole row");
+        {
+            const auto bare = sliderRow (200.0f, 24.0f, false, false);
+            const auto full = sliderRow (200.0f, 24.0f, true, true);
+            expectEquals (bare.labelWidth, 0.0f);
+            expectEquals (bare.valueWidth, 0.0f);
+            expect (bare.trackWidth > full.trackWidth, "hiding the columns did not lengthen the track");
+        }
+
+        beginTest ("Degenerate rows stay finite");
+        for (auto r : { sliderRow (0.0f, 0.0f, true, true), sliderRow (-10.0f, 20.0f, true, true), sliderRow (12.0f, 3.0f, true, true) })
+        {
+            expect (std::isfinite (r.trackWidth) && r.trackWidth >= 0.0f);
+            expect (std::isfinite (r.handleRadius) && r.handleRadius >= 0.0f);
+            expect (std::isfinite (r.trackHeight) && r.trackHeight >= 0.0f);
+        }
+    }
+};
+
+//==============================================================================
 class SourceSelectorLayoutTests : public juce::UnitTest
 {
 public:
@@ -408,6 +506,8 @@ static ModRowLayoutTests modRowLayoutTests;
 static ModScopeGridTests modScopeGridTests;
 static GridColumnTests gridColumnTests;
 static KnobGeometryTests knobGeometryTests;
+static PanelHardwareTests panelHardwareTests;
+static SliderRowTests sliderRowTests;
 static SourceSelectorLayoutTests sourceSelectorLayoutTests;
 static WaveRulerTests waveRulerTests;
 static EnvelopeStageTests envelopeStageTests;

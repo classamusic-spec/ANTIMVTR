@@ -194,26 +194,37 @@ void EvolvePanel::OperatorCell::paint (juce::Graphics& g)
     const float labelH = juce::jlimit (10.0f, 16.0f, b.getHeight() * 0.24f);
     auto tile = b.reduced (b.getWidth() * 0.06f, 2.0f);
     const float corner = juce::jmin (10.0f, tile.getWidth() * 0.12f);
-    auto iconArea = tile.withTrimmedBottom (labelH + 6.0f).reduced (tile.getWidth() * 0.22f, tile.getHeight() * 0.12f);
+    auto iconArea = tile.withTrimmedBottom (labelH + 6.0f).reduced (tile.getWidth() * 0.19f, tile.getHeight() * 0.10f);
     const float d = juce::jmin (iconArea.getWidth(), iconArea.getHeight());
     iconArea = iconArea.withSizeKeepingCentre (d, d);
+    const auto pair = Theme::accentPair (Theme::violet);
 
-    // tile
-    if (on > 0.02f)
-    {
-        draw::glowRoundedRect (g, tile, corner, Theme::violet, 12.0f, 0.5f * on);
-        juce::ColourGradient grad (Theme::violet.withAlpha (0.20f * on), tile.getX(), tile.getY(), Theme::violet.withAlpha (0.06f * on), tile.getX(), tile.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillRoundedRectangle (tile, corner);
-        g.setColour (Theme::violet.withAlpha (0.45f * on));
-        g.drawRoundedRectangle (tile.reduced (0.5f), corner, 1.0f);
-    }
+    // Every operator has a seat cut into the panel; the chosen one is a key raised
+    // out of it and lit, so the row reads as four switches rather than three drawings.
+    draw::insetWell (g, tile, corner, Theme::panelInset, 0.85f);
     if (hv > 0.02f)
     {
-        g.setColour (juce::Colours::white.withAlpha (0.035f * hv));
+        g.setColour (juce::Colours::white.withAlpha (0.045f * hv));
         g.fillRoundedRectangle (tile, corner);
-        g.setColour (Theme::border.withAlpha (0.1f * hv));
+        g.setColour (pair.second.withAlpha (0.18f * hv));
         g.drawRoundedRectangle (tile.reduced (0.5f), corner, 1.0f);
+    }
+    if (on > 0.02f)
+    {
+        auto key = tile.reduced (1.6f);
+        const float kc = juce::jmax (1.0f, corner - 1.6f);
+        draw::glowRoundedRect (g, key, kc, pair.second, 12.0f, 0.45f * on);
+
+        draw::SlabStyle style;
+        style.top    = Theme::panelTop.brighter (0.14f);
+        style.bottom = Theme::panel;
+        style.shadow = 0.5f * on;
+        style.brush  = 0.6f;
+        draw::raisedSlab (g, key, kc, style);
+
+        draw::gradientCapsule (g, key.reduced (0.8f), kc - 0.8f, pair.first, pair.second, 0.26f * on);
+        g.setColour (pair.second.withAlpha (0.5f * on));
+        g.drawRoundedRectangle (key.reduced (0.8f), kc - 0.8f, 1.0f);
     }
 
     // icon with a glow proportional to the operator amount (real value) and selection
@@ -308,7 +319,7 @@ void EvolvePanel::resized()
 {
     auto area = contentBounds();
     const int gap = juce::jmax (4, area.getHeight() / 30);
-    auto cellArea = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.52f));
+    auto cellArea = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.58f));
     layoutKnobRow (cellArea, { cells[0].get(), cells[1].get(), cells[2].get(), cells[3].get() });
     area.removeFromTop (gap);
     const int sliderH = juce::jmax (18, area.getHeight() / 2 - gap / 2);

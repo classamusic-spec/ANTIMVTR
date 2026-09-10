@@ -80,8 +80,10 @@ void AMSourceSelector::drawThumbnail (juce::Graphics& g, const Item& item, juce:
     juce::Path clip; clip.addEllipse (circle);
     g.reduceClipRegion (clip);
 
-    // Dark glass disc
-    juce::ColourGradient base (juce::Colour (0xff1a1a24), c.x - r * 0.4f, c.y - r * 0.5f, juce::Colour (0xff050508), c.x + r * 0.5f, c.y + r * 0.9f, true);
+    // A dark glass ball: lit from the top-left like everything else on the panel.
+    juce::ColourGradient base (juce::Colour (0xff232733), c.x + draw::kLightX * r * 0.55f, c.y + draw::kLightY * r * 0.5f,
+                               juce::Colour (0xff040508), c.x - draw::kLightX * r * 1.1f, c.y - draw::kLightY * r * 1.05f, true);
+    base.addColour (0.5, juce::Colour (0xff0d1017));
     g.setGradientFill (base);
     g.fillEllipse (circle);
     // ambient tint in the source accent
@@ -189,12 +191,37 @@ void AMSourceSelector::drawThumbnail (juce::Graphics& g, const Item& item, juce:
         }
     }
 
-    // glass rim + vignette
-    juce::ColourGradient vignette (juce::Colours::transparentBlack, c.x, c.y, juce::Colours::black.withAlpha (0.45f), c.x, c.y + r, true);
-    g.setGradientFill (vignette);
-    g.fillEllipse (circle);
-    g.setColour (juce::Colours::white.withAlpha (0.06f + 0.08f * on));
-    g.drawEllipse (circle.reduced (1.0f), 1.0f);
+    // The glass over the art: thickness toward the shaded edge, a rim light on the
+    // lit one, and a small specular dot in the upper left.
+    {
+        juce::ColourGradient thickness (juce::Colours::transparentBlack, c.x + draw::kLightX * r * 0.5f, c.y + draw::kLightY * r * 0.5f,
+                                        juce::Colours::black.withAlpha (0.55f), c.x - draw::kLightX * r * 1.15f, c.y - draw::kLightY * r * 1.15f, true);
+        thickness.addColour (0.6, juce::Colours::black.withAlpha (0.06f));
+        g.setGradientFill (thickness);
+        g.fillEllipse (circle);
+    }
+    {
+        // a broad diagonal sweep across the top-left of the glass
+        const juce::Point<float> sc (c.x + draw::kLightX * r * 0.42f, c.y + draw::kLightY * r * 0.40f);
+        juce::Graphics::ScopedSaveState sweepState (g);
+        g.addTransform (juce::AffineTransform::rotation (-0.62f, sc.x, sc.y).scaled (1.0f, 0.5f, sc.x, sc.y));
+        draw::softLight (g, sc, r * 0.72f, juce::Colours::white, 0.10f + 0.05f * on);
+    }
+
+    const float toLight = std::atan2 (draw::kLightX, -draw::kLightY);
+    juce::Path rim;
+    rim.addCentredArc (c.x, c.y, r - 1.2f, r - 1.2f, 0.0f, toLight - 1.35f, toLight + 1.35f, true);
+    g.setColour (juce::Colours::white.withAlpha (0.22f + 0.16f * on));
+    g.strokePath (rim, juce::PathStrokeType (juce::jmax (0.9f, r * 0.055f), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    const float dot = juce::jmax (1.0f, r * 0.13f);
+    const juce::Point<float> spec (c.x + draw::kLightX * r * 0.55f, c.y + draw::kLightY * r * 0.52f);
+    draw::softLight (g, spec, dot * 3.2f, juce::Colours::white, 0.16f);
+    g.setColour (juce::Colours::white.withAlpha (0.72f));
+    g.fillEllipse (spec.x - dot, spec.y - dot * 0.78f, dot * 2.0f, dot * 1.56f);
+
+    g.setColour (juce::Colours::black.withAlpha (0.5f));
+    g.drawEllipse (circle.reduced (0.5f), 1.0f);
 }
 
 void AMSourceSelector::paint (juce::Graphics& g)
@@ -254,16 +281,22 @@ void AMSourceSelector::paint (juce::Graphics& g)
         {
             const float labelH = juce::jlimit (10.0f, 18.0f, cell.getHeight() * 0.2f);
             auto area = cell.withTrimmedBottom (labelH);
-            const float d = juce::jmin (area.getWidth(), area.getHeight()) * 0.76f;
+            // The chosen source sits slightly proud of its neighbours.
+            const float d = juce::jmin (area.getWidth(), area.getHeight()) * 0.76f * (0.90f + 0.10f * on);
             circle = area.withSizeKeepingCentre (d, d);
         }
 
         const float d = circle.getWidth();
+        draw::contactShadowEllipse (g, circle, juce::jlimit (2.0f, 10.0f, d * 0.12f), 0.85f);
         if (on > 0.01f)
         {
-            draw::glowEllipse (g, circle, item.accent, d * 0.24f, on * (0.75f + 0.25f * energy));
-            g.setColour (item.accent.withAlpha (0.9f * on));
-            g.drawEllipse (circle.expanded (2.5f), 1.3f);
+            const auto pair = Theme::accentPair (item.accent);
+            draw::glowEllipse (g, circle, pair.second, d * 0.24f, on * (0.75f + 0.25f * energy));
+            const auto ring = circle.expanded (juce::jmax (2.5f, d * 0.05f));
+            juce::ColourGradient grad (pair.first.withAlpha (0.95f * on), ring.getX(), ring.getCentreY(),
+                                       pair.second.withAlpha (0.95f * on), ring.getRight(), ring.getCentreY(), false);
+            g.setGradientFill (grad);
+            g.drawEllipse (ring, juce::jmax (1.3f, d * 0.028f));
         }
         if (hv > 0.01f)
         {

@@ -30,30 +30,40 @@ void AMLogo::drawWordmark (juce::Graphics& g, juce::Rectangle<float> b, float en
     auto titleArea = juce::Rectangle<float> (x, b.getY(), totalW, titleH * 1.2f);
     if (! withTagline) titleArea = titleArea.withSizeKeepingCentre (totalW, titleH * 1.2f).withCentre ({ x + totalW * 0.5f, b.getCentreY() });
 
-    // The Λ glyph: matches Michroma's cap height (≈ 0.72 of the JUCE height) and stroke weight.
+    // The Λ glyph: matches the display face's cap height and stroke weight.
     const float capH = font.getAscent() * 0.98f;
     const float baseline = titleArea.getY() + (titleArea.getHeight() + capH) * 0.5f;
     auto glyphArea = juce::Rectangle<float> (x, baseline - capH, glyphW, capH);
     const float stroke = juce::jmax (1.3f, titleH * 0.085f);
+    const float bevel = juce::jmax (0.5f, titleH * 0.05f);
+
     juce::Path glyph;
     glyph.startNewSubPath (glyphArea.getX() + stroke * 0.5f, glyphArea.getBottom());
     glyph.lineTo (glyphArea.getCentreX(), glyphArea.getY() + stroke * 0.4f);
     glyph.lineTo (glyphArea.getRight() - stroke * 0.5f, glyphArea.getBottom());
-    g.setColour (Theme::textPrimary);
-    g.strokePath (glyph, juce::PathStrokeType (stroke, juce::PathStrokeType::mitered, juce::PathStrokeType::butt));
 
     // crossbar hint (short, slightly lower than a regular A — the "anti" mark)
-    g.setColour (Theme::textPrimary.withAlpha (0.55f));
-    g.drawLine (glyphArea.getX() + glyphArea.getWidth() * 0.36f, glyphArea.getY() + capH * 0.68f,
-                glyphArea.getX() + glyphArea.getWidth() * 0.64f, glyphArea.getY() + capH * 0.68f, stroke * 0.7f);
+    juce::Path bar;
+    bar.startNewSubPath (glyphArea.getX() + glyphArea.getWidth() * 0.36f, glyphArea.getY() + capH * 0.68f);
+    bar.lineTo (glyphArea.getX() + glyphArea.getWidth() * 0.64f, glyphArea.getY() + capH * 0.68f);
+
+    // createStrokedPath clears its destination, so the two strokes are built apart
+    // and joined: one metal shape means one bevel across the whole glyph.
+    juce::Path metal, barMetal;
+    juce::PathStrokeType (stroke, juce::PathStrokeType::mitered, juce::PathStrokeType::butt).createStrokedPath (metal, glyph);
+    juce::PathStrokeType (stroke * 0.7f, juce::PathStrokeType::mitered, juce::PathStrokeType::butt).createStrokedPath (barMetal, bar);
+    metal.addPath (barMetal);
+    draw::metallicShape (g, metal, Theme::textPrimary, bevel);
 
     // Small glowing particle beneath the left foot of the Λ.
     const float dotR = juce::jmax (1.4f, titleH * 0.06f);
     const juce::Point<float> dot (glyphArea.getX() + glyphArea.getWidth() * 0.16f, glyphArea.getBottom() + dotR * 2.6f);
     draw::glowDot (g, dot, dotR, Theme::cyan, 0.6f + 0.4f * energy);
 
+    // The rest of the wordmark, cast in the same metal.
     const float trailing = font.getExtraKerningFactor() * font.getHeight() + 2.0f;
-    draw::trackedText (g, rest, titleArea.withLeft (glyphArea.getRight() + gap).withWidth (restW + trailing), juce::Justification::centredLeft, font, Theme::textPrimary);
+    draw::metallicText (g, rest, titleArea.withLeft (glyphArea.getRight() + gap).withWidth (restW + trailing),
+                        juce::Justification::centredLeft, font, Theme::textPrimary);
 
     if (withTagline)
     {

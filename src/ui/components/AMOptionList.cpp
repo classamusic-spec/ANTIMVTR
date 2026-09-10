@@ -81,14 +81,23 @@ void AMOptionList::paint (juce::Graphics& g)
     // The lit row glides between entries so a change of selection reads as motion.
     {
         auto row = juce::Rectangle<float> (list.getX(), list.getY() + lit.value * rowH, list.getWidth(), rowH).reduced (0.0f, inset);
-        draw::glowRoundedRect (g, row, corner, accent, rowH * 0.3f, 0.35f);
-        juce::ColourGradient wash (accent.withAlpha (0.20f), row.getX(), row.getY(),
-                                   accent.withAlpha (0.05f), row.getRight(), row.getY(), false);
+        const auto pair = Theme::accentPair (accent);
+        draw::glowRoundedRect (g, row, corner, pair.second, rowH * 0.3f, 0.30f);
+
+        draw::SlabStyle style;
+        style.top    = Theme::panelTop.brighter (0.12f);
+        style.bottom = Theme::panel;
+        style.shadow = 0.45f;
+        style.brush  = 0.5f;
+        draw::raisedSlab (g, row, corner, style);
+
+        juce::ColourGradient wash (pair.first.withAlpha (0.22f), row.getX(), row.getY(),
+                                   pair.second.withAlpha (0.05f), row.getRight(), row.getY(), false);
         g.setGradientFill (wash);
         g.fillRoundedRectangle (row, corner);
-        g.setColour (accent.withAlpha (0.30f));
+        g.setColour (pair.second.withAlpha (0.35f));
         g.drawRoundedRectangle (row.reduced (0.5f), corner, 1.0f);
-        g.setColour (accent);
+        g.setColour (pair.first);
         g.fillRoundedRectangle (row.withWidth (juce::jmax (2.0f, rowH * 0.08f)), 1.5f);
     }
 

@@ -212,6 +212,8 @@ void AMStepEditor::paint (juce::Graphics& g)
         draw::glowPath (g, line, Theme::textPrimary, 1.0f, 6.0f, 0.6f);
     }
 
+    draw::screenGlass (g, b.withBottom (f.getBottom() + 4.0f), corner, 0.85f);
+
     // step numbers
     const float h = juce::jlimit (7.0f, 9.5f, (b.getBottom() - f.getBottom()) * 0.6f);
     for (int i = 0; i < numSteps; ++i)

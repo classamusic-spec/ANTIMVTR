@@ -181,6 +181,12 @@ void ModulationEngine::compile (const ParamValues& params) noexcept
 
         if (targeted[(size_t) targetIndex] < 255) ++targeted[(size_t) targetIndex];
 
+        // A routing at depth zero contributes nothing, so it must not enter the plan: an empty
+        // plan lets the engine render a whole block per control slice instead of chopping it,
+        // and the chopping is what modulation actually costs. The routing still shows in
+        // `targeted`, so the UI keeps drawing its ring.
+        if (c.scale == 0.0f) continue;
+
         if (modSourceIsPerVoice (r.source, params))
         {
             int slot = -1;

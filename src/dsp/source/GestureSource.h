@@ -24,6 +24,8 @@ namespace am
                       (0.5 is neutral, either side colours the excitation).
       * `motion`    — slow seeded drift of pressure and speed.
       * `bandwidth` — resonant band-pass around the note, narrow (0) to wide (1).
+                      Level matched from the signal's own power, so the control
+                      changes focus and not loudness whatever the mode feeds it.
 
     Real-time contract: everything is sized in prepare(); render() never
     allocates, locks or logs.
@@ -128,7 +130,9 @@ private:
     // random walk of a sparse pulse train shows up as sub-audio wander.
     excitation::DcBlocker        pulseDc, dcL, dcR;
     float bandGain = 1.0f, dryMix = 0.0f, modeTrim = 1.0f;
-    bool  tonalBand = false;   ///< pitched modes normalise the band by its peak gain, noisy ones by its noise gain
+    // BANDWIDTH is level matched from the signal itself: a fixed normalisation cannot
+    // hold the level when every mode feeds the band a differently coloured signal.
+    float rawPower = 0.0f, bandPower = 0.0f, powerFollow = 0.001f;
 
     // Contact-point comb --------------------------------------------------------
     std::array<float, kCombSize> comb {};

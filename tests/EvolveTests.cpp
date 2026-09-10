@@ -1,4 +1,5 @@
 #include <juce_core/juce_core.h>
+#include <juce_dsp/juce_dsp.h>
 #include "dsp/matter/MatterEngine.h"
 #include "dsp/evolve/EvolveEngine.h"
 #include "dsp/SynthEngine.h"
@@ -108,6 +109,27 @@ namespace
         double s = 0.0; int n = 0;
         for (int i = std::max (0, start); i < std::min (end, (int) v.size()); ++i) { s += (double) v[(size_t) i] * v[(size_t) i]; ++n; }
         return n > 0 ? (float) std::sqrt (s / n) : 0.0f;
+    }
+
+    /** Spectral centroid of one 16384 point Hann frame starting at `start`. */
+    double spectralCentroid (const std::vector<float>& v, double sr, int start)
+    {
+        constexpr int order = 14, size = 1 << order;
+        if ((int) v.size() < start + size) return 0.0;
+        std::vector<float> data ((size_t) size * 2, 0.0f);
+        std::copy (v.begin() + start, v.begin() + start + size, data.begin());
+        juce::dsp::WindowingFunction<float> window (size, juce::dsp::WindowingFunction<float>::hann);
+        window.multiplyWithWindowingTable (data.data(), size);
+        juce::dsp::FFT fft (order);
+        fft.performFrequencyOnlyForwardTransform (data.data(), true);
+        double num = 0.0, den = 0.0;
+        for (int k = 1; k < size / 2; ++k)
+        {
+            const double mag = data[(size_t) k];
+            num += mag * ((double) k * sr / size);
+            den += mag;
+        }
+        return den > 1.0e-12 ? num / den : 0.0;
     }
 
     /** Spectral height of node i as the engine defines it: log2 ratio over a fixed span of four octaves. */
@@ -372,6 +394,82 @@ public:
                 h.applyOnly();
                 for (int i = 0; i < h.numNodes(); ++i) expect (identical (b[(size_t) i], h.node (i)), "gravity 0.5 is not neutral");
             }
+        }
+
+        // GRAVITY used to be a volume control as much as a spectral one: lifting cut a struck
+        // object by 9.2 dB RMS (7.1 dB of peak across the control) and damped every node about
+        // equally (x1.45 at the top, x1.52 at the bottom), so the documented "ring time lifts
+        // toward the top partials" never happened and the object simply got quieter and shorter.
+        beginTest ("GRAVITY tilts the object without becoming a level control");
+        {
+            struct Result { float peak; double centroid; };
+            auto strike = [] (float gravity)
+            {
+                Harness h (48000.0, 128);
+                h.set (Param::shapeStrike, 1.0f);
+                h.set (Param::evolveMotion, 0.0f);
+                h.set (Param::evolveGravity, gravity);
+                h.start (60);
+                const auto out = h.render (2.0);          // strike only: no sustained excitation
+                Result r { 0.0f, 0.0 };
+                for (float v : out) r.peak = std::max (r.peak, std::abs (v));
+                r.centroid = spectralCentroid (out, 48000.0, 4800);
+                return r;
+            };
+
+            const auto lift = strike (0.0f);
+            const auto flat = strike (0.5f);
+            const auto sink = strike (1.0f);
+
+            // Raw Matter output, before the voice's +12 dB trim and the polyphony headroom: this
+            // window is the -12 … -2 dBFS a note must land in once those are applied.
+            for (const auto* r : { &lift, &flat, &sink })
+            {
+                const double db = juce::Decibels::gainToDecibels ((double) r->peak);
+                expect (db > -18.4 && db < -8.4, "gravity strike peaked at " + juce::String (db, 2) + " dBFS raw");
+            }
+            const double swing = juce::Decibels::gainToDecibels ((double) std::max ({ lift.peak, flat.peak, sink.peak })
+                                                                 / (double) std::min ({ lift.peak, flat.peak, sink.peak }));
+            expect (swing < 5.0, "gravity moved the peak by " + juce::String (swing, 1) + " dB across the control");
+
+            // ... while the tilt itself is unmistakable and monotonic.
+            expect (lift.centroid > flat.centroid * 1.8, "lift should raise the centroid: "
+                        + juce::String (flat.centroid, 0) + " -> " + juce::String (lift.centroid, 0) + " Hz");
+            expect (sink.centroid < flat.centroid * 0.85, "sink should lower the centroid: "
+                        + juce::String (flat.centroid, 0) + " -> " + juce::String (sink.centroid, 0) + " Hz");
+
+            // Lifting takes the ring time away from the bottom, sinking from the top: check the
+            // damping the operator actually wrote, low nodes against high ones.
+            auto dampingTilt = [this] (float gravity)
+            {
+                Harness h (48000.0, 128);
+                h.set (Param::shapeDensity, 0.9f);
+                h.set (Param::evolveMotion, 0.0f);
+                h.set (Param::evolveGravity, gravity);
+                h.start (60);
+                const auto base = snapshot (h);
+                h.applyOnly();
+                double low = 0.0, high = 0.0;
+                int nLow = 0, nHigh = 0;
+                for (int i = 0; i < h.modalCount(); ++i)
+                {
+                    if (! h.live (i) || base[(size_t) i].damping <= 0.0f) continue;
+                    const float hh = heightOf (h, base, i);
+                    const double ratio = (double) h.node (i).damping / (double) base[(size_t) i].damping;
+                    if (hh < 0.2f) { low += ratio; ++nLow; }
+                    else if (hh > 0.6f) { high += ratio; ++nHigh; }
+                }
+                expect (nLow > 0 && nHigh > 0, "the test object needs nodes at both ends");
+                return std::make_pair (low / (double) std::max (1, nLow), high / (double) std::max (1, nHigh));
+            };
+            const auto liftDamp = dampingTilt (0.0f);
+            const auto sinkDamp = dampingTilt (1.0f);
+            expect (liftDamp.first > liftDamp.second * 1.5,
+                    "lifting must shorten the bottom, not the top: low x" + juce::String (liftDamp.first, 2)
+                        + ", high x" + juce::String (liftDamp.second, 2));
+            expect (sinkDamp.second > sinkDamp.first * 1.5,
+                    "sinking must shorten the top, not the bottom: low x" + juce::String (sinkDamp.first, 2)
+                        + ", high x" + juce::String (sinkDamp.second, 2));
         }
 
         beginTest ("SCATTER: deterministic per seed, different between seeds, moves frequency/weight/pan, more at 1");

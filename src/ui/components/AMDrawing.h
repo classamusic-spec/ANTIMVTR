@@ -349,8 +349,8 @@ inline void screw (juce::Graphics& g, juce::Point<float> centre, float radius, f
     g.setColour (juce::Colours::black.withAlpha (0.40f));
     g.fillEllipse (head.expanded (radius * 0.30f).translated (radius * 0.10f, radius * 0.18f));
 
-    juce::ColourGradient body (Theme::metal.withMultipliedBrightness (0.85f * brightness), centre.x + kLightX * radius * 0.7f, centre.y + kLightY * radius * 0.65f,
-                               juce::Colour (0xff0b0c10), centre.x - kLightX * radius * 1.2f, centre.y - kLightY * radius * 1.1f, true);
+    juce::ColourGradient body (Theme::metal.withMultipliedBrightness (1.15f * brightness), centre.x + kLightX * radius * 0.7f, centre.y + kLightY * radius * 0.65f,
+                               juce::Colour (0xff090a0e), centre.x - kLightX * radius * 1.15f, centre.y - kLightY * radius * 1.05f, true);
     g.setGradientFill (body);
     g.fillEllipse (head);
 
@@ -358,8 +358,8 @@ inline void screw (juce::Graphics& g, juce::Point<float> centre, float radius, f
     juce::Path crescent;
     crescent.addCentredArc (centre.x, centre.y, radius * 0.78f, radius * 0.78f, 0.0f,
                             -juce::MathConstants<float>::pi * 0.92f, -juce::MathConstants<float>::pi * 0.08f, true);
-    g.setColour (juce::Colours::white.withAlpha (0.28f * brightness));
-    g.strokePath (crescent, juce::PathStrokeType (juce::jmax (0.7f, radius * 0.3f)));
+    g.setColour (juce::Colours::white.withAlpha (0.40f * brightness));
+    g.strokePath (crescent, juce::PathStrokeType (juce::jmax (0.7f, radius * 0.28f)));
 
     // The slot: cut in, so it is dark with a lit lower lip.
     const float c = std::cos (angleRadians), s = std::sin (angleRadians);

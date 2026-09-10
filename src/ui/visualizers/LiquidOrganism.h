@@ -257,7 +257,7 @@ public:
     {
         const float d = liquid::clean (p.density, 0.0f, 1.0f, 0.5f);
         const float life = liquid::clean (p.life, 0.0f, 1.0f, 0.0f);
-        const int n = 10 + (int) (d * 13.0f) + (int) (life * 2.0f);
+        const int n = 13 + (int) (d * 9.0f) + (int) (life * 2.0f);
         return n < 4 ? 4 : (n > kMaxRibbons ? kMaxRibbons : n);
     }
 
@@ -266,7 +266,7 @@ public:
     {
         const float d = liquid::clean (p.density, 0.0f, 1.0f, 0.5f);
         const float crush = liquid::clean (p.crush, 0.0f, 1.0f, 0.0f);
-        int n = 28 + (int) (d * 13.0f);
+        int n = 30 + (int) (d * 11.0f);
         if (crush > 0.05f) n = (int) (n * (1.0f - 0.55f * crush));
         return n < 8 ? 8 : (n > kMaxSamples ? kMaxSamples : n);
     }
@@ -337,8 +337,8 @@ public:
         const Vec3 tearDir = normalised (cross (axisU, axisV), { 0.0f, 0.0f, 1.0f });
 
         const float quant = p.crush > 0.02f ? liquid::lerp (26.0f, 3.4f, p.crush) : 0.0f;
-        const float widthBase = r.width * (1.0f - 0.40f * p.tension) * (0.82f + 0.34f * p.density)
-                                * (1.0f + 0.5f * p.melt) * (0.88f + 0.30f * p.level);
+        const float widthBase = r.width * (1.0f - 0.34f * p.tension) * (0.92f + 0.22f * p.density)
+                                * (1.0f + 0.5f * p.melt) * (0.90f + 0.28f * p.level);
 
         // ---- Pass 1: positions.
         for (int i = 0; i < n; ++i)

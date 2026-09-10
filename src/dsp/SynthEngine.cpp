@@ -11,6 +11,7 @@ void SynthEngine::prepare (double sampleRate, int maxBlockSize)
     maxBlock = std::min (maxBlockSize, kMaxBlockSize);
 
     controlGraph.prepare (sampleRate, maxBlock);
+    modulation.prepare (sampleRate, maxBlock);
     voices.prepare (sampleRate, maxBlock, &diag);
     fracture.prepare (sampleRate, maxBlock);
     space.prepare (sampleRate, maxBlock);
@@ -24,6 +25,7 @@ void SynthEngine::prepare (double sampleRate, int maxBlockSize)
 
 void SynthEngine::reset()
 {
+    modulation.reset();
     voices.reset();
     fracture.reset();
     space.reset();
@@ -34,6 +36,7 @@ void SynthEngine::reset()
 
 void SynthEngine::messageThreadMaintenance()
 {
+    modulation.messageThreadMaintenance();
     fracture.messageThreadMaintenance();
     space.messageThreadMaintenance();
 }
@@ -82,6 +85,10 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
     ctx.quality     = currentQuality;
     ctx.diagnostics = &diag;
 
+    // --- MODULATION: pick up a newly published routing table and hand the voices the compiled plan.
+    modulation.beginBlock (hostParams);
+    ctx.modPlan = &modulation.modPlan();
+
     // The host block may exceed our internal maximum: process in chunks.
     int chunkStart = 0;
     auto midiIt = midi.begin();
@@ -91,11 +98,9 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
     {
         const int chunkSize = std::min (maxBlock, totalSamples - chunkStart);
         const int chunkEnd  = chunkStart + chunkSize;
-
-        {
-            PerformanceProfiler::Scoped t (diag.profiler, Subsystem::Modulation);
-            controlGraph.update (hostParams, chunkSize);
-        }
+        // Control rate: the whole chunk when nothing is routed, 64-sample slices when it is,
+        // so LFOs into pitch move smoothly instead of stepping once per block.
+        const int controlBlock = modulation.controlBlockSize (chunkSize);
 
         float* mL = mixL.data();
         float* mR = mixR.data();
@@ -106,20 +111,37 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
         juce::FloatVectorOperations::clear (sL, chunkSize);
         juce::FloatVectorOperations::clear (sR, chunkSize);
 
-        // --- Voices, split at MIDI events for sample-accurate note timing.
+        // --- Voices, split at MIDI events for sample-accurate note timing and at the control rate.
         {
-            PerformanceProfiler::Scoped t (diag.profiler, Subsystem::VoiceMix);
             int pos = chunkStart;
             while (pos < chunkEnd)
             {
-                int next = chunkEnd;
-                while (midiIt != midiEnd)
+                // The slice ends at the next control boundary or the next MIDI event, whichever is first.
+                int next = std::min (chunkEnd, pos + controlBlock);
+                for (auto peek = midiIt; peek != midiEnd; ++peek)
                 {
-                    const auto meta = *midiIt;
-                    if (meta.samplePosition > pos) { next = std::min (chunkEnd, meta.samplePosition); break; }
-                    const auto message = meta.getMessage();
+                    const int at = (*peek).samplePosition;
+                    if (at > pos) { next = std::min (next, at); break; }
+                }
+
+                // --- MODULATION: advance the global sources and smooth the parameters for this slice.
+                {
+                    PerformanceProfiler::Scoped t (diag.profiler, Subsystem::Modulation);
+                    TransportInfo sliceTransport = transport;
+                    sliceTransport.ppqPosition = transport.ppqPosition + (double) pos / sr * transport.bpm / 60.0;
+                    modulation.process (controlGraph, next - pos, sliceTransport);
+                    controlGraph.update (hostParams, next - pos);
+                }
+
+                PerformanceProfiler::Scoped t (diag.profiler, Subsystem::VoiceMix);
+                while (midiIt != midiEnd && (*midiIt).samplePosition <= pos)
+                {
+                    const auto message = (*midiIt).getMessage();
                     if (message.isNoteOn() && voices.activeVoiceCount() == 0)
+                    {
                         fracture.noteStarted();     // first note of a phrase retriggers the fragment sequencer
+                        modulation.noteStarted();   // ... and restarts the global LFO fade-ins
+                    }
                     voices.handleMidi (message, controlGraph.values(), currentQuality);
                     ++midiIt;
                 }
@@ -310,6 +332,13 @@ void SynthEngine::publishSnapshots (const float* outL, const float* outR, int nu
         d.fractureActivity = fracture.activity();
         d.eventsDropped = diag.events.droppedCount();
         diag.diagnosticSnapshots.endWrite();
+    }
+
+    // ---- Modulation snapshot (knob mod rings, DSP LAB MOD tab)
+    {
+        auto& m = diag.modulationSnapshots.beginWrite();
+        modulation.fillSnapshot (m, fv != nullptr ? &fv->modulator() : nullptr, fv != nullptr ? focus : -1, sampleTime);
+        diag.modulationSnapshots.endWrite();
     }
 }
 

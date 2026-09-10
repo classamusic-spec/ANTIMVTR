@@ -4,6 +4,7 @@
 #include "source/SourceEngine.h"
 #include "matter/MatterEngine.h"
 #include "evolve/EvolveEngine.h"
+#include "mod/ModulationEngine.h"
 #include "core/Smoothing.h"
 
 namespace am
@@ -61,6 +62,10 @@ public:
     const MatterEngine& matter() const noexcept { return matterEngine; }
     MatterEngine& matter() noexcept { return matterEngine; }
 
+    // --- MODULATION -------------------------------------------------------
+    /** This voice's modulation sources (retriggered LFOs, envelopes, note sources). */
+    const VoiceModulator& modulator() const noexcept { return voiceMod; }
+
 private:
     void updateFrequency (const RenderContext& ctx);
 
@@ -68,6 +73,7 @@ private:
     MatterEngine matterEngine;
     EvolveEngine evolveEngine;
     ADSREnvelope ampEnv;
+    VoiceModulator voiceMod;
 
     NoteState note;
     bool active = false;

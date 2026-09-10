@@ -3,6 +3,7 @@
 #include "DiagnosticSnapshot.h"
 #include "core/LockFreeQueue.h"
 #include "core/RealtimeUtils.h"
+#include "dsp/mod/ModulationSnapshot.h"
 
 namespace am
 {
@@ -31,6 +32,7 @@ struct Diagnostics
 
     TripleBuffer<DiagnosticSnapshot>  diagnosticSnapshots;
     TripleBuffer<VisualStateSnapshot> visualSnapshots;
+    TripleBuffer<ModulationSnapshot>  modulationSnapshots;
 
     std::array<AudioTapRing<kTapSize>, (int) Stage::Count> taps;
 

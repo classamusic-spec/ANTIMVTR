@@ -21,6 +21,7 @@ void ControlGraph::prepare (double sampleRate, int)
         const size_t i = (size_t) paramIndex (d.param);
         coeffPerSample[i] = ms > 0.0f ? (float) std::exp (-1.0 / (sampleRate * (double) ms * 0.001)) : 0.0f;
     }
+    cachedBlockSize = -1;
 }
 
 void ControlGraph::resetTo (const ParamValues& base)
@@ -35,6 +36,16 @@ void ControlGraph::resetTo (const ParamValues& base)
 void ControlGraph::update (const ParamValues& base, int numSamples)
 {
     const auto& table = ParameterRegistry::all();
+
+    // The per-slice decay factor only depends on the slice length: cache it so
+    // control-rate modulation (slices of 64 samples) costs no pow() per parameter.
+    if (numSamples != cachedBlockSize)
+    {
+        cachedBlockSize = numSamples;
+        for (size_t i = 0; i < (size_t) kNumParams; ++i)
+            blockCoeff[i] = coeffPerSample[i] > 0.0f ? std::pow (coeffPerSample[i], (float) numSamples) : 0.0f;
+    }
+
     for (size_t i = 0; i < (size_t) kNumParams; ++i)
     {
         const auto& d = table[i];
@@ -44,7 +55,7 @@ void ControlGraph::update (const ParamValues& base, int numSamples)
         float v;
         if (coeffPerSample[i] > 0.0f)
         {
-            const float k = std::pow (coeffPerSample[i], (float) numSamples);
+            const float k = blockCoeff[i];
             smoothed[i] = target + k * (smoothed[i] - target);
             if (std::abs (smoothed[i] - target) < 1.0e-6f) smoothed[i] = target;
             v = smoothed[i];

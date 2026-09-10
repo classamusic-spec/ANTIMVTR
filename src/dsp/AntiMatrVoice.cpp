@@ -11,6 +11,7 @@ void AntiMatrVoice::prepare (double sampleRate, int maxBlockSize)
     matterEngine.prepare (sampleRate, maxBlockSize);
     evolveEngine.prepare (sampleRate, maxBlockSize);
     ampEnv.prepare (sampleRate);
+    voiceMod.prepare (sampleRate);
     reset();
 }
 
@@ -20,6 +21,7 @@ void AntiMatrVoice::reset()
     matterEngine.reset();
     evolveEngine.reset();
     ampEnv.reset();
+    voiceMod.reset();
     note = NoteState();
     active = false;
     gliding = false;
@@ -81,6 +83,7 @@ void AntiMatrVoice::start (const StartInfo& info, const ParamValues& params)
                               paramValue (params, Param::ampSustain), paramValue (params, Param::ampRelease),
                               paramValue (params, Param::ampCurve));
         ampEnv.noteOn();
+        voiceMod.noteOn (note, info.noteId);        // MODULATION: per-voice sources
     }
     else
     {
@@ -98,6 +101,7 @@ void AntiMatrVoice::release()
     sourceEngine.noteOff();
     matterEngine.noteOff();
     ampEnv.noteOff();
+    voiceMod.noteOff();                             // MODULATION: release the mod envelopes
 }
 
 void AntiMatrVoice::kill()
@@ -124,9 +128,14 @@ void AntiMatrVoice::updateFrequency (const RenderContext& ctx)
     note.frequency = juce::jlimit ((double) kMinFrequencyHz, ctx.sampleRate * (double) kMaxFrequencyRatio, note.frequency);
 }
 
-void AntiMatrVoice::render (float* outL, float* outR, float* srcL, float* srcR, int n, const RenderContext& ctx)
+void AntiMatrVoice::render (float* outL, float* outR, float* srcL, float* srcR, int n, const RenderContext& hostCtx)
 {
     if (! active) return;
+
+    // --- MODULATION: this voice's own effective parameters. `process` returns the engine's
+    //     global values untouched when nothing is routed per voice, so the copy costs nothing then.
+    RenderContext ctx = hostCtx;
+    ctx.params = voiceMod.process (*hostCtx.params, hostCtx.modPlan, n, hostCtx.sampleRate, note, hostCtx.transport);
 
     updateFrequency (ctx);
 

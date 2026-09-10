@@ -43,6 +43,8 @@ private:
     ParamValues effective {}, lastBase {}, modulation {}, lastModulation {};
     std::array<float, kNumParams> smoothed {};
     std::array<float, kNumParams> coeffPerSample {};
+    std::array<float, kNumParams> blockCoeff {};   ///< coeffPerSample ^ numSamples, cached per slice length
+    int    cachedBlockSize = -1;
     double sr = 48000.0;
 };
 

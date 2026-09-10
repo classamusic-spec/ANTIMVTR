@@ -5,6 +5,7 @@
 #include "fx/SpaceEngine.h"
 #include "fx/MasterSection.h"
 #include "mod/ControlGraph.h"
+#include "mod/ModulationEngine.h"
 #include "dev/diagnostics/Diagnostics.h"
 
 namespace am
@@ -48,6 +49,9 @@ public:
     /** Message-thread maintenance (garbage collection of handed-off data). Called periodically by the processor. */
     void messageThreadMaintenance();
 
+    ModulationEngine& modulationEngine() noexcept { return modulation; }
+    const ModulationEngine& modulationEngine() const noexcept { return modulation; }
+
     FractureEngine& fractureEngine() noexcept { return fracture; }
     SpaceEngine&    spaceEngine() noexcept    { return space; }
     MasterSection&  masterSection() noexcept  { return master; }
@@ -62,6 +66,7 @@ private:
     void applyGlobalSettings (const ParamValues& params);
 
     ControlGraph  controlGraph;
+    ModulationEngine modulation;
     VoiceManager  voices;
     FractureEngine fracture;
     SpaceEngine   space;

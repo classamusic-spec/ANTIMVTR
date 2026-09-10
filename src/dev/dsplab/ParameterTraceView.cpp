@@ -136,6 +136,9 @@ ParameterTraceView::ParameterTraceView()
     addAndMakeVisible (historyPanel);
 }
 
+// Defined here so the unique_ptr sees the complete HistoryPlot type.
+ParameterTraceView::~ParameterTraceView() = default;
+
 bool ParameterTraceView::matchesFilter (const ParamDesc& d) const
 {
     if (filterText.isEmpty())

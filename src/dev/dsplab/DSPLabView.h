@@ -1,21 +1,36 @@
 #pragma once
 
+#include "EngineEventLogView.h"
+#include "EvolveView.h"
+#include "ExcitationView.h"
+#include "LabWidgets.h"
+#include "MatterCapture.h"
+#include "MatterInspector.h"
+#include "ParameterSweepTool.h"
+#include "ParameterTraceView.h"
+#include "PerformanceView.h"
+#include "PresetValidatorView.h"
+#include "SafetyView.h"
+#include "SignalInspector.h"
+#include "StageComparisonView.h"
+#include "StressTestController.h"
 #include "plugin/AntiMatrProcessor.h"
-#include "ui/AntiMatrTheme.h"
-#include "ui/visualizers/SpectrumAnalyzer.h"
 
 namespace am::dev
 {
 
 /**
-    DSP LAB — internal engineering workspace.
+    DSP LAB — internal engineering workspace (§68–90).
 
     Observes the production engine purely through the Diagnostics interfaces
-    (snapshots, taps, counters, event queue) and writes only to DevControls.
-    Phase 0 shell: engine inspector, signal inspector (waveform / spectrum per
-    stage), Matter node list + frequency distribution, per-subsystem CPU,
-    safety counters, event log, dry-mode / bypass / focus controls and a test
-    keyboard. Later phases add the dedicated tabs described in the spec.
+    (triple-buffered snapshots, audio taps, safety counters, the lock-free
+    event queue) and writes only into DevControls and the host parameter
+    tree. Nothing in src/dsp depends on anything here.
+
+    Layout (§70): LEFT engine inspector, CENTER the selected tab, RIGHT
+    profiling / diagnostics, BOTTOM the A/B, dry-mode and stress tools plus a
+    test keyboard. One 25 Hz timer reads a single snapshot per frame and
+    refreshes only the views that are on screen, so hidden tabs cost nothing.
 */
 class DSPLabView : public juce::Component,
                    private juce::Timer
@@ -29,37 +44,71 @@ public:
     void visibilityChanged() override;
     void parentHierarchyChanged() override;
 
-    /** Builds the diagnostic report (plain JSON) — no user audio is included. */
+    /** Builds the diagnostic report (§88) — no user audio is included. */
     juce::String buildReport() const;
 
     /** Selects a DSP LAB tab (also used by the snapshot tool). */
     void selectTab (int index);
     int  numTabs() const noexcept { return tabs.getNumTabs(); }
 
-private:
-    class SignalInspector;
-    class NodeInspector;
-    class TableView;
+    /** Tab order. OVERVIEW..SAFETY match the §70 list; the tools follow. */
+    enum Tab
+    {
+        Overview = 0, Source, Matter, Evolve, Fracture, Mod, Space,
+        Performance, Safety, Sweep, Presets, Events, NumTabs
+    };
 
+private:
     void timerCallback() override;
-    void refreshTables();
+    void drainEvents();
+    void refreshEngineInspector (const DiagnosticSnapshot& s);
+    void refreshProfilingPanel (const DiagnosticSnapshot& s);
+    void exportReport (bool chooseFile);
+    LabView* viewForTab (int index) const;
 
     AntiMatrProcessor& processor;
     DiagnosticSnapshot snapshot;
+    MatterCaptureStore captures;
+    int frameCounter = 0;
 
     juce::TabbedButtonBar tabs { juce::TabbedButtonBar::TabsAtTop };
-    std::unique_ptr<TableView> engineTable, perfTable, safetyTable, controlTable;
-    std::unique_ptr<SignalInspector> signal;
-    std::unique_ptr<NodeInspector> nodes;
+    int currentTab = Overview;
 
-    juce::ComboBox stageBox, dryModeBox, focusBox;
-    juce::ToggleButton bypassEvolve { "Bypass Evolve" }, bypassFracture { "Bypass Fracture" }, bypassSpace { "Bypass Space" }, profiling { "Profiling" };
-    juce::TextButton resetSafety { "Reset safety" }, exportReport { "Export report" }, clearLog { "Clear log" };
-    juce::TextEditor eventLog;
+    // LEFT — engine inspector
+    KeyValueTable engineInspector { "Engine inspector" };
+    StageMeters stageMeters;
+
+    // RIGHT — profiling / diagnostics
+    KeyValueTable profilingPanel { "CPU  moving / avg / peak %" };
+    KeyValueTable safetyPanel { "Safety counters" };
+
+    // CENTER — one view per tab
+    SignalInspector overview;
+    ExcitationView sourceView;
+    MatterInspector matterView;
+    EvolveView evolveView;
+    FractureView fractureView;
+    ParameterTraceView modView;
+    SpaceView spaceView;
+    PerformanceView performanceView;
+    SafetyView safetyView;
+    ParameterSweepTool sweepView;
+    PresetValidatorView presetView;
+    EngineEventLogView eventView;
+
+    // BOTTOM — A/B, dev controls, stress tools, keyboard
+    LabPanel devPanel { "Dev controls" };
+    juce::ComboBox focusBox;
+    juce::ToggleButton bypassEvolve { "Bypass Evolve" }, bypassFracture { "Bypass Fracture" },
+                       bypassSpace { "Bypass Space" }, profilingToggle { "Profiling" };
+    LabPanel abPanel { "A / B" };
+    juce::TextButton slotA { "A" }, slotB { "B" }, copyAB { "COPY ->" },
+                     exportButton { "EXPORT REPORT" }, exportAsButton { "EXPORT AS..." };
+    StressTestController stress;
     juce::MidiKeyboardComponent keyboard;
+    std::unique_ptr<juce::FileChooser> chooser;
 
-    int currentTab = 0;
-    int logLines = 0;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DSPLabView)
 };
 
 } // namespace am::dev

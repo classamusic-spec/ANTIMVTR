@@ -52,13 +52,13 @@ void FrequencyDistributionView::paint (juce::Graphics& g)
     // Harmonic markers of the fundamental.
     if (fundamentalHz > 0.0f)
     {
-        g.setColour (Theme::amber.withAlpha (0.10f));
-        for (int h = 1; h <= 32; ++h)
+        g.setColour (Theme::amber.withAlpha (0.16f));
+        for (int h = 1; h <= 16; ++h)
         {
             const float hz = fundamentalHz * (float) h;
             if (hz > kMaxHz) break;
             const float x = area.getX() + logPosition (hz, kMinHz, kMaxHz) * area.getWidth();
-            g.drawLine (x, area.getBottom() - 4.0f, x, area.getBottom(), 1.0f);
+            g.fillRect (x - 0.5f, area.getBottom() - 3.0f, 1.0f, 3.0f);
         }
     }
 

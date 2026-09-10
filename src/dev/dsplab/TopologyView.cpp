@@ -128,16 +128,17 @@ void TopologyView::paint (juce::Graphics& g)
         g.fillEllipse (dot);
     }
 
-    auto footer = area.removeFromBottom (11.0f);
+    auto footer = area.removeFromBottom (10.0f);
+    plot::caption (g, "RADIUS = LOG FREQ   ANGLE = CLUSTER", footer, Theme::textDim, 8.0f,
+                   juce::Justification::centred);
+    auto counts = area.removeFromBottom (11.0f);
     plot::caption (g, juce::String (collapseClusters ? (int) points.size() : numNodes)
-                      + (collapseClusters ? " CLUSTERS  " : " NODES  ") + juce::String (drawnEdges) + " EDGES",
-                   footer, Theme::textDim, 8.5f);
-    plot::caption (g, "RADIUS = LOG FREQ   ANGLE = CLUSTER", footer, Theme::textDim, 8.5f,
+                      + (collapseClusters ? " CLUSTERS" : " NODES"),
+                   counts, Theme::textDim, 8.5f);
+    plot::caption (g, numEdges == 0 ? juce::String ("NO EDGES PUBLISHED")
+                                    : juce::String (drawnEdges) + " EDGES",
+                   counts, numEdges == 0 ? Theme::amber.withAlpha (0.55f) : Theme::textDim, 8.5f,
                    juce::Justification::centredRight);
-
-    if (numEdges == 0)
-        plot::caption (g, "NO COUPLING EDGES PUBLISHED", area.removeFromTop (11.0f), Theme::textDim, 8.5f,
-                       juce::Justification::centredRight);
 }
 
 } // namespace am::dev

@@ -22,6 +22,7 @@ class ParameterTraceView : public LabView
 {
 public:
     ParameterTraceView();
+    ~ParameterTraceView() override;
 
     void updateFrame (const LabFrame& f) override;
     void resized() override;

@@ -49,6 +49,9 @@ void StressTestController::start (StressTest test)
 {
     stop();
 
+    testBox.setSelectedId ((int) test + 1, juce::dontSendNotification);
+    panel.setSubtitle (juce::String (StressTestGenerator::description (test)).toUpperCase());
+
     StressTestGenerator::Config config;
     config.numFactoryPresets = juce::jmax (1, processor.presets().numFactoryPresets());
     config.maxVoices = juce::jlimit (1, kMaxVoices, processor.diagnostics().diagnosticSnapshots.latest().maxVoices);

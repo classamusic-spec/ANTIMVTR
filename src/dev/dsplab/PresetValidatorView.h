@@ -23,6 +23,10 @@ public:
     void updateFrame (const LabFrame& f) override;
     void resized() override;
 
+    /** Starts validating every factory preset on the background thread. */
+    void startValidation();
+    bool isValidating() const { return validator.busy(); }
+
 private:
     void rebuildTable();
     void refreshDetail();

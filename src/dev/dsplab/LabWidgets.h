@@ -132,6 +132,8 @@ public:
     ~LabTable() override;
 
     void setColumns (std::vector<Column> columns);
+    /** Sets the column (1-based) and direction the table sorts by initially. */
+    void setDefaultSort (int columnId, bool forwards);
     void setRows (std::vector<Row> rows);
     void setRowColourFn (std::function<juce::Colour (int row)> fn) { rowTint = std::move (fn); }
 

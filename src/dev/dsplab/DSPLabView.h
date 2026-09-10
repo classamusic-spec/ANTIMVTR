@@ -51,6 +51,13 @@ public:
     void selectTab (int index);
     int  numTabs() const noexcept { return tabs.getNumTabs(); }
 
+    /** Starts one of the §84 stress scenarios (index into StressTest). */
+    void startStressTest (int index);
+    /** Starts a §85 parameter sweep (-1 = the parameter already selected). */
+    void startParameterSweep (int parameter = -1);
+    /** Starts the §86 factory preset validation on its background thread. */
+    void startPresetValidation();
+
     /** Tab order. OVERVIEW..SAFETY match the §70 list; the tools follow. */
     enum Tab
     {
@@ -65,6 +72,10 @@ private:
     void refreshProfilingPanel (const DiagnosticSnapshot& s);
     void exportReport (bool chooseFile);
     LabView* viewForTab (int index) const;
+    /** Headless verification hook: ANTIMATR_LAB_AUTORUN=stress:<n>|sweep[:id]|presets
+        starts a tool on construction so the snapshot tool can capture a run in
+        progress. Developer builds only; it never runs unless the variable is set. */
+    void applyAutoRunFromEnvironment();
 
     AntiMatrProcessor& processor;
     DiagnosticSnapshot snapshot;

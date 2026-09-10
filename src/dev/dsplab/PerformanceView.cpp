@@ -49,10 +49,16 @@ void CpuHistoryView::paint (juce::Graphics& g)
         return;
     }
 
-    float top = 10.0f;
+    // Pick the smallest readable ceiling above the data so a 0.3 % load is
+    // not drawn as a flat line against a 20 % axis.
+    float largest = 0.0f;
     for (int i = 0; i < count; ++i)
-        top = juce::jmax (top, moving[(size_t) i]);
-    top = juce::jmin (200.0f, std::ceil (top * 1.25f / 10.0f) * 10.0f);
+        largest = juce::jmax (largest, moving[(size_t) i]);
+
+    static const float steps[] = { 0.5f, 1.0f, 2.0f, 5.0f, 10.0f, 20.0f, 50.0f, 100.0f, 200.0f };
+    float top = steps[sizeof (steps) / sizeof (steps[0]) - 1];
+    for (float s : steps)
+        if (s >= largest * 1.25f) { top = s; break; }
 
     // Budget line at 100 %.
     if (top >= 100.0f)
@@ -89,7 +95,8 @@ void CpuHistoryView::paint (juce::Graphics& g)
     g.setColour (Theme::cyan);
     g.strokePath (p, juce::PathStrokeType (1.2f));
 
-    plot::caption (g, juce::String (top, 0) + "%", area.removeFromTop (10.0f), Theme::textDim, 8.0f);
+    plot::caption (g, juce::String (top, top < 10.0f ? 1 : 0) + "%   PEAK " + juce::String (largest, 2) + "%",
+                   area.removeFromTop (10.0f), Theme::textDim, 8.0f);
     plot::caption (g, "NOW", juce::Rectangle<float> (area.getRight() - 34.0f, area.getBottom() - 10.0f, 32.0f, 10.0f),
                    Theme::textDim, 8.0f, juce::Justification::centredRight);
 }
@@ -101,6 +108,7 @@ PerformanceView::PerformanceView()
         { "SUBSYSTEM", 110, false }, { "MOVING %", 74, true }, { "AVG %", 68, true },
         { "PEAK %", 68, true }, { "BAR", 120, true }
     });
+    subsystems.setDefaultSort (2, false);    // heaviest subsystem first
     tablePanel.addAndMakeVisible (subsystems);
     addAndMakeVisible (tablePanel);
     addAndMakeVisible (history);

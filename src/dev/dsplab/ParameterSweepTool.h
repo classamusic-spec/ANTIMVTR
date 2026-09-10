@@ -41,9 +41,12 @@ public:
     void updateFrame (const LabFrame& f) override;
     void resized() override;
 
-private:
-    void startSweep();
+    /** Starts a sweep of `parameter` (-1 keeps the current selection). */
+    void startSweep (int parameter = -1);
     void stopSweep (bool restoreParameter);
+    bool isSweeping() const noexcept { return running; }
+
+private:
     void timerCallback() override;
     void measureCurrentStep();
     void rebuildTable();

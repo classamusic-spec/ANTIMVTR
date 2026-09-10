@@ -10,17 +10,7 @@ PresetValidatorView::PresetValidatorView()
 {
     styleButton (startButton, Theme::cyan);
     styleButton (cancelButton, Theme::magenta);
-    startButton.onClick = [this]
-    {
-        PresetValidator::Options options;
-        options.holdSeconds = holdSeconds.getValue();
-        options.releaseSeconds = juce::jmax (0.25, holdSeconds.getValue() * 0.6);
-        results.clear();
-        lastResultCount = 0;
-        selectedIndex = -1;
-        table.setRows ({});
-        validator.startValidation (options);
-    };
+    startButton.onClick = [this] { startValidation(); };
     cancelButton.onClick = [this] { validator.cancelValidation(); };
     controls.addAndMakeVisible (startButton);
     controls.addAndMakeVisible (cancelButton);
@@ -45,11 +35,11 @@ PresetValidatorView::PresetValidatorView()
     addAndMakeVisible (controls);
 
     table.setColumns ({
-        { "#", 34, true }, { "PRESET", 150, false }, { "CATEGORY", 90, false },
-        { "BOUNDS", 60, false }, { "JSON", 52, false }, { "PEAK", 62, true },
-        { "RMS", 66, true }, { "DC", 66, true }, { "TAIL", 62, true },
-        { "CENTROID", 74, true }, { "CPU %", 58, true }, { "NaN", 46, true },
-        { "SAFETY", 58, true }, { "RESULT", 62, false }
+        { "#", 32, true }, { "RESULT", 58, false }, { "PRESET", 132, false },
+        { "CATEGORY", 74, false }, { "BOUNDS", 58, false }, { "JSON", 48, false },
+        { "PEAK", 58, true }, { "RMS", 62, true }, { "DC", 60, true },
+        { "TAIL", 58, true }, { "CENTROID", 70, true }, { "CPU %", 52, true },
+        { "NaN", 42, true }, { "SAFETY", 54, true }
     });
     table.setRowColourFn ([this] (int row) -> juce::Colour
     {
@@ -75,6 +65,18 @@ PresetValidatorView::~PresetValidatorView()
     validator.cancelValidation();
 }
 
+void PresetValidatorView::startValidation()
+{
+    PresetValidator::Options options;
+    options.holdSeconds = holdSeconds.getValue();
+    options.releaseSeconds = juce::jmax (0.25, holdSeconds.getValue() * 0.6);
+    results.clear();
+    lastResultCount = 0;
+    selectedIndex = -1;
+    table.setRows ({});
+    validator.startValidation (options);
+}
+
 void PresetValidatorView::rebuildTable()
 {
     std::vector<LabTable::Row> rows;
@@ -87,6 +89,7 @@ void PresetValidatorView::rebuildTable()
 
         rows.push_back ({
             { juce::String (r.index), (double) r.index, Theme::textSecondary },
+            { ok ? "PASS" : "FAIL", ok ? 1.0 : 0.0, ok ? Theme::cyan : Theme::magenta },
             { r.name, 0.0, ok ? Theme::textPrimary : Theme::magenta },
             { r.category, 0.0, Theme::textDim },
             { r.parametersInRange ? "ok" : "FAIL", r.parametersInRange ? 1.0 : 0.0,
@@ -100,13 +103,21 @@ void PresetValidatorView::rebuildTable()
             { juce::String (r.centroidHz, 0), r.centroidHz, Theme::blue },
             { juce::String (r.cpuAvgPercent, 2), r.cpuAvgPercent, r.cpuAvgPercent > 80.0f ? Theme::magenta : tint },
             { juce::String (r.nonFinite), (double) r.nonFinite, r.nonFinite > 0 ? Theme::magenta : Theme::textDim },
-            { juce::String ((int) r.safetyTotal), (double) r.safetyTotal, r.safetyTotal > 0 ? Theme::magenta : Theme::textDim },
-            { ok ? "PASS" : "FAIL", ok ? 1.0 : 0.0, ok ? Theme::cyan : Theme::magenta }
+            { juce::String ((int) r.safetyTotal), (double) r.safetyTotal, r.safetyTotal > 0 ? Theme::magenta : Theme::textDim }
         });
     }
 
     table.setRows (std::move (rows));
     tablePanel.setSubtitle (validator.summary().toUpperCase());
+
+    // Open the first preset that needs attention (or the first result).
+    if (selectedIndex < 0 && ! results.empty())
+    {
+        selectedIndex = 0;
+        for (size_t i = 0; i < results.size(); ++i)
+            if (! results[i].passed()) { selectedIndex = (int) i; break; }
+        table.selectRow (selectedIndex);
+    }
 }
 
 void PresetValidatorView::refreshDetail()

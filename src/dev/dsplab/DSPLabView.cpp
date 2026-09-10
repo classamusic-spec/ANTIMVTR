@@ -132,6 +132,51 @@ DSPLabView::DSPLabView (AntiMatrProcessor& p)
     addAndMakeVisible (keyboard);
 
     selectTab (Overview);
+    applyAutoRunFromEnvironment();
+}
+
+void DSPLabView::startStressTest (int index)
+{
+    stress.start ((StressTest) juce::jlimit (0, (int) StressTest::Count - 1, index));
+}
+
+void DSPLabView::startParameterSweep (int parameter)
+{
+    selectTab (Sweep);
+    sweepView.startSweep (parameter);
+}
+
+void DSPLabView::startPresetValidation()
+{
+    selectTab (Presets);
+    presetView.startValidation();
+}
+
+void DSPLabView::applyAutoRunFromEnvironment()
+{
+    const auto spec = juce::SystemStats::getEnvironmentVariable ("ANTIMATR_LAB_AUTORUN", {}).trim();
+    if (spec.isEmpty())
+        return;
+
+    const auto command = spec.upToFirstOccurrenceOf (":", false, false).trim().toLowerCase();
+    const auto argument = spec.fromFirstOccurrenceOf (":", false, false).trim();
+
+    if (command == "stress")
+    {
+        startStressTest (argument.getIntValue());
+    }
+    else if (command == "sweep")
+    {
+        int parameter = -1;
+        if (argument.isNotEmpty())
+            if (const auto p = ParameterRegistry::fromID (argument.toStdString()))
+                parameter = paramIndex (*p);
+        startParameterSweep (parameter);
+    }
+    else if (command == "presets")
+    {
+        startPresetValidation();
+    }
 }
 
 DSPLabView::~DSPLabView()

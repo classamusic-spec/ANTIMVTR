@@ -190,6 +190,15 @@ void LabTable::setColumns (std::vector<Column> newColumns)
     header.setSortColumnId (1, true);
 }
 
+void LabTable::setDefaultSort (int columnId, bool forwards)
+{
+    sortColumn = juce::jlimit (1, juce::jmax (1, (int) columns.size()), columnId);
+    sortForwards = forwards;
+    table.getHeader().setSortColumnId (sortColumn, forwards);
+    rebuildOrder();
+    table.repaint();
+}
+
 void LabTable::setRows (std::vector<Row> newRows)
 {
     const bool sizeChanged = newRows.size() != data.size();

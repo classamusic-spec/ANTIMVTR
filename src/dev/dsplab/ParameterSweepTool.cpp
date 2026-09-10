@@ -172,9 +172,12 @@ void ParameterSweepTool::populateParameterList()
     parameterBox.setSelectedId (paramIndex (Param::shapeDensity) + 1, juce::dontSendNotification);
 }
 
-void ParameterSweepTool::startSweep()
+void ParameterSweepTool::startSweep (int parameter)
 {
     stopSweep (true);
+
+    if (parameter >= 0 && parameter < kNumParams)
+        parameterBox.setSelectedId (parameter + 1, juce::dontSendNotification);
 
     sweptParameter = parameterBox.getSelectedId() - 1;
     if (sweptParameter < 0 || sweptParameter >= kNumParams)

@@ -312,8 +312,8 @@ public:
         axisU = normalised (axisU, r.u);
         axisV = normalised (axisV - axisU * dot (axisU, axisV), r.v);
 
-        // ---- Orbit: Tension pulls every ribbon onto the same tight shell.
-        const float baseRadius = liquid::lerp (r.radius, 0.88f, p.tension * 0.8f)
+        // ---- Orbit: Tension pulls every ribbon in onto the same tight shell.
+        const float baseRadius = liquid::lerp (r.radius, 0.70f, p.tension * 0.85f)
                                  * (1.0f - 0.26f * (p.gravity - 0.5f) * 2.0f);
         const float arcSpan = r.span * (1.0f - 0.30f * p.tension) * (1.0f + 0.35f * p.bend);
         const float phase = r.phase + p.flowTime * r.drift * (0.45f + 0.55f * p.life);

@@ -819,6 +819,27 @@ private:
             }
         }
 
+        beginTest ("Jumping MIX from fully dry to fully wet does not click");
+        {
+            Harness h;
+            h.prepare (48000.0, 64);
+            SpacePresets::apply (SpacePresets::Nebula, h.params);
+            h.set (Param::spaceMix, 0.0f);
+
+            auto buf = makeBuffer (48000.0, 3.0);
+            addSine (buf, 48000.0, 220.0, 0.35f);
+
+            // A long fully dry stretch (the rack is skipped and released), then a hard jump.
+            h.render (buf, [] (Harness& harness, int pos)
+            {
+                if (pos == 96000) harness.set (Param::spaceMix, 1.0f);
+                if (pos == 120000) harness.set (Param::spaceMix, 0.0f);
+            });
+
+            expect (allFinite (buf), "non-finite output while jumping MIX");
+            expect (maxSlope (buf, 480) < 0.12f, "MIX jump clicked: " + juce::String (maxSlope (buf, 480)));
+        }
+
         beginTest ("Sweeping MIX from dry to wet and back is smooth");
         {
             Harness h;

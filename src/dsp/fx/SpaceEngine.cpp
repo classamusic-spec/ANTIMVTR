@@ -79,6 +79,7 @@ void SpaceEngine::processChunk (float* l, float* r, int n, const RenderContext& 
     if (wetGain <= 0.0f && wetRamp.getCurrent() <= 0.0f && ! routingChanging)
     {
         dryRamp.reset (1.0f);
+        firstMixBlock = false;        // a dry block still counts as "something was rendered"
         for (int i = 0; i < n; ++i) blockDryEnergy += (double) l[i] * l[i] + (double) r[i] * r[i];
         if (idleBlocks < kIdleBlocksBeforeRelease && ++idleBlocks == kIdleBlocksBeforeRelease)
             rack.reset();
@@ -106,7 +107,7 @@ void SpaceEngine::processChunk (float* l, float* r, int n, const RenderContext& 
     // ---- equal-power dry/wet, with the Space-change fade folded into the wet
     if (firstMixBlock)
     {
-        dryRamp.reset (dryGain);      // nothing was playing before: no crossfade needed
+        dryRamp.reset (dryGain);      // very first block after reset: nothing to crossfade from
         wetRamp.reset (wetGain);
         firstMixBlock = false;
     }

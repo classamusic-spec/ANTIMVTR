@@ -415,12 +415,13 @@ void AntiMatterVisualizer::buildOrganism (const Frame& f)
             // approaches the rim, so the organism dissolves into the dark instead of
             // being cut off — and nothing the object draws can ever reach the bezel.
             const float dist = std::hypot (out[(size_t) i].x - f.centre.x, out[(size_t) i].y - f.centre.y);
-            const float fade = 1.0f - liquid::smoothstep (f.port.glassR * 0.62f, f.port.glassR * 0.925f, dist);
+            const float fade = 1.0f - liquid::smoothstep (f.port.glassR * 0.845f, f.port.glassR * 0.965f, dist);
             out[(size_t) i].w0 *= fade;
             out[(size_t) i].w1 *= fade;
             row[(size_t) i].bright *= 0.10f + 0.90f * fade;
 
-            const float reach = dist + 2.9f * juce::jmax (out[(size_t) i].w0, out[(size_t) i].w1);
+            // 2.1 = the widest strip (1.66) times the largest depth width multiplier.
+            const float reach = dist + 2.1f * juce::jmax (out[(size_t) i].w0, out[(size_t) i].w1);
             if (reach > objectExtent) objectExtent = reach;
         }
 
@@ -543,8 +544,9 @@ void AntiMatterVisualizer::drawRibbonSpan (juce::Graphics& g, const Frame& f, co
     const float meanDepth = juce::jlimit (-1.0f, 1.0f, span.meanZ / 1.15f);
     const bool  back = meanDepth < 0.0f;
 
-    // 0.14 at the far side of the sphere, 1.0 at the glass.
-    auto dim = [] (float d) { const float t = 0.5f + 0.5f * d; return 0.14f + 0.86f * t * t; };
+    // 0.24 at the far side of the sphere, 1.0 at the glass. The floor is high enough
+    // that a ribbon at the silhouette still reads once the editor is seen whole.
+    auto dim = [] (float d) { const float t = 0.5f + 0.5f * d; return 0.24f + 0.76f * t * std::sqrt (t); };
     const float dimA = dim (dA), dimM = dim (dM), dimB = dim (dB);
 
     const auto pa = juce::Point<float> (sc[(size_t) a].x, sc[(size_t) a].y);
@@ -591,16 +593,18 @@ void AntiMatterVisualizer::drawRibbonSpan (juce::Graphics& g, const Frame& f, co
     // show a hard silhouette exactly where the light should be fading away, and a
     // single narrow one is a neon stroke.
     struct Strip { float width, alpha, whiten; };
-    static constexpr Strip kFront[5] = {
-        { 2.35f, 0.058f, 0.00f }, { 1.62f, 0.092f, 0.00f }, { 1.12f, 0.205f, 0.02f },
-        { 0.64f, 0.470f, 0.12f }, { 0.17f, 1.000f, 0.55f },
+    // Four nested strips: a translucent bloom that dissolves on both sides of a
+    // molten core. The widest, faintest wash was dropped — at an alpha of 0.07 it
+    // cost more of the frame than any other layer and returned almost nothing once
+    // the editor is seen whole, and that budget buys brightness instead.
+    static constexpr Strip kFront[4] = {
+        { 1.66f, 0.105f, 0.00f }, { 1.04f, 0.290f, 0.02f }, { 0.56f, 0.600f, 0.14f }, { 0.14f, 1.000f, 0.64f },
     };
-    // A ribbon at the back is softer and much fainter, so its widest wash earns nothing.
     static constexpr Strip kBack[3] = {
-        { 1.95f, 0.060f, 0.00f }, { 1.22f, 0.155f, 0.00f }, { 0.54f, 0.360f, 0.08f },
+        { 1.62f, 0.090f, 0.00f }, { 1.06f, 0.215f, 0.00f }, { 0.46f, 0.460f, 0.12f },
     };
     const Strip* strips = back ? kBack : kFront;
-    const int count = back ? 3 : 5;
+    const int count = back ? 3 : 4;
     const int first = f.bloom ? 0 : 1;              // reduced quality drops the widest, softest layer
 
     for (int k = first; k < count; ++k)

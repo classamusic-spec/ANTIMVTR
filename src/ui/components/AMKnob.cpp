@@ -51,6 +51,7 @@ bool AMKnob::refreshModRing (const ModulationSnapshot& snapshot)
     ring.setCurrent (d.toNormalised (d.clampValue (base + snapshot.modulation[index])));
     ring.setRange (d.toNormalised (d.clampValue (base + snapshot.modMin[index])),
                    d.toNormalised (d.clampValue (base + snapshot.modMax[index])));
+    ring.setSourceCount ((int) snapshot.targeted[index]);
     return true;
 }
 
@@ -77,8 +78,8 @@ juce::Rectangle<float> AMKnob::knobBounds() const
 {
     auto b = getLocalBounds().toFloat();
     const float labelH = labelHeight();
-    const float cap = hero ? 150.0f : 100.0f;
-    const float d = juce::jmin (b.getWidth(), b.getHeight() - labelH - 2.0f, cap) * 0.92f;
+    const float cap = hero ? 158.0f : 106.0f;
+    const float d = juce::jmin (b.getWidth(), b.getHeight() - labelH - 2.0f, cap) * 0.99f;
     const float groupH = d + (labelH > 0.0f ? labelH + 2.0f : 0.0f);
     const float top = b.getY() + juce::jmax (0.0f, (b.getHeight() - groupH) * 0.5f);
     return { b.getCentreX() - d * 0.5f, top, d, d };
@@ -86,10 +87,9 @@ juce::Rectangle<float> AMKnob::knobBounds() const
 
 void AMKnob::resized()
 {
-    const auto kb = knobBounds();
-    const float d = kb.getWidth();
-    const float trackW = juce::jmax (1.4f, d * (hero ? 0.03f : 0.026f));
-    ring.setBounds (kb.reduced (trackW * 1.1f).expanded (trackW * 2.2f).toNearestInt());
+    // The ring paints the outermost orbit of the knob's own footprint, so a modulated
+    // knob never grows and never overlaps its value arc.
+    ring.setBounds (knobBounds().toNearestInt());
     juce::Slider::resized();
 }
 
@@ -99,22 +99,23 @@ void AMKnob::paint (juce::Graphics& g)
     const float d = kb.getWidth();
     if (d < 4.0f) return;
 
+    const auto geo = rings();
     const float p = proportion();
     const float startAngle = getRotaryParameters().startAngleRadians;
     const float endAngle   = getRotaryParameters().endAngleRadians;
     const float angle = startAngle + p * (endAngle - startAngle);
 
-    const float trackW = juce::jmax (1.4f, d * (hero ? 0.03f : 0.026f));
-    const auto arcBounds = kb.reduced (trackW * 1.1f);
+    const float trackW = geo.trackWidth;
+    const auto arcBounds = geo.arc;
     const float lit = juce::jmax (hover.value, dragging ? 1.0f : 0.0f);
     const float glowAmount = juce::jlimit (0.0f, 1.0f, 0.22f + 0.35f * activity + 0.45f * lit);
     const float valueWeight = bipolar ? std::abs (p - 0.5f) * 2.0f : p;
 
     // Controlled glow behind the arc, scaled by the value so idle knobs stay quiet.
-    draw::glowEllipse (g, arcBounds, accent, d * 0.14f, glowAmount * (0.2f + 0.8f * valueWeight));
+    draw::glowEllipse (g, arcBounds, accent, d * 0.12f, glowAmount * (0.2f + 0.8f * valueWeight));
 
     // Sphere base
-    const auto body = kb.reduced (trackW * 3.6f);
+    const auto body = geo.body;
     draw::sphere (g, body, lit * 0.6f);
 
     // Track
@@ -162,11 +163,11 @@ void AMKnob::paint (juce::Graphics& g)
     // Assign mode: every modulatable knob offers itself as a destination.
     if (isAssignTarget())
     {
-        const auto halo = kb.expanded (trackW * 1.6f);
+        const auto halo = geo.orbit;
         g.setColour (Theme::amber.withAlpha (0.16f + 0.14f * lit));
         g.fillEllipse (halo);
         g.setColour (Theme::amber.withAlpha (0.55f + 0.45f * lit));
-        g.drawEllipse (halo, juce::jmax (1.0f, trackW * 0.7f));
+        g.drawEllipse (halo, juce::jmax (1.0f, geo.ringStroke * 1.1f));
     }
 
     // Label / value (cross-fades with hover)

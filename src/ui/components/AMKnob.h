@@ -12,6 +12,39 @@ namespace am::ui
 {
 
 /**
+    Concentric geometry of a knob, derived from its square footprint.
+
+    From the rim inwards: the modulation orbit (where AMModRing lives), a
+    clear moat, the value arc, and the sphere body. Keeping the orbit
+    reserved whether or not the knob is modulated means the knob never
+    changes size when a routing is added.
+*/
+struct KnobRings
+{
+    float ringStroke = 1.1f;     ///< stroke of the modulation orbit
+    float trackWidth = 1.4f;     ///< stroke of the value arc
+    juce::Rectangle<float> orbit, arc, body;
+
+    /** Builds the geometry for a footprint (the largest centred square is used). */
+    static KnobRings forFootprint (juce::Rectangle<float> footprint, bool hero) noexcept
+    {
+        KnobRings r;
+        const float d = juce::jmin (footprint.getWidth(), footprint.getHeight());
+        const auto square = footprint.withSizeKeepingCentre (d, d);
+        if (d <= 0.0f) return r;
+        r.ringStroke = juce::jmax (1.1f, d * 0.016f);
+        r.trackWidth = juce::jmax (1.4f, d * (hero ? 0.030f : 0.026f));
+        r.orbit = square.reduced (r.ringStroke * 1.4f);
+        r.arc   = r.orbit.reduced (juce::jmin (r.ringStroke * 3.0f, r.orbit.getWidth() * 0.16f));
+        r.body  = r.arc.reduced (juce::jmin (r.trackWidth * 1.7f, r.arc.getWidth() * 0.18f));
+        return r;
+    }
+
+    /** Gap in pixels between the outside of the value arc and the middle of the orbit. */
+    float moat() const noexcept { return (orbit.getWidth() - arc.getWidth()) * 0.5f - trackWidth * 0.5f; }
+};
+
+/**
     The ANTI-MATR knob: sphere-like dark base with rim light, a thin value
     arc in the section accent, a fine white indicator and a soft controlled
     glow. Hover shows the precise value, double-click resets, shift-drag is
@@ -64,6 +97,7 @@ public:
     void mouseUp (const juce::MouseEvent&) override;
 
     juce::Rectangle<float> knobBounds() const;
+    KnobRings rings() const { return KnobRings::forFootprint (knobBounds(), hero); }
     float labelHeight() const;
 
 private:

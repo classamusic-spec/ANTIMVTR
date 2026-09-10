@@ -4,6 +4,7 @@
 #include "ui/AntiMatrLookAndFeel.h"
 #include "ui/views/MainView.h"
 #include "ui/views/TopBar.h"
+#include "ui/components/AMTooltip.h"
 
 namespace am
 {
@@ -44,7 +45,7 @@ private:
     ui::MainView mainView;
     std::vector<std::unique_ptr<juce::Component>> pages;   // index 1.. = deep pages
     std::unique_ptr<juce::Component> labView;
-    juce::TooltipWindow tooltips { this, 600 };
+    ui::AMTooltipWindow tooltips { this, 600 };
     int page = 0;
     int frameCounter = 0;
 };

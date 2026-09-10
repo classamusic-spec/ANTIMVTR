@@ -98,6 +98,47 @@ inline int modScopeColumns (int count, int width) noexcept
 
 //==============================================================================
 /**
+    Column count for a grid of equal controls in an area of `width` x `height`.
+
+    Chooses the arrangement that leaves each control the largest it can be —
+    a knob needs room for its label as well as its circle — and, between
+    arrangements that are effectively the same size, the one that leaves the
+    fewest empty cells. Choosing from the width alone gave a six-knob module
+    two columns and three rows of 26px knobs while the panel next door, with
+    one knob, drew it at 90px.
+*/
+inline int gridColumns (int count, int width, int height) noexcept
+{
+    if (count <= 1 || width <= 0 || height <= 0) return juce::jmax (1, count);
+
+    int best = 1;
+    float bestSize = -1.0f;
+    int bestEmpty = count;
+    for (int cols = 1; cols <= count; ++cols)
+    {
+        const int rows = (count + cols - 1) / cols;
+        const float cellW = (float) width / (float) cols;
+        const float cellH = (float) height / (float) rows;
+        const float labelBand = juce::jlimit (10.0f, 22.0f, cellH * 0.19f) + 2.0f;
+        float size = juce::jmin (cellW, cellH - labelBand);
+        // A cell narrower than its caption is a false economy: the knob is big and the
+        // label under it is clipped, so squeezed columns are scored down.
+        constexpr float readableLabel = 68.0f;
+        if (cellW < readableLabel) size -= (readableLabel - cellW) * 0.6f;
+        const int empty = rows * cols - count;
+
+        if (size > bestSize + 2.0f || (size > bestSize - 2.0f && empty < bestEmpty))
+        {
+            if (size > bestSize) bestSize = size;
+            bestEmpty = empty;
+            best = cols;
+        }
+    }
+    return best;
+}
+
+//==============================================================================
+/**
     Concentric radii of a knob, from the rim inwards: the modulation orbit, a
     clear moat, the value arc and the sphere body. All values are diameters in
     the same units as `diameter`, which is the knob's square footprint.

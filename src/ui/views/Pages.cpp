@@ -1,4 +1,5 @@
 #include "Pages.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -102,9 +103,7 @@ void ParamPanel::resized()
         area.removeFromTop (juce::jmax (4, area.getHeight() / 24));
     }
     const int n = (int) comps.size();
-    int cols = columns > 0 ? columns : juce::jlimit (1, n, juce::jmax (1, area.getWidth() / 96));
-    // avoid a lonely last row when possible
-    if (columns <= 0 && n > cols && n % cols == 1 && cols > 2) --cols;
+    const int cols = columns > 0 ? columns : layout::gridColumns (n, area.getWidth(), area.getHeight());
     layoutGrid (area, comps, cols, 2, 2);
 }
 
@@ -168,6 +167,7 @@ SourcePage::SourcePage (AntiMatrProcessor& p)
                   { "Gesture", Icon::Gesture, Theme::magenta, "Living gesture" } })
 {
     selector.setOrientation (AMSourceSelector::Orientation::Column);
+    selector.setTooltip ("Source: what creates the energy Matter is struck with.");
     addAndMakeVisible (sourcePanel);
     addAndMakeVisible (wavePanel);
     wavePanel.setCompact (true);
@@ -299,12 +299,15 @@ void SourcePage::resized()
         return;
     }
 
+    // Widths are fractions of the whole row: measuring against the shrinking remainder
+    // squeezed every section after the first (PITCH ended up half the width it asked for).
     float total = 0.0f;
     for (auto& s : sections) total += s.weight;
+    const int usable = area.getWidth() - gap * (int) juce::jmax ((size_t) 1, sections.size()) + gap;
     for (size_t i = 0; i < sections.size(); ++i)
     {
         const bool last = i + 1 == sections.size();
-        const int w = last ? area.getWidth() : juce::roundToInt ((float) (area.getWidth() - gap * (int) (sections.size() - 1)) * sections[i].weight / total);
+        const int w = last ? area.getWidth() : juce::roundToInt ((float) usable * sections[i].weight / juce::jmax (0.001f, total));
         sections[i].panel->setBounds (area.removeFromLeft (w));
         area.removeFromLeft (gap);
     }

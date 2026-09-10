@@ -13,7 +13,8 @@ namespace am::ui
     The peaks are re-scanned only when the sample or the width changes, so
     dragging a handle costs one repaint, not a rescan.
 */
-class SampleWaveView : public juce::Component
+class SampleWaveView : public juce::Component,
+                       public juce::SettableTooltipClient
 {
 public:
     explicit SampleWaveView (juce::Colour accent);

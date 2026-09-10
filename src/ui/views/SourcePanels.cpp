@@ -30,6 +30,8 @@ namespace
 SampleWaveView::SampleWaveView (juce::Colour c) : accent (c)
 {
     setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    setTooltip ("Drag the START and END handles to choose the part of the sample that plays. "
+                "Click anywhere to move the nearer handle there.");
 }
 
 void SampleWaveView::setSample (SampleRef s)

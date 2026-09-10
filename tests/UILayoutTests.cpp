@@ -141,6 +141,74 @@ public:
 };
 
 //==============================================================================
+class GridColumnTests : public juce::UnitTest
+{
+public:
+    GridColumnTests() : juce::UnitTest ("Control grid columns", "uilayout") {}
+
+    /** Size of one control for a given arrangement, the quantity the chooser maximises. */
+    static float controlSize (int count, int width, int height, int cols)
+    {
+        const int rows = (count + cols - 1) / cols;
+        const float cellW = (float) width / (float) cols;
+        const float cellH = (float) height / (float) rows;
+        return juce::jmin (cellW, cellH - juce::jlimit (10.0f, 22.0f, cellH * 0.19f) - 2.0f);
+    }
+
+    void runTest() override
+    {
+        beginTest ("The arrangement chosen is never much worse than the best one");
+        for (int count = 1; count <= 10; ++count)
+        {
+            for (int width : { 200, 236, 340, 470, 760, 1530 })
+            {
+                for (int height : { 90, 145, 190, 250, 380 })
+                {
+                    const int cols = gridColumns (count, width, height);
+                    expect (cols >= 1 && cols <= count, "column count out of range");
+
+                    // Any arrangement that would have been meaningfully bigger must have been
+                    // rejected for a reason: cells too narrow to hold the control's caption.
+                    const float chosen = controlSize (count, width, height, cols);
+                    for (int c = 1; c <= count; ++c)
+                    {
+                        const float size = controlSize (count, width, height, c);
+                        if (size <= chosen + 8.0f) continue;
+                        expect ((float) width / (float) c < 68.0f,
+                                "chose " + juce::String (cols) + " columns giving " + juce::String (chosen, 1)
+                                + "px where " + juce::String (c) + " columns gave " + juce::String (size, 1)
+                                + "px in readable cells (" + juce::String (count) + " in "
+                                + juce::String (width) + "x" + juce::String (height) + ")");
+                    }
+                }
+            }
+        }
+
+        beginTest ("A short wide module lays its controls out in rows, not a column");
+        {
+            // The six reverb controls in a 236 x 145 module: three columns, not two.
+            expectEquals (gridColumns (6, 236, 145), 3);
+            // Three EQ bands fit on one line.
+            expectEquals (gridColumns (3, 236, 145), 3);
+        }
+
+        beginTest ("Cells stay wide enough for the caption under the control");
+        {
+            // Four granular controls in a narrow module: two rows of two beats one row of
+            // four, because a 59px cell cannot hold the words GRANULAR MIX.
+            expectEquals (gridColumns (4, 236, 145), 2);
+            // Given room, the same four go in a single row.
+            expectEquals (gridColumns (4, 470, 190), 4);
+        }
+
+        beginTest ("A single control needs no arithmetic");
+        expectEquals (gridColumns (1, 300, 200), 1);
+        expectEquals (gridColumns (0, 300, 200), 1);
+        expectEquals (gridColumns (5, 0, 0), 5);
+    }
+};
+
+//==============================================================================
 class KnobGeometryTests : public juce::UnitTest
 {
 public:
@@ -338,6 +406,7 @@ public:
 //==============================================================================
 static ModRowLayoutTests modRowLayoutTests;
 static ModScopeGridTests modScopeGridTests;
+static GridColumnTests gridColumnTests;
 static KnobGeometryTests knobGeometryTests;
 static SourceSelectorLayoutTests sourceSelectorLayoutTests;
 static WaveRulerTests waveRulerTests;

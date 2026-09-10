@@ -6,6 +6,7 @@
 #include "dsp/SynthEngine.h"
 #include "presets/PresetManager.h"
 #include "state/MutationEngine.h"
+#include "dsp/fracture/Fragment.h"
 
 namespace am
 {
@@ -84,6 +85,10 @@ public:
     /** Diagnostics-friendly parameter snapshot (message thread). */
     ParamValues currentParamValues() const;
 
+    /** Fracture fragment / sequencer table (message thread). Setting it publishes to the engine. */
+    const FractureTable& getFractureTable() const noexcept { return fractureTable; }
+    void setFractureTable (const FractureTable& table);
+
     static constexpr int kDefaultWidth  = 1600;
     static constexpr int kDefaultHeight = 1000;
     int lastEditorWidth  = kDefaultWidth;
@@ -115,6 +120,7 @@ private:
 
     int reportedLatency = 0;
     PatchState extraState;   ///< non-parameter sections kept for round-tripping
+    FractureTable fractureTable = FractureTable::makeDefault();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AntiMatrProcessor)
 };

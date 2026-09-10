@@ -22,7 +22,14 @@ AntiMatrProcessor::AntiMatrProcessor()
     ParameterRegistry::fillDefaults (blockParams);
     abStates[0] = abStates[1] = PresetManager::initPatch();
     markPreset ("Init", { "basic" }, 0);
+    synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
     startTimer (500);
+}
+
+void AntiMatrProcessor::setFractureTable (const FractureTable& table)
+{
+    fractureTable = table;
+    synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
 }
 
 AntiMatrProcessor::~AntiMatrProcessor()
@@ -174,6 +181,7 @@ PatchState AntiMatrProcessor::currentPatch() const
 {
     PatchState s = extraState;
     s.params = currentParamValues();
+    s.fracture = fractureTable.toVar();
     s.meta.name = presetName;
     s.meta.tags = presetTags;
     s.meta.pluginVersion = ANTIMATR_VERSION_STRING;
@@ -190,6 +198,8 @@ void AntiMatrProcessor::markPreset (const juce::String& name, const juce::String
 void AntiMatrProcessor::loadPatch (const PatchState& patch, bool notifyPresetChange)
 {
     extraState = patch;
+    fractureTable = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
+    synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
     apvts.replaceState (StateManager::toParameterTree (patch.params, kParametersType));
     markPreset (patch.meta.name, patch.meta.tags, presetManager.findFactory (patch.meta.name));
     diagnostics().events.push (EngineEventType::PresetLoaded, Subsystem::State, -1, (uint32_t) std::max (0, currentPreset), 0.0f,

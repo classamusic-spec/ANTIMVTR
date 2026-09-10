@@ -117,7 +117,10 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
                 {
                     const auto meta = *midiIt;
                     if (meta.samplePosition > pos) { next = std::min (chunkEnd, meta.samplePosition); break; }
-                    voices.handleMidi (meta.getMessage(), controlGraph.values(), currentQuality);
+                    const auto message = meta.getMessage();
+                    if (message.isNoteOn() && voices.activeVoiceCount() == 0)
+                        fracture.noteStarted();     // first note of a phrase retriggers the fragment sequencer
+                    voices.handleMidi (message, controlGraph.values(), currentQuality);
                     ++midiIt;
                 }
 

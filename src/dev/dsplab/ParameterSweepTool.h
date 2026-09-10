@@ -83,7 +83,8 @@ private:
     const DiagnosticSnapshot* latest = nullptr;
     Diagnostics* diagnostics = nullptr;
     double sampleRate = 48000.0;
-    std::array<float, 4096> tapL {}, tapR {}, tapMono {};
+    std::array<float, 4096> tapL {}, tapR {};
+    std::vector<float> monoScratch;
 };
 
 } // namespace am::dev

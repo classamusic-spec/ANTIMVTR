@@ -71,11 +71,14 @@ private:
     void refreshEngineInspector (const DiagnosticSnapshot& s);
     void refreshProfilingPanel (const DiagnosticSnapshot& s);
     void exportReport (bool chooseFile);
+    void exportReport (const juce::File& file);
     LabView* viewForTab (int index) const;
     /** Headless verification hook: ANTIMATR_LAB_AUTORUN=stress:<n>|sweep[:id]|presets
         starts a tool on construction so the snapshot tool can capture a run in
         progress. Developer builds only; it never runs unless the variable is set. */
     void applyAutoRunFromEnvironment();
+
+    juce::File autoRunReportFile;   ///< written once the snapshot has real content
 
     AntiMatrProcessor& processor;
     DiagnosticSnapshot snapshot;

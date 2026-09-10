@@ -85,6 +85,26 @@ struct SweepPoint
     }
 };
 
+/** Everything one sweep step measures. Filled by the sweep tool from the
+    Master tap, the profiler and the diagnostic snapshot. */
+struct SweepMeasurement
+{
+    const float* left      = nullptr;
+    const float* right     = nullptr;
+    int          numSamples = 0;
+    double       sampleRate = 48000.0;
+    float        normalised = 0.0f;   ///< 0..1 position of the swept parameter
+    float        value      = 0.0f;   ///< natural (denormalised) parameter value
+    float        cpuPercent = 0.0f;
+    int          activeNodes = 0;
+    uint32_t     safetyDelta = 0;     ///< safety events raised during this step
+};
+
+/** Turns one measurement window into a SweepPoint (levels, crest, non-finite
+    count and the spectral centroid). Message thread / offline only. */
+SweepPoint measureSweepPoint (SpectrumMeasurement& spectrum, const SweepMeasurement& in,
+                              std::vector<float>& monoScratch);
+
 /** Summary of a completed sweep. */
 struct SweepSummary
 {

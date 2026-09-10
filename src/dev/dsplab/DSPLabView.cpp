@@ -177,6 +177,11 @@ void DSPLabView::applyAutoRunFromEnvironment()
     {
         startPresetValidation();
     }
+    else if (command == "report")
+    {
+        // Deferred: the first snapshot is still empty at construction time.
+        autoRunReportFile = argument.isNotEmpty() ? juce::File (argument) : DiagnosticReport::defaultFile();
+    }
 }
 
 DSPLabView::~DSPLabView()
@@ -272,6 +277,13 @@ void DSPLabView::timerCallback()
         view->updateFrame (frame);
 
     stress.sample (frame);
+
+    if (autoRunReportFile != juce::File() && frameCounter >= 25)
+    {
+        const auto file = autoRunReportFile;
+        autoRunReportFile = juce::File();
+        exportReport (file);
+    }
 
     const int slot = processor.currentABSlot();
     slotA.setToggleState (slot == 0, juce::dontSendNotification);
@@ -400,25 +412,28 @@ juce::String DSPLabView::buildReport() const
     return DiagnosticReport::toJson (in);
 }
 
+void DSPLabView::exportReport (const juce::File& file)
+{
+    auto in = DiagnosticReportInput::environment();
+    in.presetName = processor.currentPresetName();
+    in.presetTags = processor.currentPresetTags();
+    in.abSlot = processor.currentABSlot();
+    in.snapshot = snapshot;
+    in.parameters = processor.currentParamValues();
+
+    const auto result = DiagnosticReport::writeTo (file, in);
+
+    EngineEvent e;
+    e.type = EngineEventType::Custom;
+    e.subsystem = (uint8_t) Subsystem::State;
+    e.sampleTime = snapshot.sampleTime;
+    eventView.addEvent (e, (uint64_t) juce::jmax (1.0, snapshot.sampleRate));
+    exportButton.setButtonText (result.wasOk() ? "REPORT SAVED" : "EXPORT FAILED");
+}
+
 void DSPLabView::exportReport (bool chooseFile)
 {
-    auto write = [this] (const juce::File& file)
-    {
-        auto in = DiagnosticReportInput::environment();
-        in.presetName = processor.currentPresetName();
-        in.presetTags = processor.currentPresetTags();
-        in.abSlot = processor.currentABSlot();
-        in.snapshot = snapshot;
-        in.parameters = processor.currentParamValues();
-
-        const auto result = DiagnosticReport::writeTo (file, in);
-        EngineEvent e;
-        e.type = EngineEventType::Custom;
-        e.subsystem = (uint8_t) Subsystem::State;
-        e.sampleTime = snapshot.sampleTime;
-        eventView.addEvent (e, (uint64_t) juce::jmax (1.0, snapshot.sampleRate));
-        exportButton.setButtonText (result.wasOk() ? "REPORT SAVED" : "EXPORT FAILED");
-    };
+    auto write = [this] (const juce::File& file) { exportReport (file); };
 
     if (! chooseFile)
     {

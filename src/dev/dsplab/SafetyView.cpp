@@ -21,6 +21,7 @@ SafetyView::SafetyView()
         { "EVENT", 150, false }, { "COUNT", 70, true },
         { "LAST SUBSYSTEM", 120, false }, { "LAST VOICE", 76, true }
     });
+    counters.setDefaultSort (2, false);    // loudest problem first
     counters.setRowColourFn ([] (int row) -> juce::Colour
     {
         return isCritical ((SafetyEvent) row) ? Theme::magenta.withAlpha (0.05f) : juce::Colours::transparentBlack;

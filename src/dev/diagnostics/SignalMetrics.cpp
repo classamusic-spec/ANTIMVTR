@@ -126,6 +126,36 @@ float SpectrumMeasurement::spectralFlatness (const float* mono, int numSamples)
 }
 
 //==============================================================================
+SweepPoint measureSweepPoint (SpectrumMeasurement& spectrum, const SweepMeasurement& in,
+                              std::vector<float>& monoScratch)
+{
+    SweepPoint p;
+    p.normalised = in.normalised;
+    p.value = in.value;
+    p.cpuPercent = std::isfinite (in.cpuPercent) ? in.cpuPercent : 0.0f;
+    p.activeNodes = in.activeNodes;
+    p.safetyDelta = in.safetyDelta;
+
+    if (in.left == nullptr || in.numSamples <= 0)
+        return p;
+
+    const auto metrics = SignalMetrics::measure (in.left, in.right, in.numSamples);
+    p.peak = metrics.peak;
+    p.rms = metrics.rms;
+    p.crestFactor = metrics.crestFactor;
+    p.nonFinite = metrics.nonFinite;
+
+    monoScratch.assign ((size_t) in.numSamples, 0.0f);
+    for (int i = 0; i < in.numSamples; ++i)
+    {
+        const float l = in.left[i];
+        const float r = in.right != nullptr ? in.right[i] : l;
+        monoScratch[(size_t) i] = 0.5f * ((std::isfinite (l) ? l : 0.0f) + (std::isfinite (r) ? r : 0.0f));
+    }
+    p.centroidHz = spectrum.spectralCentroid (monoScratch.data(), in.numSamples, in.sampleRate);
+    return p;
+}
+
 SweepSummary SweepSummary::of (const std::vector<SweepPoint>& points, float peakLimit, float cpuLimit) noexcept
 {
     SweepSummary s;

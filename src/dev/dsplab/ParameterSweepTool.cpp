@@ -275,26 +275,22 @@ void ParameterSweepTool::measureCurrentStep()
     const float normalised = (float) currentStep / (float) juce::jmax (1, totalSteps - 1);
 
     diagnostics->taps[(int) Stage::Master].readLatest (tapL.data(), tapR.data(), (int) tapL.size());
-    for (size_t i = 0; i < tapMono.size(); ++i)
-        tapMono[i] = 0.5f * (tapL[i] + tapR[i]);
 
-    const auto metrics = SignalMetrics::measure (tapL.data(), tapR.data(), (int) tapL.size());
     const auto safetyNow = diagnostics->safety.snapshot().total;
     const auto perf = diagnostics->profiler.snapshot();
 
-    SweepPoint point;
-    point.normalised = normalised;
-    point.value = desc.fromNormalised (normalised);
-    point.peak = metrics.peak;
-    point.rms = metrics.rms;
-    point.crestFactor = metrics.crestFactor;
-    point.nonFinite = metrics.nonFinite;
-    point.cpuPercent = perf.totalMovingPercent;
-    point.centroidHz = spectrum.spectralCentroid (tapMono.data(), (int) tapMono.size(), sampleRate);
-    point.activeNodes = latest != nullptr ? latest->activeNodes : 0;
-    point.safetyDelta = safetyNow > safetyAtStepStart ? safetyNow - safetyAtStepStart : 0;
+    SweepMeasurement in;
+    in.left = tapL.data();
+    in.right = tapR.data();
+    in.numSamples = (int) tapL.size();
+    in.sampleRate = sampleRate;
+    in.normalised = normalised;
+    in.value = desc.fromNormalised (normalised);
+    in.cpuPercent = perf.totalMovingPercent;
+    in.activeNodes = latest != nullptr ? latest->activeNodes : 0;
+    in.safetyDelta = safetyNow > safetyAtStepStart ? safetyNow - safetyAtStepStart : 0;
 
-    points.push_back (point);
+    points.push_back (measureSweepPoint (spectrum, in, monoScratch));
 }
 
 void ParameterSweepTool::rebuildTable()

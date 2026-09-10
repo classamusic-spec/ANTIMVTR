@@ -133,6 +133,67 @@ public:
                     "peak bin " + juce::String (peakBin) + " vs expected " + juce::String (expectedBin));
         }
 
+        beginTest ("measureSweepPoint turns a window into a sweep point");
+        {
+            SpectrumMeasurement spectrum (11);
+            std::vector<float> mono;
+
+            std::vector<float> l (4096), r (4096);
+            fillSine (l, 48000.0, 2000.0, 0.4f);
+            r = l;
+
+            SweepMeasurement in;
+            in.left = l.data();
+            in.right = r.data();
+            in.numSamples = (int) l.size();
+            in.sampleRate = 48000.0;
+            in.normalised = 0.25f;
+            in.value = 12.5f;
+            in.cpuPercent = 33.0f;
+            in.activeNodes = 7;
+            in.safetyDelta = 0;
+
+            auto p = measureSweepPoint (spectrum, in, mono);
+            expectWithinAbsoluteError (p.normalised, 0.25f, 1.0e-6f);
+            expectWithinAbsoluteError (p.value, 12.5f, 1.0e-6f);
+            expectWithinAbsoluteError (p.peak, 0.4f, 0.01f);
+            expectWithinAbsoluteError (p.rms, 0.4f / std::sqrt (2.0f), 0.01f);
+            expectWithinAbsoluteError (p.crestFactor, std::sqrt (2.0f), 0.05f);
+            expectWithinAbsoluteError (p.centroidHz, 2000.0f, 80.0f);
+            expectEquals (p.activeNodes, 7);
+            expectWithinAbsoluteError (p.cpuPercent, 33.0f, 1.0e-4f);
+            expectEquals (p.nonFinite, 0);
+            expect (! p.dangerous(), "a clean 0.4 peak step is not dangerous");
+
+            // Clipping, non-finite audio and safety events each raise the flag.
+            l[100] = 1.0f;
+            p = measureSweepPoint (spectrum, in, mono);
+            expect (p.dangerous(), "a peak at 1.0 must be flagged");
+
+            l[100] = std::numeric_limits<float>::quiet_NaN();
+            p = measureSweepPoint (spectrum, in, mono);
+            expectEquals (p.nonFinite, 1);
+            expect (p.dangerous());
+            expect (std::isfinite (p.centroidHz), "a NaN sample must not poison the centroid");
+
+            l[100] = 0.0f;
+            in.safetyDelta = 4;
+            p = measureSweepPoint (spectrum, in, mono);
+            expect (p.dangerous(), "safety events must be flagged");
+
+            in.safetyDelta = 0;
+            in.cpuPercent = 95.0f;
+            p = measureSweepPoint (spectrum, in, mono);
+            expect (p.dangerous(), "a 95 % CPU step must be flagged");
+
+            // An empty window must not crash and must stay zeroed.
+            in.left = nullptr;
+            in.numSamples = 0;
+            p = measureSweepPoint (spectrum, in, mono);
+            expectEquals (p.peak, 0.0f);
+            expectEquals (p.centroidHz, 0.0f);
+        }
+
         beginTest ("SweepSummary aggregates points and counts dangerous ones");
         {
             std::vector<SweepPoint> points;

@@ -25,8 +25,9 @@ namespace am
 
     Frequency work happens in the log2 domain relative to the material
     fundamental f0 (node 0's target / ratio). Each node has a spectral height
-    h = log2 (f / f0) / log2 (fTop / f0) in 0..1 that BEND, MELT, GRAVITY and
-    SCATTER use to weigh their effect by rank.
+    h = log2 (f / f0) / 4 (0 at the fundamental, 1 from four octaves up) that
+    BEND, MELT, GRAVITY and SCATTER use to weigh their effect by rank; a fixed
+    span keeps the operators object-independent and predictable.
 
       BEND     lever around a pivot: partials above it rise, below it sink,
                up to ±bendRange octaves, distributed by bendCurve.

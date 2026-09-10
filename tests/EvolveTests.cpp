@@ -110,14 +110,10 @@ namespace
         return n > 0 ? (float) std::sqrt (s / n) : 0.0f;
     }
 
-    /** Spectral height of node i as the engine defines it: log2 ratio / log2 of the top active modal ratio. */
+    /** Spectral height of node i as the engine defines it: log2 ratio over a fixed span of four octaves. */
     float heightOf (const Harness& h, const Nodes& base, int i)
     {
-        float lrMax = 1.0f;
-        for (int k = 0; k < h.modalCount(); ++k)
-            if (base[(size_t) k].active && base[(size_t) k].weight > 0.0f)
-                lrMax = std::max (lrMax, std::log2 (base[(size_t) k].targetFrequency / h.fundamental()));
-        return std::clamp (std::log2 (base[(size_t) i].targetFrequency / h.fundamental()) / lrMax, 0.0f, 1.0f);
+        return std::clamp (std::log2 (base[(size_t) i].targetFrequency / h.fundamental()) / 4.0f, 0.0f, 1.0f);
     }
 }
 
@@ -161,14 +157,17 @@ public:
                 h.start (48);    // low enough that the top partial stays well below Nyquist after a +1 octave bend
                 const auto base = snapshot (h);
                 h.applyOnly();
-                float topShift = 0.0f, topBase = 0.0f;
+                float topShift = 0.0f, topBase = 0.0f; int topIndex = -1;
                 for (int i = 0; i < h.modalCount(); ++i)
                 {
                     if (! (base[(size_t) i].active && base[(size_t) i].weight > 0.0f)) continue;
                     const double c = cents (h.node (i).frequency, base[(size_t) i].targetFrequency);
                     expect (c >= -0.01, "node below its baseline with pivot 0: " + juce::String (c));
-                    if (base[(size_t) i].targetFrequency > topBase) { topBase = base[(size_t) i].targetFrequency; topShift = (float) c; }
+                    // Linear curve: the shift is amount * range * height, exactly.
+                    expectWithinAbsoluteError ((float) c, amount * 1200.0f * heightOf (h, base, i), 6.0f, "bend law for node " + juce::String (i));
+                    if (base[(size_t) i].targetFrequency > topBase) { topBase = base[(size_t) i].targetFrequency; topShift = (float) c; topIndex = i; }
                 }
+                expect (topIndex >= 0 && heightOf (h, base, topIndex) >= 1.0f, "the top of this object should sit four octaves up");
                 expectWithinAbsoluteError (topShift, amount * 1200.0f, 12.0f, "top node shift at bend " + juce::String (amount));
                 expectWithinAbsoluteError ((float) cents (h.node (0).frequency, base[0].targetFrequency), 0.0f, 0.5f, "fundamental must stay put at pivot 0");
 

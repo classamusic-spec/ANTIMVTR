@@ -16,6 +16,7 @@ namespace
     constexpr float kMaxNonlinearity = 2.0f;
 
     // ---- operator laws
+    constexpr float kHeightOctaves    = 4.0f;    ///< spectral height h = log2 (f / f0) / 4, saturating 4 octaves above the fundamental
     constexpr float kBendMaxOctaves   = 1.0f;    ///< ±1 octave at bendRange 1 for the node farthest from the pivot
     constexpr float kBendMotionDepth  = 0.3f;    ///< MOTION 1 breathes the bend by ±30 %
     constexpr float kMeltDropOctaves  = 0.5f;    ///< the top partial sags half an octave at MELT 1
@@ -278,7 +279,6 @@ void EvolveEngine::apply (MatterEngine& matter, const RenderContext& ctx, const 
     diag.fundamentalHz = f0;
 
     const float invF0 = 1.0f / f0;
-    float lrMax = 1.0f;
     int numActive = 0;
     float wMax = 0.0f;
     for (int i = 0; i < N; ++i)
@@ -291,7 +291,7 @@ void EvolveEngine::apply (MatterEngine& matter, const RenderContext& ctx, const 
         if (! ok) continue;
         const float lr = fastLog2 (nd.targetFrequency * invF0);
         logRatio[(size_t) i] = lr;
-        if (i < modalCount) lrMax = std::max (lrMax, lr);
+        height[(size_t) i] = clamp01 (lr * (1.0f / kHeightOctaves));
         weight[(size_t) i] = nd.weight;
         damping[(size_t) i] = nd.damping;
         pan[(size_t) i] = nd.pan;
@@ -310,9 +310,6 @@ void EvolveEngine::apply (MatterEngine& matter, const RenderContext& ctx, const 
         return;
     }
 
-    const float invLrMax = 1.0f / lrMax;
-    for (int i = 0; i < N; ++i)
-        if (considered[(size_t) i]) height[(size_t) i] = clamp01 (logRatio[(size_t) i] * invLrMax);
 
     // ---- per-node motion LFO (only when something uses it)
     const bool useMotion = a.motion > 0.0f && (a.bend > 0.0f || a.melt > 0.0f || a.tear > 0.0f || a.scatter > 0.0f);

@@ -109,6 +109,40 @@ namespace
         return { lo + 0.10f * span, hi - 0.10f * span };
     }
 
+    /**
+        How far a parameter may travel from where the patch put it, as a fraction of
+        its safe span.
+
+        Most controls may cross their whole region — that is what a structural
+        mutation is for. The ones listed here set *level*: the strike amplitude, the
+        Matter/source blend, the wet shares. A patch that was designed around a soft
+        strike or a fully wet Fracture has its headroom built on those values, so a
+        mutant that redraws them uniformly does not sound like a variation, it sounds
+        like the same patch ten decibels louder — and it walks into the limiter.
+    */
+    float maxRelativeMove (Param p) noexcept
+    {
+        switch (p)
+        {
+            case Param::shapeStrike:        return 0.20f;
+            case Param::shapeMix:
+            case Param::shapeExcite:        return 0.30f;
+            case Param::waveLevel:
+            case Param::dustLevel:
+            case Param::impactLevel:
+            case Param::sampleLevel:
+            case Param::gestureLevel:       return 0.30f;
+            case Param::ampSustain:         return 0.35f;
+            case Param::fractureAmount:
+            case Param::fractureMix:        return 0.30f;
+            case Param::spaceMix:
+            case Param::spaceReverbMix:     return 0.30f;
+            case Param::impactRate:
+            case Param::dustDensity:        return 0.40f;
+            default:                        return 1.0f;
+        }
+    }
+
     /** How freely a DNA category may move. SHAPE and EVOLVE are the patch; SPACE and PITCH are context. */
     float categoryWeight (MutationCategory c) noexcept
     {
@@ -355,6 +389,9 @@ void MutationEngine::mutate (ParamValues& values, MutationStrength strength, uin
                     v = lerp (v, target, juce::jlimit (0.0f, 1.0f, profile.jumpAmount * (0.5f + 0.5f * rng.nextFloat())));
                 }
 
+                // Level controls stay near where the patch put them whatever the dice said.
+                const float reach = maxRelativeMove (d.param) * span;
+                v = juce::jlimit (start - reach, start + reach, v);
                 v = juce::jlimit (lo, hi, v);
 
                 // SUBTLE never pushes a value further outside its region than it already was.

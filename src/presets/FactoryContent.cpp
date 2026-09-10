@@ -463,10 +463,10 @@ void registerAll (PresetManager& manager)
     {
         wave (s, 1 /* HARMONIC */, 0.42f, 0.35f, 0.10f, 5, 0.26f, 0.95f);
         amp (s, 0.55f, 1.80f, 0.72f, 2.60f, 0.5f);
-        shape (s, 0.60f, 0.08f, 0.42f, 0.52f, 0.62f, 0.30f);
+        shape (s, 0.60f, 0.08f, 0.55f, 0.52f, 0.74f, 0.30f);
         material (s, MaterialType::Organic, MaterialType::String, 0.40f);
         topology (s, 1 /* RING */, 0.45f, 0.60f, 23);
-        matter (s, 0.72f, 0.62f, 0.18f, 0.85f);
+        matter (s, 0.62f, 0.45f, 0.18f, 0.85f);
         evolve (s, 0.14f, 0.0f, 0.0f, 0.22f, 0.42f, 0.16f, 0.0f, 0.14f, 0.30f);
         set (s, Param::evolveBendPivot, 0.60f);
         set (s, Param::evolveMagnetTarget, 2 /* MAJOR */);
@@ -495,14 +495,14 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Membrane Sky", "PAD", { "pad", "airy", "membrane", "breathing" }, [] (PatchState& s)
     {
-        dust (s, 7 /* CLOUD */, 0.88f, 0.28f, 0.20f, 0.26f, 0.70f, 0.80f, 91);
+        dust (s, 2 /* BROWN */, 0.88f, 0.20f, 0.30f, 0.22f, 0.70f, 0.80f, 91);
         amp (s, 0.40f, 2.00f, 0.92f, 3.60f, 0.6f);
         shape (s, 0.72f, 0.34f, 0.60f, 0.44f, 0.86f, 0.24f);
         material (s, MaterialType::Membrane, MaterialType::Liquid, 0.45f);
         topology (s, 3 /* LATTICE */, 0.52f, 0.38f, 131);
-        matter (s, 0.96f, 0.32f, 0.20f, 0.90f);
+        matter (s, 0.50f, 0.30f, 0.05f, 0.90f);
         evolve (s, 0.0f, 0.18f, 0.0f, 0.0f, 0.38f, 0.22f, 0.0f, 0.20f, 0.45f);
-        space (s, SpacePresets::Shimmer, 0.45f, 0.68f, 0.55f, 0.35f);
+        space (s, SpacePresets::Shimmer, 0.45f, 0.68f, 0.45f, 0.35f);
 
         lfo (s, 1, 0.13f, 5 /* SMOOTH RANDOM */, 1.0f, false, 2.0f);
         lfo (s, 2, 0.26f, 0 /* SINE */, 1.0f, false);
@@ -538,7 +538,7 @@ void registerAll (PresetManager& manager)
         shape (s, 0.26f, 0.05f, 0.80f, 0.34f, 0.30f, 0.42f);
         material (s, MaterialType::Wood, MaterialType::Organic, 0.35f);
         topology (s, 0 /* CHAIN */, 0.30f, 0.35f, 53);
-        matter (s, 0.82f, 0.45f, 0.62f, 0.35f);
+        matter (s, 0.82f, 0.45f, 0.45f, 0.35f);
         evolve (s, 0.0f, 0.0f, 0.0f, 0.30f, 0.62f, 0.0f, 0.0f, 0.30f, 0.10f);
         set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
         set (s, Param::masterMode, 1 /* MONO */);
@@ -601,17 +601,17 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Rust Sub", "BASS", { "bass", "sub", "gritty", "gesture" }, [] (PatchState& s)
     {
-        gesture (s, 4 /* FRICTION */, 0.52f, 0.30f, 0.40f, 0.35f, 0.18f, 0.35f);
+        gesture (s, 4 /* FRICTION */, 0.58f, 0.26f, 0.28f, 0.35f, 0.18f, 0.22f);
         amp (s, 0.02f, 0.60f, 0.80f, 0.35f, 0.4f);
         shape (s, 0.22f, 0.02f, 0.86f, 0.30f, 0.28f, 0.36f);
         material (s, MaterialType::Organic, MaterialType::Membrane, 0.30f);
         topology (s, 0 /* CHAIN */, 0.26f, 0.30f, 167);
-        matter (s, 0.92f, 0.38f, 0.45f, 0.30f);
+        matter (s, 0.92f, 0.30f, 0.25f, 0.30f);
         evolve (s, 0.0f, 0.12f, 0.0f, 0.36f, 0.66f, 0.0f, 0.0f, 0.22f, 0.15f);
         set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
         set (s, Param::masterMode, 2 /* LEGATO */);
         set (s, Param::masterGlide, 0.12f);
-        space (s, SpacePresets::Void, 0.18f, 0.45f, 0.35f, 0.25f);
+        space (s, SpacePresets::Void, 0.14f, 0.45f, 0.30f, 0.25f);
 
         lfo (s, 1, 0.35f, 1 /* TRIANGLE */, 1.0f, true, 0.5f);
         env (s, 1, 0.05f, 0.80f, 0.40f, 0.60f);
@@ -673,7 +673,7 @@ void registerAll (PresetManager& manager)
         shape (s, 0.52f, 0.14f, 0.44f, 0.56f, 0.60f, 0.20f);
         material (s, MaterialType::String, MaterialType::Wood, 0.42f);
         topology (s, 0 /* CHAIN */, 0.42f, 0.52f, 41);
-        matter (s, 0.96f, 0.58f, 0.55f, 0.55f);
+        matter (s, 0.96f, 0.58f, 0.45f, 0.55f);
         evolve (s, 0.0f, 0.10f, 0.0f, 0.30f, 0.50f, 0.14f, 0.0f, 0.20f, 0.18f);
         set (s, Param::evolveMagnetTarget, 6 /* CUSTOM (harmonic) */);
         space (s, SpacePresets::Chamber, 0.30f, 0.35f, 0.52f, 0.22f);
@@ -700,12 +700,12 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Ash Keys", "KEYS", { "keys", "electric", "soft", "vintage" }, [] (PatchState& s)
     {
-        impact (s, 2 /* PLUCK */, 0.38f, 0.42f, 0.26f, 0.72f, 0.55f, 0.08f);
+        impact (s, 2 /* PLUCK */, 0.38f, 0.42f, 0.26f, 0.72f, 0.55f, 0.08f, 0.0f, 0.85f);
         amp (s, 0.002f, 1.30f, 0.22f, 0.80f, 0.45f);
         shape (s, 0.34f, 0.16f, 0.48f, 0.50f, 0.58f, 0.30f);
         material (s, MaterialType::Metal, MaterialType::Wood, 0.60f);
         topology (s, 2 /* CLUSTERS */, 0.36f, 0.48f, 71);
-        matter (s, 0.94f, 0.48f, 0.58f, 0.50f);
+        matter (s, 0.94f, 0.48f, 0.50f, 0.50f);
         evolve (s, 0.10f, 0.0f, 0.0f, 0.40f, 0.52f, 0.06f, 0.0f, 0.18f, 0.14f);
         set (s, Param::evolveBendPivot, 0.35f);
         set (s, Param::evolveMagnetTarget, 6 /* CUSTOM (harmonic) */);
@@ -808,7 +808,7 @@ void registerAll (PresetManager& manager)
         shape (s, 0.30f, 0.50f, 0.28f, 0.58f, 0.48f, 0.34f);
         material (s, MaterialType::Metal, MaterialType::Wood, 0.30f);
         topology (s, 4 /* RANDOM */, 0.60f, 0.42f, 97);
-        matter (s, 1.0f, 0.66f, 0.85f, 0.55f);
+        matter (s, 1.0f, 0.66f, 0.70f, 0.55f);
         evolve (s, 0.0f, 0.0f, 0.20f, 0.34f, 0.50f, 0.24f, 0.22f, 0.45f, 0.20f);
         set (s, Param::evolveScatterSeed, 331);
         set (s, Param::evolveMagnetTarget, 3 /* MINOR */);
@@ -842,10 +842,10 @@ void registerAll (PresetManager& manager)
         set (s, Param::waveSync, 0.28f);
         set (s, Param::waveModRatio, 3.0f);
         amp (s, 0.006f, 0.30f, 0.90f, 0.45f, 0.4f);
-        shape (s, 0.46f, 0.62f, 0.38f, 0.66f, 0.52f, 0.44f);
+        shape (s, 0.46f, 0.62f, 0.38f, 0.66f, 0.66f, 0.44f);
         material (s, MaterialType::Liquid, MaterialType::Metal, 0.42f);
         topology (s, 1 /* RING */, 0.52f, 0.50f, 199);
-        matter (s, 0.86f, 0.70f, 0.45f, 0.45f);
+        matter (s, 0.70f, 0.55f, 0.40f, 0.45f);
         evolve (s, 0.22f, 0.16f, 0.0f, 0.30f, 0.46f, 0.14f, 0.0f, 0.38f, 0.28f);
         set (s, Param::evolveMagnetTarget, 4 /* CHROMATIC */);
         set (s, Param::masterMode, 2 /* LEGATO */);
@@ -909,14 +909,14 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Solar Filament", "LEAD", { "lead", "bright", "burning", "wide" }, [] (PatchState& s)
     {
-        wave (s, 2 /* FORMANT */, 0.62f, 0.55f, 0.18f, 3, 0.16f, 0.55f);
+        wave (s, 2 /* FORMANT */, 0.62f, 0.55f, 0.18f, 2, 0.12f, 0.40f);
         set (s, Param::waveFM, 0.18f);
         set (s, Param::waveModRatio, 2.0f);
         amp (s, 0.02f, 0.45f, 0.85f, 0.55f, 0.5f);
-        shape (s, 0.55f, 0.72f, 0.30f, 0.70f, 0.52f, 0.30f);
+        shape (s, 0.55f, 0.58f, 0.46f, 0.70f, 0.62f, 0.30f);
         material (s, MaterialType::Crystal, MaterialType::Metal, 0.55f);
         topology (s, 5 /* STAR */, 0.44f, 0.60f, 149);
-        matter (s, 0.74f, 0.68f, 0.35f, 0.60f);
+        matter (s, 0.62f, 0.48f, 0.35f, 0.60f);
         evolve (s, 0.26f, 0.0f, 0.0f, 0.38f, 0.36f, 0.18f, 0.0f, 0.40f, 0.30f);
         set (s, Param::evolveBendPivot, 0.65f);
         set (s, Param::evolveMagnetTarget, 2 /* MAJOR */);
@@ -1185,12 +1185,12 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Electric Organism", "DRONE", { "drone", "alive", "electric", "unstable" }, [] (PatchState& s)
     {
-        gesture (s, 2 /* RUB */, 0.52f, 0.42f, 0.50f, 0.38f, 0.55f, 0.50f);
+        gesture (s, 2 /* RUB */, 0.64f, 0.42f, 0.44f, 0.38f, 0.55f, 0.42f);
         amp (s, 0.80f, 2.20f, 0.88f, 2.80f, 0.55f);
         shape (s, 0.70f, 0.64f, 0.46f, 0.54f, 0.72f, 0.44f);
         material (s, MaterialType::Organic, MaterialType::Liquid, 0.50f);
         topology (s, 1 /* RING */, 0.66f, 0.50f, 491);
-        matter (s, 0.94f, 0.66f, 0.20f, 0.88f);
+        matter (s, 0.94f, 0.50f, 0.20f, 0.88f);
         evolve (s, 0.0f, 0.26f, 0.28f, 0.0f, 0.50f, 0.38f, 0.0f, 0.30f, 0.55f);
         set (s, Param::evolveScatterSeed, 1229);
         space (s, SpacePresets::Nebula, 0.48f, 0.70f, 0.52f, 0.45f);
@@ -1256,12 +1256,12 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Fractured Voice", "FX", { "fx", "vocal", "spectral", "fracture" }, [] (PatchState& s)
     {
-        gesture (s, 3 /* BREATH */, 0.55f, 0.45f, 0.30f, 0.55f, 0.35f, 0.62f);
+        gesture (s, 3 /* BREATH */, 0.72f, 0.45f, 0.26f, 0.55f, 0.35f, 0.48f);
         amp (s, 0.15f, 1.0f, 0.75f, 1.20f, 0.5f);
-        shape (s, 0.60f, 0.24f, 0.40f, 0.58f, 0.58f, 0.30f);
+        shape (s, 0.58f, 0.14f, 0.44f, 0.58f, 0.74f, 0.30f);
         material (s, MaterialType::Organic, MaterialType::Membrane, 0.45f);
         topology (s, 2 /* CLUSTERS */, 0.50f, 0.52f, 601);
-        matter (s, 0.92f, 0.64f, 0.22f, 0.75f);
+        matter (s, 0.94f, 0.40f, 0.30f, 0.75f);
         evolve (s, 0.0f, 0.18f, 0.34f, 0.24f, 0.48f, 0.26f, 0.0f, 0.32f, 0.35f);
         set (s, Param::evolveScatterSeed, 1483);
         fracture (s, 0 /* SPECTRAL */, 0.62f, 0.70f, 0.62f, 0.45f, 0.40f, 0.55f, 0.62f, 0.48f, 0.25f,
@@ -1366,19 +1366,20 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Frozen Machine", "SEQUENCE", { "sequence", "rhythmic", "metal", "fracture" }, [] (PatchState& s)
     {
-        impact (s, 4 /* METAL STRIKE */, 0.68f, 0.62f, 0.12f, 0.82f, 0.40f, 0.10f, 0.42f);
-        amp (s, 0.001f, 1.20f, 0.35f, 0.60f, 0.3f);
-        shape (s, 0.44f, 0.56f, 0.32f, 0.62f, 0.54f, 0.24f);
+        dust (s, 6 /* IMPULSE */, 0.85f, 0.30f, 0.50f, 0.16f, 0.35f, 0.45f, 761);
+        amp (s, 0.001f, 0.40f, 0.92f, 0.50f, 0.3f);
+        shape (s, 0.44f, 0.56f, 0.32f, 0.62f, 0.50f, 0.24f);
         material (s, MaterialType::Metal, MaterialType::Crystal, 0.40f);
         topology (s, 1 /* RING */, 0.42f, 0.55f, 761);
-        matter (s, 0.98f, 0.62f, 0.72f, 0.68f);
+        matter (s, 0.95f, 0.55f, 0.14f, 0.68f);
         evolve (s, 0.0f, 0.0f, 0.0f, 0.44f, 0.46f, 0.16f, 0.0f, 0.35f, 0.20f);
         set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
-        fracture (s, 1 /* RHYTHMIC */, 0.72f, 0.78f, 0.45f, 0.60f, 0.35f, 0.40f, 0.55f, 0.55f, 0.20f,
+        fracture (s, 1 /* RHYTHMIC */, 0.55f, 1.0f, 0.45f, 1.0f, 0.35f, 0.40f, 0.55f, 0.30f, 0.20f,
                   1 /* 16 */, 4 /* 1/16 */, 8, 0.12f, 0 /* FORWARD */, 1.0f, 0.15f, 2003,
                   FractureShape { 16, 0.03f, 0.30f, 0.20f, 0.45f, 0.35f, 0.60f, 0.25f, 0.85f,
-                                  1.0f, 1.0f, 0.70f, 1.0f, kOctaveTerrace, "XLoHXLoH", kOctaveTerrace });
-        space (s, SpacePresets::Orbit, 0.36f, 0.42f, 0.58f, 0.48f);
+                                  2.0f, 2.0f, 0.70f, 1.0f, kOctaveTerrace, "XLoHXLoH", kOctaveTerrace });
+        space (s, SpacePresets::Machine, 0.30f, 0.40f, 0.55f, 0.40f);
+        set (s, Param::spaceEqHigh, -8.0f);
 
         env (s, 1, 0.001f, 0.30f, 0.0f, 0.25f, 0.25f);
         lfo (s, 1, 0.50f, 3 /* SQUARE */, 1.0f, true);
@@ -1387,7 +1388,7 @@ void registerAll (PresetManager& manager)
         Routings r;
         r.uni (ModSource::Env1,   Param::fractureAmount, 0.200f)
          .bi  (ModSource::LFO1,   Param::fractureSequence, 0.150f)
-         .uni (ModSource::Velocity, Param::impactBrightness, 0.300f)
+         .uni (ModSource::Velocity, Param::dustColor,    0.300f)
          .uni (ModSource::Velocity, Param::fractureAmount, 0.150f)
          .bi  (ModSource::KeyTrack, Param::fractureTone,  0.150f)
          .uni (ModSource::Macro1, Param::fractureEvolve, 0.350f)
@@ -1402,17 +1403,17 @@ void registerAll (PresetManager& manager)
     manager.addFactory ({ "Pulse Lattice", "SEQUENCE", { "sequence", "pulsing", "bright", "wave" }, [] (PatchState& s)
     {
         wave (s, 1 /* HARMONIC */, 0.38f, 0.30f, 0.15f, 2, 0.12f, 0.50f);
-        amp (s, 0.004f, 0.50f, 0.70f, 0.35f, 0.35f);
-        shape (s, 0.48f, 0.44f, 0.34f, 0.60f, 0.42f, 0.26f);
+        amp (s, 0.004f, 0.50f, 0.88f, 0.35f, 0.35f);
+        shape (s, 0.48f, 0.44f, 0.34f, 0.60f, 0.50f, 0.26f);
         material (s, MaterialType::Crystal, MaterialType::Metal, 0.35f);
         topology (s, 3 /* LATTICE */, 0.48f, 0.52f, 811);
-        matter (s, 0.82f, 0.60f, 0.45f, 0.70f);
+        matter (s, 0.82f, 0.60f, 0.10f, 0.70f);
         evolve (s, 0.0f, 0.0f, 0.0f, 0.36f, 0.46f, 0.18f, 0.0f, 0.48f, 0.25f);
         set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
-        fracture (s, 1 /* RHYTHMIC */, 0.78f, 0.82f, 0.38f, 0.65f, 0.28f, 0.28f, 0.42f, 0.62f, 0.15f,
+        fracture (s, 1 /* RHYTHMIC */, 0.62f, 1.0f, 0.38f, 1.0f, 0.28f, 0.28f, 0.42f, 0.62f, 0.15f,
                   0 /* 8 */, 4 /* 1/16 */, 8, 0.18f, 2 /* PINGPONG */, 1.0f, 0.10f, 2087,
                   FractureShape { 8, 0.02f, 0.25f, 0.15f, 0.35f, 0.30f, 0.50f, 0.20f, 0.80f,
-                                  1.0f, 1.0f, 0.60f, 1.0f, kFifthTerrace, "X.L.H.o.", kFifthTerrace });
+                                  2.0f, 2.0f, 0.60f, 1.0f, kFifthTerrace, "XoLoHoXo", kFifthTerrace });
         space (s, SpacePresets::Orbit, 0.34f, 0.40f, 0.60f, 0.50f);
 
         env (s, 1, 0.002f, 0.25f, 0.20f, 0.20f, 0.3f);
@@ -1437,18 +1438,18 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Ghost Arpeggio", "SEQUENCE", { "sequence", "arp", "soft", "spectral" }, [] (PatchState& s)
     {
-        impact (s, 2 /* PLUCK */, 0.42f, 0.48f, 0.14f, 0.72f, 0.50f, 0.14f, 0.34f);
-        amp (s, 0.001f, 1.40f, 0.30f, 1.0f, 0.35f);
+        wave (s, 5 /* SPECTRAL */, 0.30f, 0.22f, 0.04f, 2, 0.10f, 0.55f);
+        amp (s, 0.02f, 0.60f, 0.88f, 1.20f, 0.4f);
         shape (s, 0.50f, 0.82f, 0.28f, 0.64f, 0.62f, 0.18f);
         material (s, MaterialType::Crystal, MaterialType::Void, 0.42f);
         topology (s, 5 /* STAR */, 0.34f, 0.58f, 863);
-        matter (s, 0.96f, 0.58f, 0.62f, 0.75f);
+        matter (s, 0.80f, 0.52f, 0.25f, 0.75f);
         evolve (s, 0.0f, 0.0f, 0.0f, 0.58f, 0.42f, 0.14f, 0.0f, 0.32f, 0.22f);
         set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
-        fracture (s, 1 /* RHYTHMIC */, 0.60f, 0.72f, 0.55f, 0.70f, 0.42f, 0.50f, 0.62f, 0.55f, 0.25f,
+        fracture (s, 1 /* RHYTHMIC */, 0.75f, 1.0f, 0.55f, 0.96f, 0.42f, 0.50f, 0.62f, 0.55f, 0.25f,
                   1 /* 16 */, 3 /* 1/8 */, 8, 0.22f, 2 /* PINGPONG */, 0.92f, 0.20f, 2131,
                   FractureShape { 16, 0.06f, 0.45f, 0.25f, 0.55f, 0.45f, 0.72f, 0.25f, 0.90f,
-                                  1.0f, 1.0f, 0.70f, 0.95f, kMinorTerrace, "XLHoXLHo", kMinorTerrace });
+                                  1.8f, 1.8f, 0.70f, 0.95f, kMinorTerrace, "XLHoXLHo", kMinorTerrace });
         space (s, SpacePresets::Dream, 0.42f, 0.62f, 0.58f, 0.38f);
 
         env (s, 1, 0.001f, 0.50f, 0.0f, 0.40f, 0.3f);
@@ -1457,14 +1458,14 @@ void registerAll (PresetManager& manager)
         macros (s, 0.35f, 0.45f, 0.42f, 0.50f);
 
         Routings r;
-        r.uni (ModSource::Env1,   Param::fractureAmount, 0.180f)
-         .bi  (ModSource::LFO1,   Param::fractureSequence, 0.200f)
+        r.uni (ModSource::Env1,   Param::shapeExcite,    0.180f)
+         .bi  (ModSource::LFO1,   Param::fractureSequence, 0.120f)
          .bi  (ModSource::Chaos1, Param::fracturePitch,  0.050f)
-         .uni (ModSource::Velocity, Param::impactBrightness, 0.280f)
+         .uni (ModSource::Velocity, Param::wavePosition, 0.280f)
          .bi  (ModSource::KeyTrack, Param::shapeDecay,  -0.150f)
          .uni (ModSource::Macro1, Param::fractureEvolve, 0.300f)
          .uni (ModSource::Macro1, Param::evolveMotion,   0.250f)
-         .uni (ModSource::Macro2, Param::impactBrightness, 0.300f)
+         .uni (ModSource::Macro2, Param::waveMorph,      0.300f)
          .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
          .uni (ModSource::Macro4, Param::fractureProbability, -0.300f)
          .uni (ModSource::Macro4, Param::fractureSpread, 0.300f);
@@ -1544,9 +1545,9 @@ void registerAll (PresetManager& manager)
 
     manager.addFactory ({ "Living Alloy", "EVOLVING", { "evolving", "sample", "morphing", "metal" }, [] (PatchState& s)
     {
-        sample (s, BuiltInSamples::Kind::MetalPing, 1 /* LOOP */, 0.08f, 0.62f, 0.30f, 0.42f);
-        amp (s, 0.30f, 1.80f, 0.78f, 2.0f, 0.5f);
-        shape (s, 0.60f, 0.60f, 0.40f, 0.60f, 0.66f, 0.34f);
+        sample (s, BuiltInSamples::Kind::MetalPing, 1 /* LOOP */, 0.06f, 0.88f, 0.30f, 0.42f);
+        amp (s, 0.30f, 1.80f, 0.88f, 2.0f, 0.5f);
+        shape (s, 0.60f, 0.60f, 0.40f, 0.60f, 0.80f, 0.34f);
         material (s, MaterialType::Metal, MaterialType::Liquid, 0.48f);
         topology (s, 1 /* RING */, 0.60f, 0.50f, 1049);
         matter (s, 0.88f, 0.62f, 0.32f, 0.80f);

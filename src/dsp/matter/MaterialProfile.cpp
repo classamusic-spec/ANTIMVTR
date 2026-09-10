@@ -58,7 +58,7 @@ namespace
             {
                 const float r = (float) (besselZero (m, k) / j01);
                 // A strike near the centre favours axisymmetric (m = 0) modes.
-                const float w = std::pow (r, -0.55f) / (1.0f + 0.45f * (float) m);
+                const float w = std::pow (r, -0.4f) / (1.0f + 0.4f * (float) m);
                 cand[n++] = { r, w };
             }
         commit (cand, n, out);
@@ -72,10 +72,10 @@ namespace
         {
             const float fk = (float) k;
             // free bar family (2k+1)²/9, a stiffer second family, a plate-like third and a sparse fourth
-            cand[n++] = { std::pow ((2.0f * fk + 1.0f) / 3.0f, 2.0f), std::pow (fk, -0.35f) };
-            cand[n++] = { 1.32f * std::pow (fk, 1.72f), 0.7f * std::pow (fk, -0.45f) };
-            cand[n++] = { 2.05f * std::pow (fk, 1.55f) * (1.0f + 0.04f * std::sin (4.3f * fk)), 0.55f * std::pow (fk, -0.5f) };
-            cand[n++] = { 3.1f * std::pow (fk, 1.4f), 0.45f * std::pow (fk, -0.6f) };
+            cand[n++] = { std::pow ((2.0f * fk + 1.0f) / 3.0f, 2.0f), std::pow (fk, -0.25f) };
+            cand[n++] = { 1.32f * std::pow (fk, 1.72f), 0.7f * std::pow (fk, -0.35f) };
+            cand[n++] = { 2.05f * std::pow (fk, 1.55f) * (1.0f + 0.04f * std::sin (4.3f * fk)), 0.55f * std::pow (fk, -0.4f) };
+            cand[n++] = { 3.1f * std::pow (fk, 1.4f), 0.45f * std::pow (fk, -0.5f) };
         }
         commit (cand, n, out);
     }
@@ -87,7 +87,7 @@ namespace
             const float n = (float) (i + 1);
             const float r = std::pow (n, 1.28f) * (1.0f + 0.07f * std::sin (1.9f * n + 0.4f));
             out.log2Ratio[(size_t) i] = std::log2 (r);
-            out.weight[(size_t) i]    = std::pow (n, -0.7f) * (1.0f + 0.25f * std::sin (2.1f * n));
+            out.weight[(size_t) i]    = std::pow (n, -0.5f) * (1.0f + 0.25f * std::sin (2.1f * n));
         }
         out.log2Ratio[0] = 0.0f;
         out.weight[0] = 1.0f;
@@ -102,7 +102,7 @@ namespace
         {
             const float fk = (float) k;
             const float g = (fk * (fk * fk - 1.0f) / std::sqrt (fk * fk + 1.0f)) / g2;   // shell mode family
-            const float w = std::pow (fk - 1.0f, -0.4f);
+            const float w = std::pow (fk - 1.0f, -0.3f);
             cand[n++] = { g, w };
             cand[n++] = { g * 1.004f, 0.5f * w };                 // near-degenerate twin → slow shimmer
             cand[n++] = { 1.93f * std::pow (g, 0.97f), 0.35f * w }; // second family
@@ -120,8 +120,8 @@ const StructureLibrary& StructureLibrary::get()
 
 StructureLibrary::StructureLibrary()
 {
-    fillStretchedHarmonic (anchors[(size_t) FormAnchor::Harmonic], 0.0f, 0.75f);
-    fillStretchedHarmonic (anchors[(size_t) FormAnchor::Stretched], 0.0015f, 0.8f);
+    fillStretchedHarmonic (anchors[(size_t) FormAnchor::Harmonic], 0.0f, 0.6f);
+    fillStretchedHarmonic (anchors[(size_t) FormAnchor::Stretched], 0.0015f, 0.65f);
     fillMembrane (anchors[(size_t) FormAnchor::Membrane]);
     fillMetallic (anchors[(size_t) FormAnchor::Metallic]);
     fillInharmonic (anchors[(size_t) FormAnchor::Inharmonic]);
@@ -168,7 +168,7 @@ void buildMaterialStructure (MaterialType type, uint32_t seed, StructureTable& o
             {
                 const float n = (float) (i + 1);
                 out.log2Ratio[(size_t) i] = std::log2 (n * std::sqrt (1.0f + p.stretch * n * n));
-                out.weight[(size_t) i] = std::pow (n, -0.8f);
+                out.weight[(size_t) i] = std::pow (n, -0.65f);
             }
             if (type == MaterialType::Organic)
                 for (int i = 0; i < kMaxMatterNodes; ++i)   // warped, slightly compressed partials
@@ -233,7 +233,7 @@ namespace
             auto& m = t[(size_t) MaterialType::Crystal];
             m.name = "CRYSTAL"; m.ownStructure = FormAnchor::Crystalline; m.structurePull = 0.55f;
             m.t60Scale = 1.7f; m.dampingSlope = 0.12f;
-            m.weightSlope = -0.2f; m.weightRipple = 0.1f;
+            m.weightSlope = -0.25f; m.weightRipple = 0.1f;
             m.couplingScale = 0.5f; m.bandBWeight = 0.3f;
             m.nonlinearity = 0.15f; m.hardening = 1.0f;
             m.stereoWidth = 1.0f; m.stereoPattern = StereoPattern::Random;
@@ -244,7 +244,7 @@ namespace
             auto& m = t[(size_t) MaterialType::Metal];
             m.name = "METAL"; m.ownStructure = FormAnchor::Metallic; m.structurePull = 0.55f;
             m.t60Scale = 1.3f; m.dampingSlope = 0.3f;
-            m.weightSlope = -0.1f; m.weightRipple = 0.25f;
+            m.weightSlope = -0.15f; m.weightRipple = 0.25f;
             m.couplingScale = 1.0f; m.bandBWeight = 1.0f;
             m.nonlinearity = 0.6f; m.hardening = 1.0f;
             m.stereoWidth = 1.0f; m.stereoPattern = StereoPattern::Random;
@@ -256,7 +256,7 @@ namespace
             m.name = "ORGANIC"; m.ownStructure = FormAnchor::Inharmonic; m.structurePull = 0.5f;
             m.stretch = 0.0008f; m.ratioJitter = 0.05f;
             m.t60Scale = 0.5f; m.dampingSlope = 0.9f;
-            m.weightSlope = 0.3f; m.weightRipple = 0.4f;
+            m.weightSlope = 0.2f; m.weightRipple = 0.4f;
             m.couplingScale = 0.7f; m.bandBWeight = 0.5f;
             m.nonlinearity = 0.4f; m.hardening = -1.0f;
             m.stereoWidth = 0.6f; m.stereoPattern = StereoPattern::Random;
@@ -267,7 +267,7 @@ namespace
             auto& m = t[(size_t) MaterialType::Liquid];
             m.name = "LIQUID"; m.ownStructure = FormAnchor::Stochastic; m.structurePull = 0.55f;
             m.t60Scale = 0.55f; m.dampingSlope = 0.8f;
-            m.weightSlope = 0.4f; m.weightRipple = 0.3f;
+            m.weightSlope = 0.3f; m.weightRipple = 0.3f;
             m.couplingScale = 1.0f; m.bandBWeight = 0.8f;
             m.nonlinearity = 0.5f; m.hardening = -1.0f;
             m.stereoWidth = 0.9f; m.stereoPattern = StereoPattern::Random;
@@ -278,7 +278,7 @@ namespace
             auto& m = t[(size_t) MaterialType::Membrane];
             m.name = "MEMBRANE"; m.ownStructure = FormAnchor::Membrane; m.structurePull = 0.6f;
             m.t60Scale = 0.35f; m.dampingSlope = 1.1f;
-            m.weightSlope = 0.2f; m.weightRipple = 0.15f;
+            m.weightSlope = 0.1f; m.weightRipple = 0.15f;
             m.couplingScale = 0.8f; m.bandBWeight = 0.4f;
             m.nonlinearity = 0.7f; m.hardening = -1.0f;
             m.stereoWidth = 0.8f; m.stereoPattern = StereoPattern::Alternate;
@@ -302,7 +302,7 @@ namespace
             m.name = "WOOD"; m.ownStructure = FormAnchor::Stretched; m.structurePull = 0.55f;
             m.stretch = 0.02f; m.ratioJitter = 0.02f;
             m.t60Scale = 0.25f; m.dampingSlope = 1.2f;
-            m.weightSlope = 0.5f; m.weightRipple = 0.3f;
+            m.weightSlope = 0.4f; m.weightRipple = 0.3f;
             m.couplingScale = 0.5f; m.bandBWeight = 0.3f;
             m.nonlinearity = 0.3f; m.hardening = -1.0f;
             m.stereoWidth = 0.5f; m.stereoPattern = StereoPattern::Alternate;

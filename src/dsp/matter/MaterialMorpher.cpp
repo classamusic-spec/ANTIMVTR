@@ -80,7 +80,7 @@ void MaterialMorpher::computeTargets (const Input& in, MatterNode* nodes) noexce
     const float t60Base  = 0.05f * pow2 (clamp01 (in.decay) * 8.6f) * P.t60Scale * pow2 ((mass - 0.4f) * 1.0f);
     const float slope    = P.dampingSlope + (mass - 0.4f) * 0.8f - (tension - 0.5f) * 0.4f;
     const float tilt     = P.weightSlope + (mass - 0.4f) * 1.2f - (distr - 0.5f) * 0.8f;
-    const float excTilt  = (1.0f - excite) * 1.6f - P.exciteTilt * 0.5f + (mass - 0.4f) * 0.6f;
+    const float excTilt  = (1.0f - excite) * 1.0f - P.exciteTilt * 0.4f + (mass - 0.4f) * 0.5f;
     const float nl       = surface * P.nonlinearity;
     const float detune   = surface * P.detune;
     const float pan      = clamp01 (in.stereo) * P.stereoWidth;
@@ -88,6 +88,7 @@ void MaterialMorpher::computeTargets (const Input& in, MatterNode* nodes) noexce
     const int   modal    = N - kBodyNodes;
     const float activeCount = 1.0f + (float) (modal - 1) * std::pow (density, 1.4f);
     const float wobbleAdv = P.wobbleRate * in.blockSeconds;
+    const float spreadMix = std::pow (distr, 1.5f);          // 0 = low-first, 1 = evenly spread subset
 
     float sumW2 = 0.0f;
     lastT60 = 0.0f;
@@ -138,8 +139,7 @@ void MaterialMorpher::computeTargets (const Input& in, MatterNode* nodes) noexce
 
             // DENSITY / DISTRIBUTION: which nodes are alive.
             const float fi = (float) i;
-            const float rank = distr < 0.5f ? fi + (rankSpread[(size_t) i] - fi) * (distr * 2.0f)
-                                            : rankSpread[(size_t) i] + ((i == 0 ? 0.0f : (float) (modal - i)) - rankSpread[(size_t) i]) * (distr * 2.0f - 1.0f);
+            const float rank = fi + (rankSpread[(size_t) i] - fi) * spreadMix;
             const float alive = smoothstep01 ((activeCount - rank) / 6.0f + 0.5f);
 
             w *= alive * pow2 (-tilt * lrPos) * (1.0f - 0.35f * P.weightRipple * ripple[(size_t) i]);
@@ -162,7 +162,8 @@ void MaterialMorpher::computeTargets (const Input& in, MatterNode* nodes) noexce
         if (nl > 0.0f)
         {
             const float amp = std::min (1.0f, n.energy * n.energy * 156.0f);   // ≈ (A / 0.08)²
-            f   *= pow2 (P.hardening * nl * 0.12f * amp);
+            const float pitchable = std::min (1.0f, std::max (0.0f, lr) * 2.0f); // the fundamental stays locked to the source
+            f   *= pow2 (P.hardening * nl * 0.12f * amp * pitchable);
             t60 /= 1.0f + nl * 3.0f * amp;
         }
 

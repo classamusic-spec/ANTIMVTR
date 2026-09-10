@@ -8,8 +8,8 @@ namespace am
 
 namespace
 {
-    constexpr float kSourceGain  = 0.09f;   ///< sustained excitation into the nodes (before damping normalisation)
-    constexpr float kStrikeGain  = 0.13f;   ///< strike pulse into the nodes
+    constexpr float kSourceGain  = 0.17f;   ///< sustained excitation into the nodes (before damping normalisation)
+    constexpr float kStrikeGain  = 1.5f;   ///< strike pulse into the nodes
     constexpr float kOutputGain  = 1.0f;
     constexpr float kCouplingMax = 0.004f;  ///< per-sample coupling strength at shape.coupling = 1 (before the stability bound)
     constexpr float kGlideMs     = 12.0f;
@@ -198,6 +198,7 @@ void MatterEngine::conditionExcitation (const float* excL, const float* excR, in
     for (int t = 0; t < n; ++t)
     {
         float u = 0.5f * (excL[t] + excR[t]);
+        const float drive = std::abs (u);
         lp += (u - lp) * lpCoeff;
         u = u + (lp - u) * darkMix - hpMix * lp;
 
@@ -207,7 +208,7 @@ void MatterEngine::conditionExcitation (const float* excL, const float* excR, in
             u += (folded - u) * foldMix;
             const float delayed = outRing[(size_t) ((outRingPos + t) % kOutDelay)];
             u *= 1.0f + interact * fastTanh (3.0f * delayed);
-            u += grain * grainRng.nextBipolar() * std::abs (delayed);
+            u += grain * grainRng.nextBipolar() * drive;   // excitation-referenced: never a feedback path
         }
         excBuf[(size_t) t] = u + antiDenormal.next();
     }
@@ -321,7 +322,7 @@ void MatterEngine::process (const float* excL, const float* excR, float* outL, f
         float exc = std::isfinite (nd.excitation) ? std::clamp (nd.excitation, 0.0f, 2.0f) : 0.0f;
         const float dampNorm = std::sqrt (damping) * std::sqrt (std::sqrt (damping));   // damping^0.75
         aIn[i] = active ? exc * kSourceGain * dampNorm : 0.0f;
-        bIn[i] = active ? exc * strikeNodeGain : 0.0f;
+        bIn[i] = active ? std::sqrt (exc) * strikeNodeGain : 0.0f;   // the strike is brighter than the sustained drive
         if (active) rMax = std::max (rMax, r);
     }
     reportSafety (ctx, SafetyEvent::InvalidFrequency, invalidFreq);

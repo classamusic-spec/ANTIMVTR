@@ -932,7 +932,7 @@ private:
                 VoiceModulator mod;
                 mod.prepare (sr);
                 mod.noteOn (note, 1);
-                const auto* p = mod.process (global, &engine.modPlan(), 64, sr, note, transport);
+                const auto* p = mod.process (global, &engine.modPlan(), 64, sr, note, transport, 1);
                 return paramValue (*p, Param::shapeDecay);
             };
 
@@ -1002,7 +1002,7 @@ private:
                 VoiceModulator mod;
                 mod.prepare (sr);
                 mod.noteOn (note, id);
-                mod.process (global, &engine.modPlan(), 64, sr, note, transport);
+                mod.process (global, &engine.modPlan(), 64, sr, note, transport, 1);
                 return std::make_pair (mod.value (ModSource::KeyTrack), mod.value (ModSource::NoteRandom));
             };
             expectWithinAbsoluteError (forNote (60, 1).first, 0.0f, 1.0e-6f, "C3 must be the key-track centre");

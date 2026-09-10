@@ -77,6 +77,7 @@ void GestureSource::reset()
     rubPhase = 0.0f;
     turbulence = 0.5f; turbulenceTarget = 0.5f; turbulenceHold = 0;
     pulseCountdown = 0.0;
+    pulseBalance = 0.0f;
     sputter = 1.0f;
     comb.fill (0.0f);
     combWrite = 0; combDelay = 1; combDepth = 0.0f;
@@ -331,7 +332,12 @@ inline float GestureSource::renderElectrical() noexcept
         if (eventRng.nextFloat() < sputter)
         {
             const float amp = 0.45f + 0.55f * eventRng.nextFloat();
-            impulse = amp * pulseLp.impulsePeakGain() * (eventRng.chance (0.5f) ? 1.0f : -1.0f);
+            // Charge-balanced polarity: each spark opposes the accumulated charge of the ones
+            // before it, so a sparse pulse train cannot random-walk into audible DC. The sign of
+            // an isolated click is inaudible, so this costs nothing musically.
+            const float sign = pulseBalance > 0.0f ? -1.0f : 1.0f;
+            pulseBalance = juce::jlimit (-2.0f, 2.0f, pulseBalance + sign * amp);
+            impulse = amp * pulseLp.impulsePeakGain() * sign;
         }
         const double mult = 0.5 + 3.5 * (double) speedEff;
         const double interval = juce::jmax (3.0, sr / juce::jmax (4.0, p.freq * mult));

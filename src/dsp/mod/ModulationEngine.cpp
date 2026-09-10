@@ -49,6 +49,8 @@ void VoiceModulator::reset() noexcept
     notes = NoteSourceValues();
     deltas.fill (0.0f);
     numDeltas = 0;
+    copyValid = false;
+    copiedPlan = nullptr;
 }
 
 void VoiceModulator::noteOn (const NoteState& note, uint32_t seed) noexcept
@@ -80,10 +82,11 @@ float VoiceModulator::value (ModSource s) const noexcept
 }
 
 const ParamValues* VoiceModulator::process (const ParamValues& global, const ModPlan* plan, int numSamples,
-                                            double sampleRate, const NoteState& note, const TransportInfo& transport) noexcept
+                                            double sampleRate, const NoteState& note, const TransportInfo& transport,
+                                            uint32_t paramGeneration) noexcept
 {
     numDeltas = 0;
-    if (plan == nullptr || plan->numPoly == 0 || numSamples <= 0) return &global;
+    if (plan == nullptr || plan->numPoly == 0 || numSamples <= 0) { copyValid = false; return &global; }
 
     sr = sampleRate > 0.0 ? sampleRate : sr;
     notes.update (note, paramValue (global, Param::masterBendRange));
@@ -106,7 +109,16 @@ const ParamValues* VoiceModulator::process (const ParamValues& global, const Mod
         if (std::isfinite (amount)) deltas[(size_t) r.targetSlot] += amount;
     }
 
-    voiceParams = global;
+    // Refresh the untouched parameters only when they can have changed: a new global generation,
+    // a different plan (the target set moved), or the first block of this voice.
+    if (! copyValid || copiedGeneration != paramGeneration || copiedPlan != plan)
+    {
+        voiceParams = global;
+        copiedGeneration = paramGeneration;
+        copiedPlan = plan;
+        copyValid = true;
+    }
+
     const auto& table = ParameterRegistry::all();
     for (int i = 0; i < numDeltas; ++i)
     {

@@ -26,6 +26,7 @@ void ControlGraph::prepare (double sampleRate, int)
 
 void ControlGraph::resetTo (const ParamValues& base)
 {
+    ++gen;
     lastBase = base;
     smoothed = base;
     effective = base;
@@ -36,6 +37,7 @@ void ControlGraph::resetTo (const ParamValues& base)
 void ControlGraph::update (const ParamValues& base, int numSamples)
 {
     const auto& table = ParameterRegistry::all();
+    bool changed = false;
 
     // The per-slice decay factor only depends on the slice length: cache it so
     // control-rate modulation (slices of 64 samples) costs no pow() per parameter.
@@ -71,8 +73,12 @@ void ControlGraph::update (const ParamValues& base, int numSamples)
         modulation[i] = 0.0f;
         v += mod;
 
-        effective[i] = d.clampValue (v);
+        const float e = d.clampValue (v);
+        changed |= (e != effective[i]);
+        effective[i] = e;
     }
+
+    if (changed) ++gen;
 }
 
 } // namespace am

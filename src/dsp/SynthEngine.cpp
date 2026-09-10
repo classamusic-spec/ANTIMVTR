@@ -98,6 +98,7 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
     // --- MODULATION: pick up a newly published routing table and hand the voices the compiled plan.
     modulation.beginBlock (hostParams);
     ctx.modPlan = &modulation.modPlan();
+    ctx.paramGeneration = controlGraph.generation();
 
     // The host block may exceed our internal maximum: process in chunks.
     int chunkStart = 0;

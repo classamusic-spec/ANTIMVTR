@@ -135,7 +135,7 @@ void AntiMatrVoice::render (float* outL, float* outR, float* srcL, float* srcR, 
     // --- MODULATION: this voice's own effective parameters. `process` returns the engine's
     //     global values untouched when nothing is routed per voice, so the copy costs nothing then.
     RenderContext ctx = hostCtx;
-    ctx.params = voiceMod.process (*hostCtx.params, hostCtx.modPlan, n, hostCtx.sampleRate, note, hostCtx.transport);
+    ctx.params = voiceMod.process (*hostCtx.params, hostCtx.modPlan, n, hostCtx.sampleRate, note, hostCtx.transport, hostCtx.paramGeneration);
 
     updateFrequency (ctx);
 

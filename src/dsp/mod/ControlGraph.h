@@ -39,8 +39,13 @@ public:
     /** Modulation contribution applied on the last update (for the UI / trace view). */
     float modulationOf (Param p) const noexcept { return lastModulation[(size_t) paramIndex (p)]; }
 
+    /** Advances only when `update()` actually changed an effective value. Consumers that keep
+        their own copy of the values (per-voice modulation) use it to skip a needless refresh. */
+    uint32_t generation() const noexcept { return gen; }
+
 private:
     ParamValues effective {}, lastBase {}, modulation {}, lastModulation {};
+    uint32_t gen = 1;
     std::array<float, kNumParams> smoothed {};
     std::array<float, kNumParams> coeffPerSample {};
     std::array<float, kNumParams> blockCoeff {};   ///< coeffPerSample ^ numSamples, cached per slice length

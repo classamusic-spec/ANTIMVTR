@@ -116,6 +116,7 @@ private:
 
     // ELECTRICAL ---------------------------------------------------------------
     double pulseCountdown = 0.0;
+    float  pulseBalance = 0.0f;   ///< running charge of the spark train (keeps ELECTRICAL DC free)
     float  sputter = 1.0f;
 
     // Filters ------------------------------------------------------------------

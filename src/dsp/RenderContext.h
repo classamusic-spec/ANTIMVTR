@@ -24,6 +24,7 @@ struct RenderContext
     Quality           quality    = Quality::Normal;
     Diagnostics*      diagnostics = nullptr;  ///< may be null in tests
     const ModPlan*    modPlan     = nullptr;  ///< compiled per-voice modulation routings (ModulationEngine)
+    uint32_t          paramGeneration = 0;   ///< advances only when an effective parameter value changed
     const SampleData* sample      = nullptr;  ///< SAMPLE source data for this block (owned by SynthEngine, never freed here)
 
     inline float param (Param p) const noexcept  { return (*params)[(size_t) paramIndex (p)]; }

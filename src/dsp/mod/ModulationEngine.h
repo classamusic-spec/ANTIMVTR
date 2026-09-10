@@ -77,7 +77,8 @@ public:
         is routed per voice, otherwise the voice's own clamped copy.
     */
     const ParamValues* process (const ParamValues& global, const ModPlan* plan, int numSamples,
-                                double sampleRate, const NoteState& note, const TransportInfo& transport) noexcept;
+                                double sampleRate, const NoteState& note, const TransportInfo& transport,
+                                uint32_t paramGeneration) noexcept;
 
     /** Value of a source for this voice, natural polarity (0 for global sources). */
     float value (ModSource s) const noexcept;
@@ -99,6 +100,15 @@ private:
     std::array<float, ModPlan::kMax> deltas {};
     int numDeltas = 0;
     double sr = 48000.0;
+
+    // Copying the whole parameter array for every voice on every block is the single most
+    // expensive thing per-voice modulation can do (64 voices x kNumParams floats, which also
+    // evicts the resonator state of the voices that follow). The copy is only needed when the
+    // global values or the routing plan actually changed; otherwise the modulated slots — and
+    // only those — are rewritten in place.
+    const ModPlan* copiedPlan = nullptr;
+    uint32_t copiedGeneration = 0;
+    bool     copyValid = false;
 };
 
 //==============================================================================

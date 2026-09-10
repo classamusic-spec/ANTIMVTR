@@ -411,6 +411,327 @@ manager.addFactory ({ "Wet Tine", "KEYS", { "organic", "warm", "struck", "unstab
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
+
+//--------------------------------------------------------------------------
+// Struck wire: hammers, tangents and the things players lay across the
+// strings to stop them behaving. Fracture is the preparation, not an effect.
+//--------------------------------------------------------------------------
+
+manager.addFactory ({ "Felt Upright", "KEYS", { "wooden", "soft", "struck", "close", "chords" }, [] (PatchState& s)
+{
+    impact (s, 3 /* NOISE STRIKE */, 0.22f, 0.28f, 0.18f, 0.90f, 0.55f, 0.08f);
+    amp (s, 0.003f, 1.10f, 0.0f, 0.45f, 0.40f);
+    shape (s, 0.42f, 0.12f, 0.44f, 0.56f, 0.52f, 0.12f);
+    material (s, MaterialType::String, MaterialType::Wood, 0.30f);
+    topology (s, 0 /* CHAIN */, 0.35f, 0.30f, 71);
+    matter (s, 0.94f, 0.52f, 0.55f, 0.35f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.03f, 0.0f, 0.15f, 0.08f);
+    space (s, SpacePresets::Chamber, 0.18f, 0.25f, 0.40f, 0.12f);
+
+    env (s, 1, 0.001f, 0.40f, 0.0f, 0.30f, 0.30f);
+    macros (s, 0.15f, 0.30f, 0.20f, 0.30f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::shapeSurface,     0.150f)
+     .uni (ModSource::Velocity,    Param::impactHardness,   0.350f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.280f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .uni (ModSource::Velocity,    Param::shapeMass,       -0.120f)
+     .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.005f)
+     .bi  (ModSource::NoteRandom,  Param::shapeTension,     0.030f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.240f)
+     .bi  (ModSource::KeyTrack,    Param::shapeMass,       -0.180f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.350f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.320f)
+     .uni (ModSource::Macro3,      Param::spaceSize,        0.250f)
+     .uni (ModSource::Macro4,      Param::ampRelease,       0.350f)
+     .uni (ModSource::Macro4,      Param::shapeDecay,       0.250f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Prepared Grand", "KEYS", { "metallic", "dirty", "struck", "noisy", "close" }, [] (PatchState& s)
+{
+    impact (s, 3 /* NOISE STRIKE */, 0.50f, 0.45f, 0.12f, 0.85f, 0.50f, 0.15f, 0.0f, 0.75f);
+    dust (s, 5 /* CRACKLE */, 0.55f, 0.62f, 0.10f, 0.60f, 0.50f, 0.50f, 331, 0.30f);
+    layerOnly (s, Param::impactLevel, Param::dustLevel);
+    amp (s, 0.002f, 0.90f, 0.0f, 0.50f, 0.35f);
+    shape (s, 0.48f, 0.24f, 0.42f, 0.60f, 0.42f, 0.35f);
+    material (s, MaterialType::String, MaterialType::Metal, 0.35f);
+    topology (s, 4 /* RANDOM */, 0.50f, 0.45f, 809);
+    matter (s, 0.90f, 0.55f, 0.60f, 0.55f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.15f, 0.0f, 0.35f, 0.20f);
+
+    FractureShape rattle;
+    rattle.fragments   = 16;
+    rattle.delayLow    = 0.02f; rattle.delayHigh    = 0.14f;
+    rattle.feedbackLow = 0.05f; rattle.feedbackHigh = 0.28f;
+    rattle.decayLow    = 0.20f; rattle.decayHigh    = 0.38f;
+    rattle.spreadLow   = 0.30f; rattle.spreadHigh   = 0.80f;
+    rattle.panWidth    = 0.60f;
+    rattle.probability = 0.80f;
+    rattle.pattern     = "XLXHXLXH";
+    fracture (s, 2 /* TRANSIENT */, 0.45f, 0.32f, 0.50f, 0.30f, 0.20f, 0.15f, 0.40f, 0.55f, 0.10f,
+              1 /* 16 */, 5, 8, 0.0f, 0, 0.80f, 0.35f, 77, rattle);
+
+    space (s, SpacePresets::Chamber, 0.24f, 0.35f, 0.50f, 0.20f);
+
+    env (s, 1, 0.001f, 0.50f, 0.0f, 0.35f, 0.30f);
+    macros (s, 0.25f, 0.35f, 0.25f, 0.40f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::dustDensity,      0.250f)
+     .uni (ModSource::Velocity,    Param::dustLevel,        0.300f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.300f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .uni (ModSource::Velocity,    Param::fractureAmount,   0.250f)
+     .bi  (ModSource::NoteRandom,  Param::dustColor,        0.150f)
+     .bi  (ModSource::NoteRandom,  Param::shapeSurface,     0.080f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::fractureEvolve,   0.250f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,      Param::dustLevel,        0.300f)
+     .uni (ModSource::Macro4,      Param::fractureMix,      0.250f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Steel Clavier", "KEYS", { "metallic", "bright", "struck", "dry", "melodic" }, [] (PatchState& s)
+{
+    impact (s, 1 /* CLICK */, 0.70f, 0.60f, 0.06f, 0.90f, 0.35f, 0.06f);
+    amp (s, 0.001f, 0.55f, 0.10f, 0.25f, 0.30f);
+    shape (s, 0.30f, 0.14f, 0.30f, 0.62f, 0.44f, 0.10f);
+    material (s, MaterialType::String, MaterialType::Crystal, 0.25f);
+    topology (s, 0 /* CHAIN */, 0.25f, 0.28f, 173);
+    matter (s, 0.93f, 0.60f, 0.58f, 0.30f);
+    evolve (s, 0.10f, 0.0f, 0.0f, 0.0f, 0.50f, 0.04f, 0.0f, 0.20f, 0.10f);
+    set (s, Param::evolveBendPivot, 0.50f);
+    set (s, Param::evolveBendRange, 0.20f);
+    space (s, SpacePresets::Chamber, 0.16f, 0.22f, 0.55f, 0.10f);
+
+    env (s, 1, 0.001f, 0.30f, 0.0f, 0.20f, 0.25f);
+    macros (s, 0.15f, 0.40f, 0.15f, 0.30f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::shapeSurface,     0.150f)
+     .uni (ModSource::Velocity,    Param::shapePitch,       0.006f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.320f)
+     .uni (ModSource::Velocity,    Param::impactHardness,   0.280f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .bi  (ModSource::NoteRandom,  Param::shapeTension,     0.030f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.220f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,        0.250f)
+     .uni (ModSource::Macro4,      Param::evolveBend,       0.300f)
+     .uni (ModSource::Macro4,      Param::shapeTension,     0.180f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Cimbalom Wire", "KEYS", { "metallic", "bright", "struck", "resonant", "roomy" }, [] (PatchState& s)
+{
+    impact (s, 3 /* NOISE STRIKE */, 0.60f, 0.55f, 0.08f, 0.85f, 0.45f, 0.12f);
+    amp (s, 0.001f, 1.80f, 0.0f, 1.40f, 0.30f);
+    shape (s, 0.50f, 0.16f, 0.38f, 0.58f, 0.62f, 0.16f);
+    material (s, MaterialType::String, MaterialType::Metal, 0.45f);
+    topology (s, 3 /* LATTICE */, 0.45f, 0.50f, 227);
+    matter (s, 0.97f, 0.55f, 0.70f, 0.60f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.48f, 0.06f, 0.0f, 0.18f, 0.12f);
+
+    FractureShape courses;
+    courses.fragments   = 16;
+    courses.delayLow    = 0.03f; courses.delayHigh    = 0.22f;
+    courses.feedbackLow = 0.10f; courses.feedbackHigh = 0.35f;
+    courses.decayLow    = 0.35f; courses.decayHigh    = 0.60f;
+    courses.spreadLow   = 0.25f; courses.spreadHigh   = 0.85f;
+    courses.panWidth    = 0.70f;
+    courses.pitchCycle  = kFifthTerrace;
+    courses.pattern     = "XXLXXHXX";
+    fracture (s, 0 /* SPECTRAL */, 0.40f, 0.28f, 0.60f, 0.20f, 0.30f, 0.25f, 0.55f, 0.60f, 0.05f,
+              1 /* 16 */, 4, 8, 0.0f, 0, 1.0f, 0.15f, 313, courses);
+
+    space (s, SpacePresets::Nebula, 0.30f, 0.55f, 0.55f, 0.25f);
+
+    env (s, 1, 0.001f, 0.90f, 0.0f, 0.70f, 0.30f);
+    macros (s, 0.20f, 0.40f, 0.30f, 0.40f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::fractureFeedback, 0.150f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.300f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .uni (ModSource::Velocity,    Param::fractureMix,      0.200f)
+     .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.006f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
+     .bi  (ModSource::KeyTrack,    Param::fractureTone,     0.150f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::fractureEvolve,   0.250f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro2,      Param::fractureTone,     0.200f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,      Param::fractureMix,      0.300f)
+     .uni (ModSource::Macro4,      Param::shapeCoupling,    0.200f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Paper Damper", "KEYS", { "wooden", "soft", "struck", "dry", "hollow" }, [] (PatchState& s)
+{
+    impact (s, 3 /* NOISE STRIKE */, 0.40f, 0.22f, 0.20f, 0.85f, 0.60f, 0.10f);
+    amp (s, 0.002f, 0.40f, 0.0f, 0.24f, 0.30f);
+    shape (s, 0.55f, 0.33f, 0.54f, 0.35f, 0.24f, 0.30f);
+    material (s, MaterialType::Membrane, MaterialType::Wood, 0.50f);
+    topology (s, 2 /* CLUSTERS */, 0.40f, 0.40f, 419);
+    matter (s, 0.88f, 0.50f, 0.60f, 0.40f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.62f, 0.05f, 0.0f, 0.20f, 0.10f);
+    space (s, SpacePresets::Chamber, 0.14f, 0.20f, 0.35f, 0.10f);
+
+    env (s, 1, 0.001f, 0.25f, 0.0f, 0.18f, 0.25f);
+    macros (s, 0.15f, 0.25f, 0.15f, 0.35f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::shapeSurface,     0.150f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.250f)
+     .uni (ModSource::Velocity,    Param::shapeDecay,       0.150f)
+     .uni (ModSource::Velocity,    Param::shapeMass,       -0.150f)
+     .bi  (ModSource::NoteRandom,  Param::shapeSurface,     0.080f)
+     .bi  (ModSource::NoteRandom,  Param::shapeMass,        0.050f)
+     .bi  (ModSource::KeyTrack,    Param::shapeMass,       -0.200f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.350f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,      Param::shapeDecay,       0.300f)
+     .uni (ModSource::Macro4,      Param::shapeSurface,     0.200f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Iron Clavinet", "KEYS", { "metallic", "dirty", "struck", "rhythmic", "close" }, [] (PatchState& s)
+{
+    impact (s, 2 /* PLUCK */, 0.75f, 0.62f, 0.05f, 0.90f, 0.35f, 0.08f);
+    amp (s, 0.001f, 0.70f, 0.05f, 0.30f, 0.30f);
+    shape (s, 0.35f, 0.42f, 0.32f, 0.55f, 0.40f, 0.25f);
+    material (s, MaterialType::Metal, MaterialType::Custom, 0.40f);
+    topology (s, 1 /* RING */, 0.35f, 0.35f, 577);
+    matter (s, 0.95f, 0.62f, 0.72f, 0.35f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.10f, 0.45f, 0.30f, 0.15f);
+    space (s, SpacePresets::Machine, 0.30f, 0.35f, 0.55f, 0.25f);
+
+    env (s, 1, 0.001f, 0.35f, 0.0f, 0.25f, 0.25f);
+    macros (s, 0.25f, 0.40f, 0.25f, 0.40f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::evolveCrush,      0.200f)
+     .uni (ModSource::Velocity,    Param::evolveCrush,     -0.250f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.300f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .uni (ModSource::Velocity,    Param::spaceDistDrive,   0.200f)
+     .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.004f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,      Param::evolveCrush,      0.350f)
+     .uni (ModSource::Macro4,      Param::spaceDistDrive,   0.250f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Bronze Bowl", "KEYS", { "metallic", "warm", "struck", "breathing", "wide" }, [] (PatchState& s)
+{
+    impact (s, 4 /* METAL STRIKE */, 0.45f, 0.35f, 0.50f, 0.80f, 0.50f, 0.12f);
+    amp (s, 0.003f, 2.60f, 0.0f, 2.20f, 0.35f);
+    shape (s, 0.32f, 0.86f, 0.45f, 0.50f, 0.68f, 0.18f);
+    material (s, MaterialType::Crystal, MaterialType::Metal, 0.50f);
+    topology (s, 1 /* RING */, 0.28f, 0.45f, 359);
+    matter (s, 1.0f, 0.52f, 0.50f, 0.70f);
+    evolve (s, 0.40f, 0.0f, 0.0f, 0.0f, 0.50f, 0.06f, 0.0f, 0.12f, 0.25f);
+    set (s, Param::evolveBendPivot, 0.55f);
+    set (s, Param::evolveBendRange, 0.35f);
+    set (s, Param::evolveBendCurve, 0.60f);
+    space (s, SpacePresets::Nebula, 0.40f, 0.65f, 0.50f, 0.30f);
+
+    env (s, 1, 0.001f, 1.60f, 0.0f, 1.20f, 0.40f);
+    macros (s, 0.25f, 0.30f, 0.40f, 0.45f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::evolveBend,      -0.220f)
+     .uni (ModSource::Velocity,    Param::evolveBendPivot,  0.200f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.300f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.007f)
+     .bi  (ModSource::NoteRandom,  Param::evolveBendRange,  0.080f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.180f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,        0.250f)
+     .uni (ModSource::Macro4,      Param::evolveBend,       0.300f)
+     .uni (ModSource::Macro4,      Param::evolveBendRange,  0.250f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Frost Keys", "KEYS", { "cold", "glassy", "struck", "air", "distant" }, [] (PatchState& s)
+{
+    wave (s, 5 /* SPECTRAL */, 0.35f, 0.40f, 0.15f, 2, 0.12f, 0.60f, 1, 0.28f);
+    impact (s, 4 /* METAL STRIKE */, 0.55f, 0.62f, 0.30f, 0.85f, 0.45f, 0.10f, 0.0f, 0.70f);
+    layerOnly (s, Param::waveLevel, Param::impactLevel);
+    amp (s, 0.005f, 2.20f, 0.12f, 1.80f, 0.40f);
+    shape (s, 0.28f, 0.90f, 0.26f, 0.62f, 0.66f, 0.08f);
+    material (s, MaterialType::Void, MaterialType::Crystal, 0.45f);
+    topology (s, 5 /* STAR */, 0.20f, 0.60f, 887);
+    matter (s, 0.90f, 0.50f, 0.55f, 0.85f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.38f, 0.05f, 0.0f, 0.15f, 0.15f);
+
+    FractureShape air;
+    air.fragments   = 32;
+    air.delayLow    = 0.05f; air.delayHigh    = 0.35f;
+    air.feedbackLow = 0.10f; air.feedbackHigh = 0.40f;
+    air.decayLow    = 0.40f; air.decayHigh    = 0.75f;
+    air.spreadLow   = 0.40f; air.spreadHigh   = 0.95f;
+    air.gainLow     = 0.85f; air.gainHigh     = 1.00f;
+    air.panWidth    = 0.80f;
+    air.pitchCycle  = kOctaveTerrace;
+    air.pattern     = "XHXHXHXH";
+    fracture (s, 0 /* SPECTRAL */, 0.38f, 0.30f, 0.70f, 0.25f, 0.28f, 0.30f, 0.60f, 0.65f, 0.08f,
+              2 /* 32 */, 3, 8, 0.0f, 0, 1.0f, 0.20f, 941, air);
+
+    space (s, SpacePresets::Shimmer, 0.42f, 0.65f, 0.68f, 0.30f);
+
+    env (s, 1, 0.010f, 1.40f, 0.0f, 1.00f, 0.45f);
+    macros (s, 0.25f, 0.45f, 0.45f, 0.35f);
+
+    Routings r;
+    r.uni (ModSource::Env1,        Param::shapeExcite,      0.150f)
+     .uni (ModSource::Velocity,    Param::impactBrightness, 0.300f)
+     .uni (ModSource::Velocity,    Param::waveLevel,       -0.150f)
+     .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
+     .bi  (ModSource::NoteRandom,  Param::waveScan,         0.100f)
+     .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.005f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
+     .bi  (ModSource::KeyTrack,    Param::waveLevel,       -0.100f)
+     .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::fractureEvolve,   0.250f)
+     .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro2,      Param::spaceTone,        0.250f)
+     .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,        0.200f)
+     .uni (ModSource::Macro4,      Param::shapeBlend,       0.300f)
+     .uni (ModSource::Macro4,      Param::waveLevel,        0.200f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
+    r.commit (s);
+}});
 }
 
 } // namespace am::FactoryContent

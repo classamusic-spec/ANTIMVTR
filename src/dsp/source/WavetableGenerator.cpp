@@ -102,7 +102,7 @@ namespace
             case 12: pulseWave (1.0f, 0.20f); break;
             case 13: pulseWave (1.0f, 0.14f); break;
             case 14: pulseWave (1.0f, 0.09f); break;
-            default: pulseWave (1.0f, 0.05f); break;
+            default: pulseWave (1.0f, 0.07f); break;
         }
     }
 
@@ -156,7 +156,7 @@ namespace
         for (int k = 1; k <= kWaveMaxHarmonics; ++k)
         {
             const float lk = std::log2 ((float) k);
-            float res = 0.03f;                                  // breathy floor
+            float res = 0.055f;                                 // breathy floor
             for (int j = 0; j < 3; ++j)
             {
                 const float d = (lk - std::log2 (f[j])) / sigma[j];
@@ -229,11 +229,11 @@ namespace
     void spectralBins (int frame, FrameSpectrum& s)
     {
         const float u = (float) frame / (float) (kWaveFramesPerBank - 1);
-        const float tilt    = 1.5f - 0.8f * u;                  // 1.5 .. 0.7
+        const float tilt    = 1.5f - 0.7f * u;                  // 1.5 .. 0.8
         const float stretch = 1.0f + 0.16f * u;                 // spectral envelope stretch
         const float combDepth  = 0.95f * std::sin (kPiF * u);   // 0 at both ends
         const float combPeriod = 2.0f + 9.0f * u;
-        const float dispersion = 12.0f * u;   // quadratic phase: spreads the impulse into a chirp
+        const float dispersion = 20.0f * u;   // quadratic phase: spreads the impulse into a chirp
 
         for (int k = 1; k <= kWaveMaxHarmonics; ++k)
         {
@@ -241,7 +241,7 @@ namespace
             float amp = std::pow (warped, -tilt);
             const float comb = 0.5f + 0.5f * std::cos (kTwoPiF * (float) k / combPeriod);
             amp *= 1.0f - combDepth * (1.0f - comb);
-            amp *= std::exp (-(float) k / 300.0f);
+            amp *= std::exp (-(float) k / 260.0f);
             if (amp < 1.0e-5f) continue;
             const float ph = -kPiF * 0.5f + dispersion * (float) (k * k) / 4096.0f;
             s.add (k, amp, ph);

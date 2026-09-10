@@ -224,7 +224,7 @@ private:
                         + " dB, max peak " + juce::String (maxPeak, 3)
                         + ", max crest " + juce::String (maxCrest, 2) + " (frame " + juce::String (crestFrame) + ")");
             expect (spreadDb < 0.5f, juce::String ("level jump across frames of ") + bank.name);
-            expect (maxPeak < 1.8f, juce::String ("frame peak too hot in ") + bank.name);
+            expect (maxPeak < 1.1f, juce::String ("frame peak too hot in ") + bank.name);
         }
     }
 

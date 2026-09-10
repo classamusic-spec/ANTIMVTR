@@ -40,7 +40,7 @@ public:
     static const char* bankName (int index) noexcept;
 
     /** Target RMS every frame is normalised to (see the .cpp). */
-    static constexpr float kTargetRms = 0.30f;
+    static constexpr float kTargetRms = 0.23f;
     static constexpr float kPeakCap   = 2.00f;   ///< pathological-frame safety only
 };
 

@@ -16,8 +16,10 @@ int AMPanel::padding() const
 
 juce::Rectangle<int> AMPanel::headerBounds() const
 {
+    // The floor keeps room for the title *and* its subtitle, so a short panel does not
+    // silently drop the subtitle its neighbours are showing.
     const int h = compact ? juce::jlimit (26, 40, juce::roundToInt ((float) getHeight() * 0.12f))
-                          : juce::jlimit (34, 64, juce::roundToInt ((float) getHeight() * 0.155f));
+                          : juce::jlimit (38, 64, juce::roundToInt ((float) getHeight() * 0.155f));
     const int pad = padding();
     return getLocalBounds().withHeight (h).reduced (pad, 0).withTrimmedTop (pad / 2);
 }

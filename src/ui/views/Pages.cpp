@@ -34,10 +34,27 @@ BoundControl* ParamPanel::control (Param p)
     return headerToggle != nullptr && headerToggle->param() == p ? headerToggle.get() : nullptr;
 }
 
-void ParamPanel::setHeaderToggle (Param p)
+void ParamPanel::setHeaderToggle (Param p, bool asSwitch)
 {
-    headerToggle = std::make_unique<BoundControl> (processor.parameters(), p, getAccent(), " ");
-    addAndMakeVisible (headerToggle->component());
+    if (asSwitch)
+    {
+        headerSwitch = std::make_unique<AMSegment> (juce::StringArray { "Off", "On" }, getAccent());
+        headerSwitch->setTooltip (paramTooltip (p));
+        auto* param = processor.parameters().getParameter (ParameterRegistry::get (p).id);
+        auto* raw = headerSwitch.get();
+        headerSwitchAttachment = std::make_unique<juce::ParameterAttachment> (*param, [raw] (float v)
+        {
+            raw->setSelected (v >= 0.5f ? 1 : 0, juce::dontSendNotification);
+        });
+        headerSwitch->onChange = [this] (int i) { headerSwitchAttachment->setValueAsCompleteGesture (i == 1 ? 1.0f : 0.0f); };
+        headerSwitchAttachment->sendInitialUpdate();
+        addAndMakeVisible (*headerSwitch);
+    }
+    else
+    {
+        headerToggle = std::make_unique<BoundControl> (processor.parameters(), p, getAccent(), " ");
+        addAndMakeVisible (headerToggle->component());
+    }
     resized();
 }
 
@@ -68,6 +85,12 @@ void ParamPanel::resized()
         auto h = headerRightBounds();
         const int w = juce::jlimit (44, 60, h.getHeight());
         headerToggle->component().setBounds (h.removeFromRight (w).withSizeKeepingCentre (w, juce::jlimit (22, 30, h.getHeight())));
+    }
+    if (headerSwitch != nullptr)
+    {
+        auto h = headerRightBounds();
+        const int w = juce::jlimit (88, 130, h.getWidth() / 2);
+        headerSwitch->setBounds (h.removeFromRight (w).withSizeKeepingCentre (w, juce::jlimit (22, 30, h.getHeight())));
     }
     std::vector<juce::Component*> comps;
     for (auto& c : controls) comps.push_back (&c->component());
@@ -325,12 +348,20 @@ void ShapePage::resized()
     auto left = area.removeFromLeft (juce::roundToInt ((float) area.getWidth() * 0.46f));
     area.removeFromLeft (gap);
     matter.setBounds (left);
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.33f));
+
+    // The right column is shared out by what each panel holds — a row of pickers needs far
+    // less height than two rows of knobs — so no panel carries a band of empty graphite.
+    const float weights[] = { 1.0f, 1.15f, 1.85f };   // materials, topology, response
+    const int usable = area.getHeight() - gap * 2;
+    float total = 0.0f;
+    for (float w : weights) total += w;
+    const int materialsH = juce::roundToInt ((float) usable * weights[0] / total);
+    const int topologyH  = juce::roundToInt ((float) usable * weights[1] / total);
+
+    materials.setBounds (area.removeFromTop (materialsH));
     area.removeFromTop (gap);
-    materials.setBounds (top);
-    auto mid = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.5f));
+    topology.setBounds (area.removeFromTop (topologyH));
     area.removeFromTop (gap);
-    topology.setBounds (mid);
     response.setBounds (area);
 }
 
@@ -477,9 +508,9 @@ FracturePage::FracturePage (AntiMatrProcessor& p)
     : processor (p),
       engine (p, "Fracture", "Break into new realities", Theme::magenta, { Param::fractureMode, Param::fractureFragments, Param::fractureMix }, 3),
       sequencer (p, "Sequencer", "Fragment steps", Theme::magenta, { Param::fractureSteps, Param::fractureRate, Param::fractureSync, Param::fractureDivision, Param::fractureSwing, Param::fractureDirection, Param::fractureProbability, Param::fractureSeed, Param::fractureRetrig }, 9),
-      spectral (p, "Spectral", "Amount, motion & tone", Theme::magenta, { Param::fractureAmount, Param::fractureSpread, Param::fractureSequence, Param::fractureRandom, Param::fractureFeedback, Param::fracturePitch, Param::fractureDelay, Param::fractureDecay, Param::fractureTone, Param::fractureEvolve }, 5)
+      spectral (p, "Spectral", "Amount, motion & tone", Theme::magenta, { Param::fractureAmount, Param::fractureSpread, Param::fractureSequence, Param::fractureRandom, Param::fractureFeedback, Param::fracturePitch, Param::fractureDelay, Param::fractureDecay, Param::fractureTone, Param::fractureEvolve }, 10)
 {
-    engine.setHeaderToggle (Param::fractureOn);
+    engine.setHeaderToggle (Param::fractureOn, true);
     for (auto* panel : { &engine, &sequencer, &spectral }) addAndMakeVisible (*panel);
     engine.addAndMakeVisible (spectrum);
     sequencer.addAndMakeVisible (steps);
@@ -539,31 +570,39 @@ void FracturePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.40f));
+    // SPECTRAL carries ten knobs in two rows, so it keeps enough height for them to be
+    // the same size as every other knob in the plug-in instead of shrinking to fit.
+    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.34f));
     area.removeFromTop (gap);
     engine.setBounds (top);
     {
+        // Three controls beside the spectrum: stacked when the panel is tall enough for
+        // three full-size rows, side by side when it is not, so nothing ever shrinks to a dot.
         auto c = engine.contentBounds();
-        auto controls = c.removeFromRight (juce::jlimit (240, 360, c.getWidth() / 4));
+        const bool stacked = c.getHeight() >= 200;
+        auto controls = c.removeFromRight (stacked ? juce::jlimit (240, 360, c.getWidth() / 4)
+                                                   : juce::jlimit (300, 460, c.getWidth() / 3));
         c.removeFromRight (gap);
         spectrum.setBounds (c);
         std::vector<juce::Component*> comps;
         for (auto param : { Param::fractureMode, Param::fractureFragments, Param::fractureMix })
             if (auto* ctl = engine.control (param)) comps.push_back (&ctl->component());
-        layoutGrid (controls, comps, 1, 0, 4);
+        layoutGrid (controls, comps, stacked ? 1 : 3, gap / 2, 4);
     }
-    auto mid = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.5f));
+    auto mid = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.50f));
     area.removeFromTop (gap);
     sequencer.setBounds (mid);
     {
+        // The controls take nearly half the panel so five to a row leaves each cell wide
+        // enough for a choice pill and its caption without either colliding with its neighbour.
         auto c = sequencer.contentBounds();
-        auto controls = c.removeFromRight (juce::jlimit (300, 520, c.getWidth() / 2));
+        auto controls = c.removeFromRight (juce::jlimit (360, 720, juce::roundToInt ((float) c.getWidth() * 0.46f)));
         c.removeFromRight (gap);
         steps.setBounds (c);
         std::vector<juce::Component*> comps;
         for (auto param : { Param::fractureSteps, Param::fractureRate, Param::fractureSync, Param::fractureDivision, Param::fractureSwing, Param::fractureDirection, Param::fractureProbability, Param::fractureSeed, Param::fractureRetrig })
             if (auto* ctl = sequencer.control (param)) comps.push_back (&ctl->component());
-        layoutGrid (controls, comps, 5, 2, 2);
+        layoutGrid (controls, comps, 5, 4, 2);
     }
     spectral.setBounds (area);
 }

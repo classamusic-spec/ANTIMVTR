@@ -78,7 +78,7 @@ juce::Rectangle<float> AMKnob::knobBounds() const
 {
     auto b = getLocalBounds().toFloat();
     const float labelH = labelHeight();
-    const float cap = hero ? 158.0f : 106.0f;
+    const float cap = hero ? 158.0f : 118.0f;
     const float d = juce::jmin (b.getWidth(), b.getHeight() - labelH - 2.0f, cap) * 0.99f;
     const float groupH = d + (labelH > 0.0f ? labelH + 2.0f : 0.0f);
     const float top = b.getY() + juce::jmax (0.0f, (b.getHeight() - groupH) * 0.5f);

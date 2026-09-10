@@ -24,8 +24,10 @@ public:
 
     void resized() override;
     BoundControl* control (Param p);
-    /** Places a Bool parameter's toggle in the header (module on/off). */
-    void setHeaderToggle (Param p);
+    /** Places a Bool parameter's control in the header (module on/off).
+        `asSwitch` uses a labelled OFF / ON segment instead of the compact pill,
+        for panels big enough that an unlabelled pill would read as a mystery. */
+    void setHeaderToggle (Param p, bool asSwitch = false);
     void setColumns (int c) { columns = c; resized(); }
     /** Draws the live modulation rings on every knob in the panel. */
     void refreshModRings (const ModulationSnapshot& s);
@@ -37,6 +39,8 @@ private:
     AntiMatrProcessor& processor;
     std::vector<std::unique_ptr<BoundControl>> controls;
     std::unique_ptr<BoundControl> headerToggle;
+    std::unique_ptr<AMSegment> headerSwitch;
+    std::unique_ptr<juce::ParameterAttachment> headerSwitchAttachment;
     int columns = 0;
 };
 

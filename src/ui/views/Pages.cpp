@@ -333,13 +333,19 @@ EvolvePage::EvolvePage (AntiMatrProcessor& p)
     : processor (p),
       operators (p, "Operators", "Movement & change", Theme::violet, { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet }, 4),
       bend (p, "Bend", "Deformation detail", Theme::violet, { Param::evolveBendPivot, Param::evolveBendRange, Param::evolveBendCurve }, 3),
-      magnet (p, "Magnet", "Alignment target", Theme::violet, { Param::evolveMagnetTarget, Param::evolveCrush, Param::evolveFreeze }, 3),
+      magnet (p, "Magnet", "Alignment target", Theme::violet, { Param::evolveMagnetTarget }, 1),
       motion (p, "Motion", "Speed of change", Theme::violet, { Param::evolveSpeed, Param::evolveMotion, Param::evolveScatterSeed }, 3)
 {
+    operators.setHeroKnobs (true);
     for (auto* panel : { &operators, &bend, &magnet, &motion }) addAndMakeVisible (*panel);
     addAndMakeVisible (fieldPanel);
     fieldPanel.addAndMakeVisible (field);
     field.setTooltip ("Drag: gravity (x) and scatter (y). Double-click resets.");
+    for (auto param : { Param::evolveCrush, Param::evolveFreeze })
+    {
+        fieldControls.push_back (std::make_unique<BoundControl> (processor.parameters(), param, Theme::violet));
+        fieldPanel.addAndMakeVisible (fieldControls.back()->component());
+    }
 
     const juce::String names[] = { "Bend", "Melt", "Tear", "Magnet" };
     const Icon icons[] = { Icon::Bend, Icon::Melt, Icon::Tear, Icon::Magnet };
@@ -378,14 +384,25 @@ void EvolvePage::resized()
     auto right = area.removeFromRight (juce::roundToInt ((float) area.getWidth() * 0.36f));
     area.removeFromRight (gap);
     fieldPanel.setBounds (right);
-    field.setBounds (fieldPanel.contentBounds());
+    {
+        // The pad is square, so the slack under it carries the rest of the field state.
+        auto c = fieldPanel.contentBounds();
+        const int extras = juce::jlimit (64, 104, c.getHeight() / 6);
+        auto footer = c.removeFromBottom (extras);
+        field.setBounds (c.withTrimmedBottom (gap / 2));
+        std::vector<juce::Component*> comps;
+        for (auto& f : fieldControls) comps.push_back (&f->component());
+        layoutGrid (footer, comps, (int) comps.size(), gap, 0);
+    }
 
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.56f));
+    // The bottom row takes only the height its controls need; the operators absorb the rest.
+    const int bottomH = juce::jlimit (150, 218, juce::roundToInt ((float) area.getHeight() * 0.30f));
+    auto top = area.removeFromTop (juce::jmax (120, area.getHeight() - bottomH - gap));
     area.removeFromTop (gap);
     operators.setBounds (top);
     {
         auto c = operators.contentBounds();
-        auto cellRow = c.removeFromTop (juce::roundToInt ((float) c.getHeight() * 0.5f));
+        auto cellRow = c.removeFromTop (juce::roundToInt ((float) c.getHeight() * 0.46f));
         layoutKnobRow (cellRow, { cells[0].get(), cells[1].get(), cells[2].get(), cells[3].get() });
         c.removeFromTop (gap / 2);
         std::vector<juce::Component*> knobs;
@@ -393,10 +410,12 @@ void EvolvePage::resized()
             if (auto* ctl = operators.control (param)) knobs.push_back (&ctl->component());
         layoutGrid (c, knobs, 4);
     }
-    const int w = (area.getWidth() - gap * 2) / 3;
+    // MAGNET holds a single choice, so it gets a narrow column instead of an empty third.
+    const int magnetW = juce::jlimit (130, 220, juce::roundToInt ((float) area.getWidth() * 0.21f));
+    const int w = (area.getWidth() - gap * 2 - magnetW) / 2;
     bend.setBounds (area.removeFromLeft (w));
     area.removeFromLeft (gap);
-    magnet.setBounds (area.removeFromLeft (w));
+    magnet.setBounds (area.removeFromLeft (magnetW));
     area.removeFromLeft (gap);
     motion.setBounds (area);
 }

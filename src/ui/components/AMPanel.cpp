@@ -56,7 +56,7 @@ void AMPanel::paint (juce::Graphics& g)
     const float titleMaxW = (headerRightBoundsUsed ? h.getWidth() * 0.5f : h.getWidth()) - 4.0f;
     draw::trackedText (g, title, titleArea, juce::Justification::centredLeft, draw::fitFont (Theme::titleFont (titleH), title, titleMaxW, 8.0f), Theme::textPrimary);
 
-    if (! compact && subtitle.isNotEmpty() && h.getHeight() > 34.0f)
+    if (! compact && subtitle.isNotEmpty() && h.getHeight() > titleH * 1.35f + subH * 1.2f)
     {
         auto subArea = h.withTop (titleArea.getBottom() - 1.0f).withHeight (subH * 1.5f);
         draw::trackedText (g, subtitle, subArea, juce::Justification::centredLeft, Theme::captionFont (subH), Theme::textSecondary);

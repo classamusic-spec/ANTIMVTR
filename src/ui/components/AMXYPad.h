@@ -42,6 +42,9 @@ public:
 
 private:
     juce::Rectangle<float> field() const;
+    /** Where the point may actually travel: the field inset by the marker radius so 0 and 1 are never clipped. */
+    juce::Rectangle<float> plotArea() const;
+    float markerRadius() const;
     void updateFromMouse (const juce::MouseEvent& e);
     juce::String xLabel, yLabel;
     juce::Colour accent;

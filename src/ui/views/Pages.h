@@ -98,8 +98,9 @@ private:
     void timerCallback() override;
     AntiMatrProcessor& processor;
     ParamPanel operators, bend, magnet, motion;
-    AMPanel fieldPanel { "Field", "Gravity x Scatter", Theme::violet };
+    AMPanel fieldPanel { "Field", "Gravity, scatter, crush & freeze", Theme::violet };
     AMXYPad field { "Gravity", "Scatter", Theme::violet };
+    std::vector<std::unique_ptr<BoundControl>> fieldControls;   // crush & freeze, under the pad
     std::unique_ptr<juce::ParameterAttachment> fieldX, fieldY;
     std::array<std::unique_ptr<EvolvePanel::OperatorCell>, 4> cells;
     std::unique_ptr<juce::ParameterAttachment> selectedAttachment;

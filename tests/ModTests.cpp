@@ -1,4 +1,5 @@
 #include <juce_core/juce_core.h>
+#include <juce_dsp/juce_dsp.h>
 
 #include "dsp/SynthEngine.h"
 #include "dsp/mod/ModSources.h"
@@ -217,6 +218,8 @@ public:
         testDepthAndPolarity();
         testPerVoiceIndependence();
         testEngineIntegration();
+        testControlRateSteps();
+        testIdleRoutingsCostNothing();
         testNoAudioThreadAllocation();
         testNaNSafety();
         testCpuBudget();
@@ -1109,6 +1112,141 @@ private:
             expect (! idle.modulationEngine().isActive());
             expectEquals (idle.modulationEngine().controlBlockSize (block), block);
         }
+    }
+
+    //==========================================================================
+    /**
+        The control rate is what stops a moving modulation from stepping audibly.
+
+        The acid test is a fast LFO on pitch: at NORMAL the engine updates its parameters
+        every 128 samples (375 Hz at 48 kHz), so the pitch curve is a staircase and the
+        steps show up as images of the carrier around every multiple of the control rate.
+        This renders a bare sine through the engine and measures them.
+    */
+    void testControlRateSteps()
+    {
+        beginTest ("A fast LFO on pitch leaves no audible control-rate images");
+
+        constexpr double sr = 48000.0;
+        constexpr int block = 128;
+        const double controlHz = sr / (double) ModulationEngine::controlBlockForQuality (Quality::Normal);
+
+        for (float rateHz : { 6.0f, 30.0f })
+        {
+            SynthEngine engine;
+            engine.prepare (sr, block);
+            engine.diagnostics().dev.dryMode.store ((int) DryMode::SourceOnly);
+
+            ParamValues params = defaultParams();
+            setParam (params, Param::sourceSelected, 0.0f);      // WAVE
+            setParam (params, Param::waveTable, 0.0f);
+            setParam (params, Param::wavePosition, 0.0f);        // a plain sine: any image stands out
+            setParam (params, Param::waveUnison, 1.0f);
+            setParam (params, Param::waveDetune, 0.0f);
+            setParam (params, Param::shapeMix, 0.0f);
+            setParam (params, Param::ampAttack, 0.05f);
+            setParam (params, Param::ampSustain, 1.0f);
+            setParam (params, Param::lfo1Rate, rateHz);
+            setParam (params, Param::lfo1Retrig, 0.0f);
+            engine.control().resetTo (params);
+
+            auto table = std::make_unique<ModRoutingTable>();
+            table->add ({ ModSource::LFO1, Param::waveFine, 0.25f, 0.0f, true, true });   // +-50 cents
+            engine.modulationEngine().publishRoutings (std::move (table));
+
+            constexpr int fftOrder = 16, fftSize = 1 << fftOrder;
+            std::vector<float> mono;
+            mono.reserve ((size_t) (2.5 * sr));
+            juce::AudioBuffer<float> buffer (2, block);
+            TransportInfo transport;
+            for (int b = 0; b < (int) (2.5 * sr / block); ++b)
+            {
+                juce::MidiBuffer midi;
+                if (b == 0) midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.8f), 0);
+                buffer.clear();
+                engine.process (buffer, midi, params, transport);
+                if (b * block > (int) (0.4 * sr))
+                    for (int i = 0; i < block; ++i)
+                        mono.push_back (0.5f * (buffer.getSample (0, i) + buffer.getSample (1, i)));
+            }
+            expect (engine.modulationEngine().isActive(), "the routing should have reached the engine");
+            expect ((int) mono.size() >= fftSize, "not enough steady audio to analyse");
+
+            std::vector<float> data ((size_t) fftSize * 2, 0.0f);
+            std::copy (mono.begin(), mono.begin() + fftSize, data.begin());
+            juce::dsp::WindowingFunction<float> window (fftSize, juce::dsp::WindowingFunction<float>::blackmanHarris);
+            window.multiplyWithWindowingTable (data.data(), fftSize);
+            juce::dsp::FFT fft (fftOrder);
+            fft.performFrequencyOnlyForwardTransform (data.data(), true);
+
+            const double binHz = sr / (double) fftSize;
+            auto peakNear = [&data, binHz] (double hz, double halfWidth)
+            {
+                const int lo = juce::jmax (1, (int) std::floor ((hz - halfWidth) / binHz));
+                const int hi = juce::jmin (fftSize / 2 - 1, (int) std::ceil ((hz + halfWidth) / binHz));
+                float m = 0.0f;
+                for (int k = lo; k <= hi; ++k) m = juce::jmax (m, data[(size_t) k]);
+                return m;
+            };
+
+            const double f0 = midiNoteToHz (60.0);
+            const float carrier = peakNear (f0, 60.0);
+            expect (carrier > 1.0e-4f, "the carrier is missing");
+
+            // The staircase repeats the carrier around every multiple of the control rate.
+            float worst = 0.0f;
+            for (int order = 1; order <= 2; ++order)
+            {
+                worst = juce::jmax (worst, peakNear (f0 + (double) order * controlHz, 8.0));
+                worst = juce::jmax (worst, peakNear (std::abs ((double) order * controlHz - f0), 8.0));
+            }
+            const double imageDb = juce::Decibels::gainToDecibels ((double) worst / (double) carrier);
+            logMessage ("   LFO " + juce::String (rateHz, 0) + " Hz on pitch: control-rate images at "
+                            + juce::String (imageDb, 1) + " dBc (control rate " + juce::String (controlHz, 0) + " Hz)");
+            expect (imageDb < -45.0, "an LFO at " + juce::String (rateHz, 0)
+                                         + " Hz put control-rate images at " + juce::String (imageDb, 1) + " dBc");
+        }
+    }
+
+    /**
+        A routing at depth zero moves nothing, so it must not make the engine chop every
+        block into control slices: that chopping is what modulation actually costs (a
+        single live routing takes 64 voices from 54 % to 69 % of realtime at a 512 sample
+        block, and the cost is Matter recomputing its material once per slice).
+    */
+    void testIdleRoutingsCostNothing()
+    {
+        beginTest ("Routings at depth zero do not switch the engine to control-rate slices");
+
+        constexpr double sr = 48000.0;
+        constexpr int block = 512;
+
+        SynthEngine engine;
+        engine.prepare (sr, block);
+        ParamValues params = defaultParams();
+        engine.control().resetTo (params);
+
+        auto silent = std::make_unique<ModRoutingTable>();
+        silent->add ({ ModSource::LFO1, Param::shapeForm, 0.0f, 0.0f, true, true });
+        silent->add ({ ModSource::Env1, Param::shapeDecay, 0.0f, 0.0f, false, true });
+        engine.modulationEngine().publishRoutings (std::move (silent));
+        renderEngine (engine, params, sr, block, 0.2, { 60 }, 0.8f, -1.0);
+
+        expect (! engine.modulationEngine().isActive(), "depth-zero routings must not enter the plan");
+        expectEquals (engine.modulationEngine().controlBlockSize (block), block);
+
+        ModulationSnapshot snapshot;
+        expect (engine.diagnostics().modulationSnapshots.read (snapshot));
+        expectEquals (snapshot.numRoutings, 2, "the routings still exist for the UI");
+        expect (snapshot.isModulated (Param::shapeForm), "the UI must still draw the ring");
+
+        // The moment one of them has depth, the engine slices again.
+        auto live = std::make_unique<ModRoutingTable>();
+        live->add ({ ModSource::LFO1, Param::shapeForm, 0.3f, 0.0f, true, true });
+        engine.modulationEngine().publishRoutings (std::move (live));
+        renderEngine (engine, params, sr, block, 0.2, { 60 }, 0.8f, -1.0);
+        expect (engine.modulationEngine().isActive());
+        expect (engine.modulationEngine().controlBlockSize (block) < block);
     }
 
     //==========================================================================

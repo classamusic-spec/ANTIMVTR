@@ -6,6 +6,7 @@
 #include "dsp/source/GestureSource.h"
 #include "dsp/source/SampleAnalyzer.h"
 #include "dsp/source/SourceEngine.h"
+#include "dsp/source/WaveSource.h"
 
 #include <thread>
 #include <vector>
@@ -109,6 +110,28 @@ namespace
             s += v * v;
         }
         return std::sqrt (s / juce::jmax (1, end - start));
+    }
+
+    /** Spectral centroid of the middle of a buffer (one 8192 point Hann frame). */
+    double centroidOf (const juce::AudioBuffer<float>& b, double sr, int channel = 0)
+    {
+        constexpr int order = 13, size = 1 << order;
+        if (b.getNumSamples() < size) return 0.0;
+        const int start = juce::jlimit (0, b.getNumSamples() - size, (b.getNumSamples() - size) / 2);
+        std::vector<float> data ((size_t) size * 2, 0.0f);
+        for (int i = 0; i < size; ++i) data[(size_t) i] = b.getSample (channel, start + i);
+        juce::dsp::WindowingFunction<float> window (size, juce::dsp::WindowingFunction<float>::hann);
+        window.multiplyWithWindowingTable (data.data(), size);
+        juce::dsp::FFT fft (order);
+        fft.performFrequencyOnlyForwardTransform (data.data(), true);
+        double num = 0.0, den = 0.0;
+        for (int k = 1; k < size / 2; ++k)
+        {
+            const double mag = data[(size_t) k];
+            num += mag * ((double) k * sr / size);
+            den += mag;
+        }
+        return den > 1.0e-12 ? num / den : 0.0;
     }
 
     double meanOf (const juce::AudioBuffer<float>& b, int channel = 0)
@@ -249,6 +272,9 @@ public:
         testAnalyzer();
         testGestureSafety();
         testGesturePressure();
+        testGestureBandwidthLevel();
+        testGestureHeadroom();
+        testSampleLevel();
         testGestureDc();
         testEnergyReporting();
         testFullEngine();
@@ -838,6 +864,119 @@ private:
             const double quiet = rmsOf (renderSource (a, soft, 0.5), (int) (0.1 * soft.sr));
             const double strong = rmsOf (renderSource (b, loud, 0.5), (int) (0.1 * loud.sr));
             expect (strong > quiet * 1.5, "velocity should scale the gesture");
+        }
+    }
+
+    //==========================================================================
+    /**
+        BANDWIDTH decides how focused the gesture is, not how loud it is.
+
+        A fixed band normalisation could not hold that: every mode feeds the filter a
+        differently coloured signal, so the same gain boosted one and buried another —
+        measured 8 to 11 dB across the control on the noisy modes and 7.9 dB the other
+        way on ELECTRICAL, which is a level jump in a character control.
+    */
+    void testGestureBandwidthLevel()
+    {
+        beginTest ("Gesture BANDWIDTH changes focus, not level");
+        {
+            for (int mode = 0; mode < (int) GestureSource::Mode::Count; ++mode)
+            {
+                double quietest = 1.0e9, loudest = 0.0, centroidNarrow = 0.0, centroidWide = 0.0;
+                for (float bandwidth : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
+                {
+                    Harness h;
+                    h.set (Param::gestureMode, (float) mode);
+                    h.set (Param::gestureBandwidth, bandwidth);
+                    h.set (Param::gestureMotion, 0.0f);
+                    GestureSource src;
+                    auto buf = renderSource (src, h, 1.5);
+                    // Skip the first 200 ms: the power followers need a window to settle.
+                    const double level = rmsOf (buf, (int) (0.2 * h.sr));
+                    expect (level > 1.0e-5, "mode " + juce::String (mode) + " went silent at bandwidth "
+                                                + juce::String (bandwidth));
+                    quietest = juce::jmin (quietest, level);
+                    loudest = juce::jmax (loudest, level);
+                    if (bandwidth == 0.0f) centroidNarrow = centroidOf (buf, h.sr);
+                    if (bandwidth == 1.0f) centroidWide = centroidOf (buf, h.sr);
+                }
+                const double spreadDb = juce::Decibels::gainToDecibels (loudest / quietest);
+                expect (spreadDb < 4.0, "mode " + juce::String (mode) + " moved the level by "
+                                            + juce::String (spreadDb, 1) + " dB across BANDWIDTH");
+                expect (centroidWide > centroidNarrow * 1.05,
+                        "mode " + juce::String (mode) + " should still open up: centroid "
+                            + juce::String (centroidNarrow, 0) + " -> " + juce::String (centroidWide, 0) + " Hz");
+            }
+        }
+    }
+
+    /**
+        The source's own soft limiter is a peak safety net, not a tone control. The per-mode
+        trims used to drive it by 6.9 dB at LEVEL 1 (ELECTRICAL) and 4.6 dB (SCRAPE),
+        flattening exactly the transients those gestures are made of. At the loudest
+        velocity it may still round the single worst grain — that is what it is for — but
+        it must cost the gesture no measurable loudness.
+    */
+    void testGestureHeadroom()
+    {
+        beginTest ("No gesture drives the source soft limiter into compression");
+        {
+            for (int mode = 0; mode < (int) GestureSource::Mode::Count; ++mode)
+            {
+                // A quarter of the level cannot reach the 0.9 knee, so four times its peak
+                // and RMS is what the mode would do with no limiter in the way.
+                auto renderAt = [mode] (float level)
+                {
+                    Harness h;
+                    h.set (Param::gestureMode, (float) mode);
+                    h.set (Param::gestureLevel, level);
+                    h.set (Param::gestureMotion, 0.0f);
+                    h.note.velocity = 1.0f;                 // the worst case the limiter ever sees
+                    GestureSource src;
+                    auto buf = renderSource (src, h, 1.5);
+                    return std::make_pair ((double) peakOf (buf), rmsOf (buf, (int) (0.2 * h.sr)));
+                };
+                const auto quarter = renderAt (0.25f);
+                const auto full = renderAt (1.0f);
+                const juce::String tag = "gesture mode " + juce::String (mode) + ": ";
+                expect (quarter.first < 0.9, tag + "the reference render must stay under the knee");
+
+                const double peakLoss = -juce::Decibels::gainToDecibels (full.first / juce::jmax (1.0e-9, quarter.first * 4.0));
+                const double rmsLoss = -juce::Decibels::gainToDecibels (full.second / juce::jmax (1.0e-12, quarter.second * 4.0));
+                expect (peakLoss < 2.5, tag + "loses " + juce::String (peakLoss, 1) + " dB of transient to the soft limiter");
+                expect (rmsLoss < 0.25, tag + "the soft limiter is compressing, not catching peaks: "
+                                            + juce::String (rmsLoss, 2) + " dB of RMS");
+                expect (full.first <= 1.0, tag + "peaked at " + juce::String (full.first));
+            }
+        }
+    }
+
+    /**
+        ARCHITECTURE.md: a source renders at about -15 dBFS peak for one note. SAMPLE was
+        landing 7.7 dB above WAVE, so selecting it jumped the level.
+    */
+    void testSampleLevel()
+    {
+        beginTest ("SAMPLE sits with the other sources, not 8 dB above them");
+        {
+            auto sample = BuiltInSamples::create (0);
+            expect (sample->peak > 0.9f, "the built-in should be normalised near full scale");
+
+            Harness h;
+            h.sample = sample.get();
+            h.note.velocity = 100.0f / 127.0f;
+            SampleSource sampleSource;
+            const double samplePeak = (double) peakOf (renderSource (sampleSource, h, 1.0));
+
+            Harness w;
+            w.note.velocity = h.note.velocity;
+            WaveSource waveSource;
+            const double wavePeak = (double) peakOf (renderSource (waveSource, w, 1.0));
+
+            expect (wavePeak > 0.05, "the WAVE reference should be sounding");
+            const double diffDb = juce::Decibels::gainToDecibels (samplePeak / wavePeak);
+            expect (std::abs (diffDb) < 6.0,
+                    "a full scale sample at LEVEL 1 peaks " + juce::String (diffDb, 1) + " dB away from WAVE");
         }
     }
 

@@ -69,7 +69,7 @@ public:
         {
             f.angle = rng.nextFloat() * twoPi;
             f.speed = (0.06f + 0.16f * rng.nextFloat()) * (rng.chance (0.5f) ? 1.0f : -1.0f);
-            f.orbit = 1.18f + 0.55f * rng.nextFloat() * rng.nextFloat() + 0.15f * rng.nextFloat();
+            f.orbit = 1.16f + 0.38f * rng.nextFloat() * rng.nextFloat() + 0.12f * rng.nextFloat();
             f.inclination = (0.35f + 0.9f * rng.nextFloat()) * (rng.chance (0.5f) ? 1.0f : -1.0f);
             f.node = rng.nextFloat() * twoPi;
             f.size = 0.018f + 0.045f * rng.nextFloat() * rng.nextFloat();

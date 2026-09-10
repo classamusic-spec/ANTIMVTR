@@ -104,6 +104,10 @@ private:
     float paintMsAverage = 0.0f;
     int   framesSinceQualityChange = 0;
     bool  profileToStderr = false;
+    static constexpr int kLayers = 17;
+    std::array<double, kLayers> frameLayerMs {}, layerMsAverage {};
+    juce::int64 lastTick = 0;
+    void mark (int layer) noexcept;    // accumulates time since the previous mark into a layer bucket
 
     // Procedural sources
     ValueNoise     noise;
@@ -117,10 +121,12 @@ private:
     std::array<std::array<ObjectField::Outline, kMaxShells>, 2> shells;
     juce::Path bodyPath, shellPath, quad, curve, glyph, ringPath;
 
-    // Cached backdrop (halo + aura + dial), re-rendered every few frames
-    juce::Image backdrop;
+    // Cached backdrop (halo + aura + outer glow): rendered at half resolution
+    // every few frames, upscaled once into a full-resolution image, blitted each frame.
+    juce::Image backdropSmall, backdrop;
     int   backdropAge = 1000;
     float backdropScale = 1.0f;
+    void upscaleBackdrop() noexcept;
 };
 
 } // namespace am::ui

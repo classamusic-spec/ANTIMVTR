@@ -1,6 +1,7 @@
 #include "AntiMatterVisualizer.h"
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 namespace am::ui
 {
@@ -9,18 +10,20 @@ namespace
 {
     constexpr float kPi    = juce::MathConstants<float>::pi;
     constexpr float kTwoPi = juce::MathConstants<float>::twoPi;
+    constexpr float kBackdropRes = 0.5f;   // soft layers are rendered at half resolution and upscaled
 
     inline juce::Colour alpha (juce::Colour c, float a) noexcept { return c.withAlpha (juce::jlimit (0.0f, 1.0f, a)); }
     inline float sat (float v) noexcept { return juce::jlimit (0.0f, 1.0f, v); }
     inline float smoothstep (float a, float b, float x) noexcept { return ObjectField::smoothstep (a, b, x); }
     inline juce::Point<float> polar (juce::Point<float> c, float angle, float r) noexcept { return { c.x + std::cos (angle) * r, c.y + std::sin (angle) * r }; }
+    inline float hash01 (int i) noexcept { const float v = std::sin ((float) i * 12.9898f + 78.233f) * 43758.5453f; return v - std::floor (v); }
 
     // Per-quality-level caps. Level 0 = full, 1 = reduced, 2 = minimal.
     struct QualityCaps { int rimSegments, shells, filaments, fragments, sparks, backdropInterval; bool streaks, filamentHalo, fragmentGlow; };
     constexpr QualityCaps kCaps[3] = {
-        { 128, 4, 14, 48, 96, 2, true,  true,  true  },
-        {  80, 3, 10, 32, 48, 3, true,  false, false },
-        {  48, 1,  6, 20,  0, 5, false, false, false },
+        { 128, 3, 14, 48, 96, 3, true,  true,  true  },
+        {  80, 2, 10, 32, 48, 4, true,  false, false },
+        {  48, 1,  6, 20,  0, 6, false, false, false },
     };
 
     // Environmental halo tint per Space type: NEBULA|VOID|CHAMBER|ORBIT|DREAM|MACHINE|SHIMMER|DUST
@@ -51,7 +54,7 @@ namespace
 struct AntiMatterVisualizer::Frame
 {
     juce::Rectangle<float> bounds, square;
-    juce::Point<float> centre;           // object centre (lobe A when torn)
+    juce::Point<float> centre;           // object centre (between the lobes when torn)
     float side = 1.0f;                   // square side
     float px = 1.0f;                     // pixel scale relative to the 486 px reference
     float R = 1.0f;                      // base radius of the object
@@ -209,14 +212,30 @@ void AntiMatterVisualizer::updateQuality()
         --quality; framesSinceQualityChange = 0; backdropAge = 1000;
     }
     if (profileToStderr && frameCounter % 60 == 0)
+    {
         std::fprintf (stderr, "[antimatter] paint %.2f ms avg, quality %d, %dx%d, fps %d\n",
                       (double) paintMsAverage, quality, getWidth(), getHeight(), fps);
+        static const char* names[kLayers] = { "backdrop", "stars", "farFrag", "strands", "geometry", "volume", "shells", "filaments",
+                                              "core", "highlight", "rim", "cracks", "sparks", "nearFrag", "nodes", "captions", "blit" };
+        std::fprintf (stderr, "[antimatter] layers:");
+        for (int i = 0; i < kLayers; ++i) std::fprintf (stderr, " %s=%.2f", names[i], layerMsAverage[(size_t) i]);
+        std::fprintf (stderr, "\n");
+    }
+}
+
+void AntiMatterVisualizer::mark (int layer) noexcept
+{
+    const auto now = juce::Time::getHighResolutionTicks();
+    frameLayerMs[(size_t) layer] += juce::Time::highResolutionTicksToSeconds (now - lastTick) * 1000.0;
+    lastTick = now;
 }
 
 //==============================================================================
 void AntiMatterVisualizer::paint (juce::Graphics& g)
 {
     const auto t0 = juce::Time::getHighResolutionTicks();
+    lastTick = t0;
+    frameLayerMs.fill (0.0);
 
     Frame f;
     f.bounds = getLocalBounds().toFloat();
@@ -236,10 +255,10 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
 
     // Size: heavier matter is a little larger; breathing keeps the object alive when idle; audio pulses it.
     const float breathe = 1.0f + 0.016f * std::sin (time * 0.75f) + 0.045f * pulse + 0.02f * energy * life;
-    f.R = f.side * (0.285f + 0.03f * f.mass);
-    f.coreR = f.R * (0.27f + 0.11f * f.mass - 0.06f * f.pitchU) * (1.0f - 0.25f * f.melt) * (1.0f + 0.12f * f.gravity - 0.06f);
+    f.R = f.side * (0.29f + 0.03f * f.mass);
+    f.coreR = f.R * (0.26f + 0.11f * f.mass - 0.06f * f.pitchU) * (1.0f - 0.25f * f.melt) * (0.94f + 0.12f * f.gravity);
 
-    f.numShells = juce::jlimit (1, f.caps.shells, 1 + (int) std::lround (f.density * 3.0f));
+    f.numShells = juce::jlimit (1, f.caps.shells, 1 + (int) std::lround (f.density * 2.4f));
     f.numFilaments = juce::jlimit (3, f.caps.filaments, 4 + (int) (f.density * 10.0f));
     f.numFragments = juce::jlimit (8, f.caps.fragments, 10 + (int) (f.density * 26.0f) + (int) (f.fracture * 20.0f));
     f.numSparks = juce::jmin (f.caps.sparks, 14 + (int) (f.density * 50.0f * (0.35f + 0.65f * f.life)) + (int) (f.fracture * 30.0f));
@@ -248,11 +267,11 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
     f.tearAxis = 0.55f + 0.3f * std::sin (time * 0.05f);
     const float tearShown = smoothstep (0.02f, 0.45f, f.tear);
     f.numLobes = f.tear > 0.02f ? 2 : 1;
-    const float separation = f.R * (0.15f + 0.65f * f.tear);
-    f.lobeCentre[0] = f.numLobes == 2 ? polar (f.centre, f.tearAxis + kPi, separation * 0.55f * tearShown) : f.centre;
-    f.lobeCentre[1] = polar (f.centre, f.tearAxis, separation * 0.75f * tearShown);
-    f.lobeScale[0] = 1.0f - 0.16f * f.tear;
-    f.lobeScale[1] = 0.78f - 0.1f * f.tear;
+    const float separation = f.R * (0.25f + 1.45f * f.tear);
+    f.lobeCentre[0] = f.numLobes == 2 ? polar (f.centre, f.tearAxis + kPi, separation * 0.45f * tearShown) : f.centre;
+    f.lobeCentre[1] = polar (f.centre, f.tearAxis, separation * 0.55f * tearShown);
+    f.lobeScale[0] = 1.0f - 0.2f * f.tear;
+    f.lobeScale[1] = 0.76f - 0.12f * f.tear;
     f.lobeAlpha[0] = 1.0f;
     f.lobeAlpha[1] = tearShown;
 
@@ -272,56 +291,91 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
         field.buildOutline (p, noise, f.lobeCentre[L], f.R * f.lobeScale[L], lobes[(size_t) L]);
         for (int s = 0; s < f.numShells; ++s)
         {
+            // Shells are offset, not concentric: refracted light bands drifting through the glass.
             ObjectField::Params sp = p;
             sp.phase = p.phase + 3.7f * (float) (s + 1);
             sp.rotation = rotation * (1.0f + 0.35f * (float) (s + 1)) + 0.4f * (float) s;
-            sp.surface *= 0.5f;
+            sp.surface *= 0.4f;
             sp.fracture *= 0.5f;
-            const float scale = 0.84f - 0.15f * (float) s;
-            field.buildOutline (sp, noise, f.lobeCentre[L], f.R * f.lobeScale[L] * scale, shells[(size_t) L][(size_t) s]);
+            sp.bend *= 0.5f;
+            const float scale = (0.80f - 0.16f * (float) s) * f.lobeScale[L];
+            const float dir = rotation * (0.7f + 0.3f * (float) s) + 2.1f * (float) s + 0.6f;
+            const auto sc = polar (f.lobeCentre[L], dir, f.R * f.lobeScale[L] * (0.09f + 0.05f * (float) s) * (1.0f + 0.8f * f.bend));
+            field.buildOutline (sp, noise, sc, f.R * scale, shells[(size_t) L][(size_t) s]);
         }
     }
+    mark (4);
 
     // ---- Layers
     drawBackdrop (g, f);
-    drawStars (g, f);
-    drawFragments (g, f, false);
-    if (f.numLobes == 2) drawLobe (g, f, 1);
-    if (f.numLobes == 2) drawStrands (g, f);
-    drawLobe (g, f, 0);
-    drawSparks (g, f);
-    drawFragments (g, f, true);
-    drawNodes (g, f);
-    drawCaptions (g, f.bounds);
+    drawStars (g, f);               mark (1);
+    drawFragments (g, f, false);    mark (2);
+    if (f.numLobes == 2) { drawLobe (g, f, 1); mark (4); drawStrands (g, f); mark (3); }
+    drawLobe (g, f, 0);             mark (4);
+    drawSparks (g, f);              mark (12);
+    drawFragments (g, f, true);     mark (13);
+    drawNodes (g, f);               mark (14);
+    drawCaptions (g, f.bounds);     mark (15);
 
     const double ms = juce::Time::highResolutionTicksToSeconds (juce::Time::getHighResolutionTicks() - t0) * 1000.0;
     paintMsAverage = paintMsAverage <= 0.0f ? (float) ms : paintMsAverage + ((float) ms - paintMsAverage) * 0.08f;
+    for (int i = 0; i < kLayers; ++i)
+        layerMsAverage[(size_t) i] += (frameLayerMs[(size_t) i] - layerMsAverage[(size_t) i]) * 0.08;
 }
 
 //==============================================================================
 void AntiMatterVisualizer::drawBackdrop (juce::Graphics& g, const Frame& f)
 {
-    // The halo, plasma aura and the octave dial are the most expensive soft
-    // fills; they are rendered into an image every few frames and blitted.
-    const float scale = juce::jmax (0.5f, g.getInternalContext().getPhysicalPixelScaleFactor());
-    const int w = juce::jmax (1, juce::roundToInt (f.bounds.getWidth() * scale));
-    const int h = juce::jmax (1, juce::roundToInt (f.bounds.getHeight() * scale));
-    if (backdrop.isNull() || backdrop.getWidth() != w || backdrop.getHeight() != h || std::abs (backdropScale - scale) > 0.01f)
+    // The halo, plasma aura and outer glow are the most expensive soft fills.
+    // They are blur-like by nature, so they are rendered at half resolution
+    // into an image every few frames and upscaled with a plain blit.
+    const float deviceScale = juce::jmax (0.5f, g.getInternalContext().getPhysicalPixelScaleFactor());
+    const float scale = deviceScale * kBackdropRes;
+    const int fullW = juce::jmax (2, juce::roundToInt (f.bounds.getWidth() * deviceScale));
+    const int fullH = juce::jmax (2, juce::roundToInt (f.bounds.getHeight() * deviceScale));
+    const int w = (fullW + 1) / 2, h = (fullH + 1) / 2;
+    if (backdrop.isNull() || backdrop.getWidth() != fullW || backdrop.getHeight() != fullH || std::abs (backdropScale - scale) > 0.01f)
     {
-        backdrop = juce::Image (juce::Image::ARGB, w, h, true);
+        backdropSmall = juce::Image (juce::Image::ARGB, w, h, true);
+        backdrop = juce::Image (juce::Image::ARGB, fullW, fullH, true);
         backdropScale = scale;
         backdropAge = 1000;
     }
     if (++backdropAge >= f.caps.backdropInterval)
     {
         backdropAge = 0;
-        backdrop.clear (backdrop.getBounds());
-        juce::Graphics ig (backdrop);
+        backdropSmall.clear (backdropSmall.getBounds());
+        juce::Graphics ig (backdropSmall);
         ig.addTransform (juce::AffineTransform::scale (scale));
         renderBackdrop (ig, f);
+        upscaleBackdrop();
     }
-    g.setImageResamplingQuality (juce::Graphics::lowResamplingQuality);
-    g.drawImageTransformed (backdrop, juce::AffineTransform::scale (1.0f / scale), false);
+    mark (0);
+    // Translation-only image draw: JUCE's fast blit path (the transformed path costs ~4x).
+    g.drawImageTransformed (backdrop, juce::AffineTransform::scale (1.0f / deviceScale), false);
+    mark (16);
+}
+
+void AntiMatterVisualizer::upscaleBackdrop() noexcept
+{
+    // 2x nearest-neighbour upscale of premultiplied ARGB; the content is blur-like so blocks are invisible.
+    juce::Image::BitmapData src (backdropSmall, juce::Image::BitmapData::readOnly);
+    juce::Image::BitmapData dst (backdrop, juce::Image::BitmapData::writeOnly);
+    const int srcW = src.width, dstW = dst.width;
+    const size_t rowBytes = (size_t) dstW * 4;
+    for (int y = 0; y < dst.height; y += 2)
+    {
+        const juce::uint8* s = src.getLinePointer (juce::jmin (src.height - 1, y >> 1));
+        juce::uint8* d = dst.getLinePointer (y);
+        int x = 0;
+        for (int sx = 0; sx < srcW && x + 1 < dstW; ++sx, x += 2)
+        {
+            std::memcpy (d + x * 4, s + sx * 4, 4);
+            std::memcpy (d + x * 4 + 4, s + sx * 4, 4);
+        }
+        for (; x < dstW; ++x) std::memcpy (d + x * 4, s + (srcW - 1) * 4, 4);
+        if (y + 1 < dst.height) std::memcpy (dst.getLinePointer (y + 1), d, rowBytes);
+    }
 }
 
 void AntiMatterVisualizer::renderBackdrop (juce::Graphics& g, const Frame& f)
@@ -339,24 +393,10 @@ void AntiMatterVisualizer::renderBackdrop (juce::Graphics& g, const Frame& f)
         g.fillRect (f.bounds);
     }
 
-    // Octave dial: faint ring with ticks every octave (30 Hz .. 15 kHz), the scale the node markers use.
-    {
-        const float ringR = f.R * 1.28f;
-        g.setColour (alpha (juce::Colours::white, 0.045f));
-        g.drawEllipse (c.x - ringR, c.y - ringR, ringR * 2.0f, ringR * 2.0f, 1.0f);
-        for (int k = 0; k <= 9; ++k)
-        {
-            const float a = -kPi * 0.5f + (float) k / 9.0f * kTwoPi;
-            const float len = (k % 3 == 0 ? 7.0f : 4.0f) * f.px;
-            g.setColour (alpha (juce::Colours::white, k % 3 == 0 ? 0.16f : 0.09f));
-            g.drawLine (juce::Line<float> (polar (c, a, ringR - len * 0.5f), polar (c, a, ringR + len * 0.5f)), 1.0f);
-        }
-    }
-
     // Plasma aura: soft drifting clouds around the body — the "dark matter" volume the glass sits in.
     {
         const juce::Colour tints[3] = { Theme::violet, Theme::blue, Theme::magenta };
-        const int clouds = f.caps.shells >= 3 ? 3 : 2;
+        const int clouds = f.caps.shells >= 2 ? 3 : 2;
         for (int k = 0; k < clouds; ++k)
         {
             const float phi = (float) k * kTwoPi / 3.0f + f.time * 0.06f + f.rotation * 0.3f;
@@ -365,7 +405,7 @@ void AntiMatterVisualizer::renderBackdrop (juce::Graphics& g, const Frame& f)
             const float dist = f.R * (0.28f + 0.16f * n1 + 0.25f * f.tear + 0.1f * f.bend);
             const auto cc = polar (c, phi, dist);
             const float radius = f.R * (1.05f + 0.18f * n2 + 0.35f * f.melt + 0.2f * f.density + 0.15f * f.pulse);
-            const float a = (0.11f + 0.06f * f.pulse + 0.05f * f.life + 0.08f * f.melt) * (1.0f - 0.22f * (float) k);
+            const float a = (0.09f + 0.06f * f.pulse + 0.04f * f.life + 0.08f * f.melt) * (1.0f - 0.22f * (float) k);
             juce::ColourGradient cloud (alpha (tints[k], a), cc.x, cc.y, alpha (tints[k], 0.0f), cc.x + radius, cc.y, true);
             cloud.addColour (0.45, alpha (tints[k], a * 0.5f));
             g.setGradientFill (cloud);
@@ -377,6 +417,18 @@ void AntiMatterVisualizer::renderBackdrop (juce::Graphics& g, const Frame& f)
         shadow.addColour (0.5, alpha (juce::Colour (0xff04040a), 0.35f));
         g.setGradientFill (shadow);
         g.fillEllipse (c.x - sr, c.y - sr, sr * 2.0f, sr * 2.0f);
+
+        // Outer glow: the glass edge scattering light into the aura.
+        for (int L = 0; L < f.numLobes; ++L)
+        {
+            const auto lc = f.lobeCentre[L];
+            const float gr = f.R * f.lobeScale[L] * (1.16f + 0.3f * f.melt);
+            const float ga = (0.13f + 0.08f * f.pulse) * f.lobeAlpha[L];
+            juce::ColourGradient glow (alpha (Theme::violet, ga), lc.x, lc.y, alpha (Theme::violet, 0.0f), lc.x + gr, lc.y, true);
+            glow.addColour (0.80, alpha (Theme::violet, ga * 0.9f));
+            g.setGradientFill (glow);
+            g.fillEllipse (lc.x - gr, lc.y - gr, gr * 2.0f, gr * 2.0f);
+        }
     }
 }
 
@@ -409,8 +461,8 @@ void AntiMatterVisualizer::drawFragments (juce::Graphics& g, const Frame& f, boo
 
         const juce::Point<float> p (c.x + fr.x * f.R, c.y + fr.y * f.R);
         const float depthMix = 0.5f + 0.5f * fr.depth;                       // 0 far .. 1 near
-        const float s = fr.size * f.R * fr.scale * shardBoost * (1.0f + 0.25f * f.pulse);
-        const float a = (0.35f + 0.65f * depthMix) * (0.6f + 0.4f * f.life) * (1.0f - 0.5f * f.melt);
+        const float s = fr.size * f.R * fr.scale * shardBoost * (1.0f + 0.25f * f.pulse) * 1.25f;
+        const float a = (0.3f + 0.7f * depthMix) * (0.65f + 0.35f * f.life) * (1.0f - 0.5f * f.melt);
         const float spin = f.time * fr.spin * (0.4f + 0.6f * f.decay + f.fracture) + fr.spinPhase;
         const float hue = fr.hue + f.hue * 0.5f;
         if (s < 0.6f) continue;
@@ -439,23 +491,31 @@ void AntiMatterVisualizer::drawFragments (juce::Graphics& g, const Frame& f, boo
         glyph.closeSubPath();
 
         // Glassy fill: a gradient across the shard, then a bright thin edge.
-        const auto colA = iridescence.at (hue), colB = iridescence.at (hue + 0.33f);
-        juce::ColourGradient fill (alpha (colA, 0.30f * a), p.x - s, p.y - s, alpha (colB, 0.08f * a), p.x + s, p.y + s, false);
+        const auto colA = iridescence.lit (hue, 0.2f), colB = iridescence.at (hue + 0.33f);
+        juce::ColourGradient fill (alpha (colA, 0.50f * a), p.x - s, p.y - s, alpha (colB, 0.12f * a), p.x + s, p.y + s, false);
         g.setGradientFill (fill);
         g.fillPath (glyph);
         if (nearLayer && f.caps.fragmentGlow && s > 3.0f)
         {
-            g.setColour (alpha (colA, 0.10f * a));
-            g.strokePath (glyph, juce::PathStrokeType (s * 0.45f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
+            g.setColour (alpha (colA, 0.12f * a));
+            g.strokePath (glyph, juce::PathStrokeType (s * 0.5f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
         }
-        g.setColour (alpha (iridescence.lit (hue, 0.35f + 0.3f * depthMix), (0.55f + 0.4f * depthMix) * a));
+        g.setColour (alpha (iridescence.lit (hue, 0.45f + 0.3f * depthMix), (0.6f + 0.4f * depthMix) * a));
         g.strokePath (glyph, juce::PathStrokeType (juce::jmax (0.7f, 0.9f * f.px)));
+        if (fr.sides >= 4 && s > 3.0f)
+        {
+            // an internal facet edge so the shard reads as a crystal, not a flat polygon
+            const auto v0 = polar (p, spin, s * fr.vertexRadius[0]);
+            const auto v2 = polar (p, spin + (float) (fr.sides / 2) / (float) fr.sides * kTwoPi, s * fr.vertexRadius[(size_t) (fr.sides / 2)]);
+            g.setColour (alpha (Theme::ivory, (0.25f + 0.25f * depthMix) * a));
+            g.drawLine (juce::Line<float> (v0, v2), juce::jmax (0.6f, 0.7f * f.px));
+        }
         if (nearLayer && s > 4.0f)
         {
             // one lit facet corner
             const auto v = polar (p, spin, s * fr.vertexRadius[0]);
-            const float d = juce::jmax (1.0f, 1.3f * f.px);
-            g.setColour (alpha (Theme::ivory, 0.75f * a));
+            const float d = juce::jmax (1.0f, 1.4f * f.px);
+            g.setColour (alpha (Theme::ivory, 0.8f * a));
             g.fillEllipse (v.x - d * 0.5f, v.y - d * 0.5f, d, d);
         }
     }
@@ -484,30 +544,49 @@ void AntiMatterVisualizer::drawLobe (juce::Graphics& g, const Frame& f, int L)
     const auto c = o.centre;
     ObjectField::toPath (o, bodyPath);
 
-    // 1. Outer glow: the glass edge scatters light into the aura.
+    // 1. Volume: dark liquid glass. Lit from the top-left (cold blue) with a
+    //    warm magenta-violet bounce from the bottom-right, denser with Mass.
     {
-        const float w1 = R * (0.16f + 0.25f * f.melt), w2 = R * (0.06f + 0.1f * f.melt);
-        juce::ColourGradient grad (alpha (Theme::blue, (0.09f + 0.06f * f.pulse) * A), c.x - R, c.y - R,
-                                   alpha (Theme::magenta, (0.07f + 0.05f * f.pulse) * A), c.x + R, c.y + R, false);
-        grad.addColour (0.5, alpha (Theme::violet, (0.10f + 0.06f * f.pulse) * A));
-        g.setGradientFill (grad);
-        g.strokePath (bodyPath, juce::PathStrokeType (w1, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.strokePath (bodyPath, juce::PathStrokeType (w2, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-    }
-
-    // 2. Volume: dark liquid glass, lit from the top-left, denser with Mass, diffusing with Melt.
-    {
-        const juce::Point<float> light (c.x - R * 0.3f, c.y - R * 0.32f);
-        const juce::Colour deep (0xff0a0918), mid (0xff101236), edge (0xff1c1f52);
-        const float dens = 0.62f + 0.25f * f.mass - 0.15f * f.melt;
-        juce::ColourGradient vol (alpha (mid, (dens + 0.05f) * A), light.x, light.y, alpha (edge, (dens + 0.1f) * A), light.x + R * 1.45f, light.y, true);
-        vol.addColour (0.45, alpha (deep, (dens + 0.2f) * A));
+        const float dens = 0.78f + 0.18f * f.mass - 0.2f * f.melt;
+        const juce::Point<float> lit (c.x - R * 0.85f, c.y - R * 0.85f), shade (c.x + R * 0.85f, c.y + R * 0.85f);
+        juce::ColourGradient vol (alpha (juce::Colour (0xff1f2f78), (dens + 0.02f) * A), lit.x, lit.y,
+                                  alpha (juce::Colour (0xff241040), (dens + 0.06f) * A), shade.x, shade.y, false);
+        vol.addColour (0.40, alpha (juce::Colour (0xff08081c), (dens + 0.14f) * A));
+        vol.addColour (0.64, alpha (juce::Colour (0xff0a0722), (dens + 0.12f) * A));
         g.setGradientFill (vol);
         g.fillPath (bodyPath);
 
+        // Dark matter clots: soft near-black turbulence drifting inside the glass (Mass makes them heavier).
+        for (int k = 0; k < 3; ++k)
+        {
+            const float fk = (float) k;
+            const float ang = f.rotation * (0.8f + 0.25f * fk) + fk * 2.1f + 0.3f * noise.noise (fk * 3.0f, f.time * 0.15f);
+            const float dist = R * (0.42f + 0.16f * noise.noise (f.time * 0.1f, fk * 5.0f + 2.0f));
+            const auto cc = polar (c, ang, dist);
+            const float rr = R * (0.24f + 0.08f * f.mass + 0.06f * f.density);
+            juce::ColourGradient clot (alpha (juce::Colour (0xff030309), (0.30f + 0.25f * f.mass) * A), cc.x, cc.y, alpha (juce::Colour (0xff030309), 0.0f), cc.x + rr, cc.y, true);
+            g.setGradientFill (clot);
+            g.fillEllipse (cc.x - rr, cc.y - rr, rr * 2.0f, rr * 2.0f);
+        }
+
+        // Plasma wisps: iridescent colour drifting through the glass (Density adds wisps, audio brightens them).
+        const int wisps = 2 + (int) (f.density * 2.0f);
+        for (int k = 0; k < wisps; ++k)
+        {
+            const float fk = (float) k;
+            const float ang = -f.rotation * (0.6f + 0.2f * fk) + fk * 1.9f + 0.5f * noise.noise (fk * 4.0f + 1.0f, f.time * 0.12f);
+            const float dist = R * (0.30f + 0.25f * (0.5f + 0.5f * noise.noise (f.time * 0.09f + fk, fk * 6.0f)));
+            const auto cc = polar (c, ang, dist);
+            const float rr = R * (0.22f + 0.05f * (float) (k % 2));
+            const auto col = iridescence.at (f.hue + 0.27f * fk + 0.1f);
+            juce::ColourGradient wisp (alpha (col, (0.17f + 0.1f * f.pulse) * (1.0f - 0.4f * f.melt) * A), cc.x, cc.y, alpha (col, 0.0f), cc.x + rr, cc.y, true);
+            g.setGradientFill (wisp);
+            g.fillEllipse (cc.x - rr, cc.y - rr, rr * 2.0f, rr * 2.0f);
+        }
+
         // Fresnel body glow: transparent centre, tinted toward the edge (glass thickness).
-        juce::ColourGradient fres (alpha (Theme::blue, 0.0f), c.x, c.y, alpha (Theme::violet, (0.42f + 0.2f * f.pulse) * A), c.x + R * 1.02f, c.y, true);
-        fres.addColour (0.55, alpha (Theme::blue, 0.0f));
+        juce::ColourGradient fres (alpha (Theme::blue, 0.0f), c.x, c.y, alpha (Theme::violet, (0.45f + 0.2f * f.pulse) * A), c.x + R * 1.02f, c.y, true);
+        fres.addColour (0.58, alpha (Theme::blue, 0.0f));
         fres.addColour (0.86, alpha (Theme::blue, (0.20f + 0.1f * f.pulse) * A));
         g.setGradientFill (fres);
         g.fillPath (bodyPath);
@@ -520,46 +599,86 @@ void AntiMatterVisualizer::drawLobe (juce::Graphics& g, const Frame& f, int L)
             g.fillPath (shellPath);
         }
     }
+    mark (5);
+    drawShells (g, f, L);       mark (6);
+    drawFilaments (g, f, L);    mark (7);
+    drawCore (g, f, L);         mark (8);
 
-    drawShells (g, f, L);
-    drawFilaments (g, f, L);
-    drawCore (g, f, L);
-
-    // Specular highlight: liquid-glass reflection of the key light.
+    // Specular highlights: the key light reflected in liquid glass — a soft sheen and a sharp point.
     {
-        const float hx = R * 0.44f * (1.0f - 0.3f * f.melt), hy = R * 0.2f;
-        const auto hc = juce::Point<float> (c.x - R * 0.36f, c.y - R * 0.42f);
+        const float hx = R * 0.40f * (1.0f - 0.3f * f.melt), hy = R * 0.17f;
+        const auto hc = juce::Point<float> (c.x - R * 0.40f, c.y - R * 0.46f);
         glyph.clear();
         glyph.addEllipse (hc.x - hx, hc.y - hy, hx * 2.0f, hy * 2.0f);
-        glyph.applyTransform (juce::AffineTransform::rotation (-0.62f, hc.x, hc.y));
-        juce::ColourGradient hl (alpha (Theme::ivory, (0.30f + 0.15f * f.pulse) * (1.0f - 0.5f * f.melt) * A), hc.x, hc.y, alpha (Theme::ivory, 0.0f), hc.x + hx, hc.y, true);
-        hl.addColour (0.5, alpha (Theme::ivory, 0.10f * A));
+        glyph.applyTransform (juce::AffineTransform::rotation (-0.66f, hc.x, hc.y));
+        const auto sheen = Theme::ivory.interpolatedWith (Theme::cyan, 0.35f);
+        juce::ColourGradient hl (alpha (sheen, (0.36f + 0.18f * f.pulse) * (1.0f - 0.5f * f.melt) * A), hc.x, hc.y, alpha (sheen, 0.0f), hc.x + hx, hc.y, true);
+        hl.addColour (0.4, alpha (sheen, 0.12f * A));
         g.setGradientFill (hl);
         g.fillPath (glyph);
-    }
 
-    drawRim (g, f, L);
+        const auto sp = juce::Point<float> (c.x - R * 0.52f, c.y - R * 0.56f);
+        const float sr = R * 0.045f * (1.0f + 0.4f * f.pulse);
+        juce::ColourGradient spot (alpha (Theme::ivory, (0.85f - 0.5f * f.melt) * A), sp.x, sp.y, alpha (Theme::ivory, 0.0f), sp.x + sr * 2.2f, sp.y, true);
+        spot.addColour (0.3, alpha (Theme::ivory, 0.5f * A));
+        g.setGradientFill (spot);
+        g.fillEllipse (sp.x - sr * 2.2f, sp.y - sr * 2.2f, sr * 4.4f, sr * 4.4f);
+    }
+    mark (9);
+    drawRim (g, f, L);          mark (10);
     if (f.fracture > 0.03f) drawCracks (g, f, L);
+    mark (11);
 }
 
 void AntiMatterVisualizer::drawShells (juce::Graphics& g, const Frame& f, int L)
 {
+    const auto& o = lobes[(size_t) L];
     const float A = f.lobeAlpha[L];
+    const auto c = o.centre;
+    const float R = o.baseRadius;
+
+    // Refraction crescents: offset shells filled with a directional gradient (bright far side → clear near side).
     for (int s = 0; s < f.numShells; ++s)
     {
         const auto& sh = shells[(size_t) L][(size_t) s];
         ObjectField::toPath (sh, shellPath);
-        const float hue = f.hue + 0.18f * (float) s + 0.1f * (float) L;
-        const auto ca = iridescence.at (hue), cb = iridescence.at (hue + 0.4f);
-        const float ang = f.rotation * (1.0f + 0.5f * (float) s) + 1.1f * (float) s;
-        const auto p1 = polar (sh.centre, ang, sh.baseRadius), p2 = polar (sh.centre, ang + kPi, sh.baseRadius);
-        const float fillA = (0.10f + 0.05f * f.pulse + 0.06f * f.melt) * A * (1.0f - 0.12f * (float) s);
-        juce::ColourGradient grad (alpha (ca, fillA), p1.x, p1.y, alpha (cb, fillA * 0.35f), p2.x, p2.y, false);
+        const float hue = f.hue + 0.31f * (float) s + 0.1f * (float) L + 0.05f;
+        const auto ca = iridescence.lit (hue, 0.15f), cb = iridescence.at (hue + 0.5f);
+        const float dir = std::atan2 (sh.centre.y - c.y, sh.centre.x - c.x);
+        const auto p1 = polar (sh.centre, dir, sh.baseRadius), p2 = polar (sh.centre, dir + kPi, sh.baseRadius * 0.6f);
+        const float fillA = (0.20f + 0.08f * f.pulse + 0.08f * f.melt) * A * (1.0f - 0.15f * (float) s);
+        juce::ColourGradient grad (alpha (ca, fillA), p1.x, p1.y, alpha (cb, 0.0f), p2.x, p2.y, false);
+        grad.addColour (0.5, alpha (ca.interpolatedWith (cb, 0.5f), fillA * 0.35f));
         g.setGradientFill (grad);
         g.fillPath (shellPath);
-        // hairline refraction edge
-        g.setColour (alpha (iridescence.lit (hue + 0.05f, 0.25f), (0.26f + 0.15f * f.pulse) * (1.0f - 0.7f * f.melt) * A));
-        g.strokePath (shellPath, juce::PathStrokeType (juce::jmax (0.6f, 0.75f * f.px)));
+        // hairline refraction edge, strongest on the outer shell
+        if (s == 0)
+        {
+            const float edgeA = 0.22f * (1.0f + 0.5f * f.pulse) * (1.0f - 0.7f * f.melt) * A;
+            g.setColour (alpha (iridescence.lit (hue + 0.05f, 0.3f), edgeA));
+            g.strokePath (shellPath, juce::PathStrokeType (juce::jmax (0.6f, 0.75f * f.px)));
+        }
+    }
+
+    // Swirl bands: light curling around the well inside the glass (the marble's "cat's eye").
+    {
+        const int bands = f.numShells >= 2 ? 2 : 1;
+        for (int b = 0; b < bands; ++b)
+        {
+            const float fb = (float) b;
+            const float rr = R * (0.50f + 0.2f * fb) * (1.0f + 0.15f * f.bend);
+            const float a0 = f.rotation * (1.3f + 0.4f * fb) + fb * 2.6f;
+            const float span = 2.2f + 0.6f * f.density - 0.5f * f.form;
+            ringPath.clear();
+            ringPath.addCentredArc (c.x, c.y, rr, rr * (0.8f + 0.2f * f.magnet), 0.35f * fb, a0, a0 + span, true);
+            const auto q0 = polar (c, a0 - kPi * 0.5f, rr), q1 = polar (c, a0 + span - kPi * 0.5f, rr);
+            const auto ca = iridescence.lit (f.hue + 0.6f + 0.3f * fb, 0.25f), cb = iridescence.at (f.hue + 0.15f + 0.3f * fb);
+            juce::ColourGradient grad (alpha (ca, (0.13f + 0.06f * f.pulse) * A), q0.x, q0.y, alpha (cb, 0.01f * A), q1.x, q1.y, false);
+            g.setGradientFill (grad);
+            g.strokePath (ringPath, juce::PathStrokeType (R * (0.12f - 0.02f * fb) * (1.0f + 0.5f * f.melt), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            g.setColour (alpha (ca, (0.28f + 0.15f * f.pulse) * A * (1.0f - 0.6f * f.melt)));
+            g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (0.6f, 0.8f * f.px), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
     }
 }
 
@@ -576,16 +695,20 @@ void AntiMatterVisualizer::drawFilaments (juce::Graphics& g, const Frame& f, int
     for (int i = 0; i < count; ++i)
     {
         const float fi = (float) i;
-        const float a0 = f.rotation * 0.6f + fi * kTwoPi / (float) count + 0.45f * align * noise.noise (fi * 1.3f + 0.5f, f.time * 0.22f);
-        const float curl = (0.35f + 0.9f * f.bend) * std::sin (f.time * 0.3f + fi * 1.7f) * align + 0.5f * f.bend;
+        const float h = hash01 (i + 7 * L);
+        const float a0 = f.rotation * 0.6f + fi * kTwoPi / (float) count + 0.5f * align * noise.noise (fi * 1.3f + 0.5f, f.time * 0.22f);
+        const float curl = (0.5f + 1.3f * f.bend) * std::sin (f.time * 0.3f + fi * 1.7f) * align + 0.6f * f.bend;
         const float a1 = a0 + curl;
         const float idx = std::fmod ((a1 / kTwoPi) * (float) ObjectField::kSamples + (float) ObjectField::kSamples * 4.0f, (float) ObjectField::kSamples);
-        const auto end = ObjectField::pointAt (o, idx, 0.9f - 0.08f * f.melt);
-        const auto start = polar (c, a0, coreR * 1.06f);
-        const float endR = end.getDistanceFrom (c);
-        const float wob = f.R * 0.14f * align * (0.6f + 0.6f * f.surface);
-        const auto m1 = polar (c, a0 + curl * 0.33f, coreR + (endR - coreR) * 0.36f);
-        const auto m2 = polar (c, a0 + curl * 0.7f, coreR + (endR - coreR) * 0.72f);
+        const float reach = (0.55f + 0.42f * h) * (1.0f - 0.1f * f.melt) * (0.9f + 0.1f * f.energy);
+        const auto rimPoint = ObjectField::pointAt (o, idx, 1.0f);
+        const float rimR = rimPoint.getDistanceFrom (c);
+        const float endR = juce::jmin (rimR * 0.93f, o.baseRadius * reach);
+        const auto end = polar (c, a1, endR);
+        const auto start = polar (c, a0, coreR * 1.04f);
+        const float wob = f.R * 0.24f * align * (0.5f + 0.7f * f.surface);
+        const auto m1 = polar (c, a0 + curl * 0.3f, coreR + (endR - coreR) * 0.33f);
+        const auto m2 = polar (c, a0 + curl * 0.72f, coreR + (endR - coreR) * 0.7f);
         const float n1 = noise.noise (fi * 2.1f, f.time * 0.6f + 1.0f), n2 = noise.noise (f.time * 0.5f, fi * 2.7f + 4.0f);
         curve.clear();
         curve.startNewSubPath (start);
@@ -593,14 +716,21 @@ void AntiMatterVisualizer::drawFilaments (juce::Graphics& g, const Frame& f, int
 
         const float flicker = 0.55f + 0.45f * noise.noise (fi * 3.3f, f.time * (1.5f + 4.0f * f.life));
         const float b = (0.35f + 0.65f * f.energy) * flicker * vitality * A * (1.0f - 0.45f * f.melt);
-        const auto col = iridescence.lit (fi / (float) count + f.hue * 0.7f + 0.55f, 0.3f);
+        const auto col = iridescence.lit (fi / (float) count + f.hue * 0.7f + 0.55f, 0.35f);
         if (f.caps.filamentHalo)
         {
-            g.setColour (alpha (col, 0.10f * b + 0.05f * f.pulse));
-            g.strokePath (curve, juce::PathStrokeType (juce::jmax (2.5f, 4.5f * f.px), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            juce::ColourGradient halo (alpha (col, 0.36f * b + 0.1f * f.pulse), start.x, start.y, alpha (col, 0.0f), end.x, end.y, false);
+            g.setGradientFill (halo);
+            g.strokePath (curve, juce::PathStrokeType (juce::jmax (3.0f, 6.0f * f.px), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
-        g.setColour (alpha (col, 0.28f + 0.6f * b));
-        g.strokePath (curve, juce::PathStrokeType (juce::jmax (0.7f, 1.05f * f.px), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        juce::ColourGradient line (alpha (col.interpolatedWith (Theme::ivory, 0.5f), 0.6f + 0.4f * b), start.x, start.y, alpha (col, 0.08f + 0.25f * b), end.x, end.y, false);
+        g.setGradientFill (line);
+        g.strokePath (curve, juce::PathStrokeType (juce::jmax (0.9f, 1.5f * f.px), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+        // the spark where the thread leaves the well
+        const float d = juce::jmax (1.2f, (1.8f + 1.2f * f.pulse) * f.px);
+        g.setColour (alpha (Theme::ivory, (0.5f + 0.5f * b) * A));
+        g.fillEllipse (start.x - d * 0.5f, start.y - d * 0.5f, d, d);
     }
 }
 
@@ -612,13 +742,14 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f, int L)
     const float cr = f.coreR * f.lobeScale[L] * (L == 0 ? 1.0f : 0.7f);
     const auto c = juce::Point<float> (o.centre.x + f.bend * f.R * 0.08f * std::cos (f.time * 0.09f + 0.8f), o.centre.y + f.bend * f.R * 0.06f);
 
-    // The void: a hole in the light, softly feathered into the body.
+    // The void and its gravity well: a hole in the light, swallowing the glass around it.
     {
-        const float vr = cr * 1.32f;
+        const float vr = cr * 2.15f;
         const juce::Colour black (0xff020208), navy (0xff05041a);
         juce::ColourGradient dark (alpha (black, 0.97f * A), c.x, c.y, alpha (navy, 0.0f), c.x + vr, c.y, true);
-        dark.addColour (0.66, alpha (black, 0.93f * A));
-        dark.addColour (0.86, alpha (navy, 0.45f * A));
+        dark.addColour (0.42, alpha (black, 0.96f * A));
+        dark.addColour (0.53, alpha (navy, 0.72f * A));
+        dark.addColour (0.75, alpha (navy, 0.30f * A));
         g.setGradientFill (dark);
         g.fillEllipse (c.x - vr, c.y - vr, vr * 2.0f, vr * 2.0f);
     }
@@ -626,20 +757,19 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f, int L)
     // Gravitational lens ring: light bent around the void, iridescent, brightest where it is lensed.
     {
         const int segs = juce::jmax (32, f.caps.rimSegments / 2);
-        const float w = juce::jmax (1.0f, 1.45f * f.px) * (1.0f + 0.5f * f.pulse) * 0.5f;
+        const float w = juce::jmax (1.0f, 1.5f * f.px) * (1.0f + 0.6f * f.pulse) * 0.5f;
         const float shimmerT = f.time * 1.8f;
         ringPath.clear();
         ringPath.addEllipse (c.x - cr, c.y - cr, cr * 2.0f, cr * 2.0f);
         // soft glow under the ring
-        g.setColour (alpha (Theme::cyan, (0.10f + 0.16f * f.pulse + 0.06f * f.energy) * A));
-        g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (3.0f, 7.0f * f.px)));
-        g.setColour (alpha (Theme::ivory, (0.12f + 0.2f * f.pulse) * A));
-        g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (1.5f, 3.0f * f.px)));
+        g.setColour (alpha (Theme::cyan, (0.16f + 0.22f * f.pulse + 0.06f * f.energy) * A));
+        g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (3.5f, 10.0f * f.px)));
+        g.setColour (alpha (Theme::ivory, (0.18f + 0.25f * f.pulse) * A));
+        g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (1.5f, 3.6f * f.px)));
         for (int i = 0; i < segs; ++i)
         {
             const float a0 = (float) i / (float) segs * kTwoPi, a1 = (float) (i + 1) / (float) segs * kTwoPi + 0.004f;
             const float am = (a0 + a1) * 0.5f;
-            const float nx = std::cos (am), ny = std::sin (am);
             const float lens = 0.35f + 0.65f * std::pow (0.5f + 0.5f * std::cos (2.0f * am + 0.9f + f.rotation * 2.0f), 2.0f);   // two bright lensing lobes
             const float shimmer = 0.85f + 0.15f * std::sin (am * 6.0f + shimmerT);
             const float bright = sat (lens * shimmer * (0.75f + 0.35f * f.pulse + 0.2f * f.energy));
@@ -653,7 +783,6 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f, int L)
             quad.closeSubPath();
             g.setColour (alpha (col, (0.45f + 0.55f * bright) * A));
             g.fillPath (quad);
-            juce::ignoreUnused (nx, ny);
         }
     }
 
@@ -662,16 +791,17 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f, int L)
         const int arcs = 1 + (int) (f.pitchU * 3.0f);
         for (int k = 0; k < arcs; ++k)
         {
-            const float ar = cr * (1.22f + 0.17f * (float) k) * (1.0f + 0.03f * std::sin (f.time * 1.3f + (float) k));
-            const float span = 1.6f + 0.8f * f.magnet - 0.3f * (float) k;
+            const float ar = cr * (1.25f + 0.19f * (float) k) * (1.0f + 0.03f * std::sin (f.time * 1.3f + (float) k));
+            const float span = 1.7f + 0.9f * f.magnet - 0.3f * (float) k;
             const float a0 = f.time * (0.25f + 0.1f * (float) k) * (k % 2 == 0 ? 1.0f : -1.0f) + (float) k * 2.1f;
             ringPath.clear();
             ringPath.addCentredArc (c.x, c.y, ar, ar, 0.0f, a0, a0 + span, true);
-            const float b = (0.32f - 0.07f * (float) k + 0.2f * f.pulse) * A * (0.5f + 0.5f * f.life);
-            g.setColour (alpha (k % 2 == 0 ? Theme::ivory : Theme::cyan, b * 0.35f));
-            g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (1.5f, 2.6f * f.px)));
-            g.setColour (alpha (k % 2 == 0 ? Theme::ivory : Theme::cyan, b));
-            g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (0.6f, 0.8f * f.px)));
+            const float b = (0.42f - 0.08f * (float) k + 0.25f * f.pulse) * A * (0.5f + 0.5f * f.life);
+            const auto col = k % 2 == 0 ? Theme::ivory : Theme::cyan;
+            g.setColour (alpha (col, b * 0.3f));
+            g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (2.0f, 3.6f * f.px)));
+            g.setColour (alpha (col, b));
+            g.strokePath (ringPath, juce::PathStrokeType (juce::jmax (0.7f, 1.0f * f.px)));
         }
     }
 
@@ -691,20 +821,20 @@ void AntiMatterVisualizer::drawRim (juce::Graphics& g, const Frame& f, int L)
     const float A = f.lobeAlpha[L];
     const int segs = f.caps.rimSegments;
     const float meltSoft = 1.0f - 0.6f * f.melt;
-    const float halfW = juce::jmax (0.7f, 1.05f * f.px) * (1.0f + 1.6f * f.melt) * (1.0f + 0.25f * f.pulse) * 0.5f;
+    const float halfW = juce::jmax (0.7f, 1.1f * f.px) * (1.0f + 1.6f * f.melt) * (1.0f + 0.25f * f.pulse) * 0.5f;
     const float wideGlow = f.R * (0.05f + 0.06f * f.melt);
 
     // Soft rim glow (gradient stroke), then the thin iridescent Fresnel rim as coloured quads.
     {
-        juce::ColourGradient grad (alpha (Theme::cyan, (0.16f + 0.1f * f.pulse) * meltSoft * A), o.centre.x - f.R, o.centre.y - f.R,
-                                   alpha (Theme::magenta, (0.12f + 0.08f * f.pulse) * meltSoft * A), o.centre.x + f.R, o.centre.y + f.R, false);
+        juce::ColourGradient grad (alpha (Theme::cyan, (0.18f + 0.1f * f.pulse) * meltSoft * A), o.centre.x - f.R, o.centre.y - f.R,
+                                   alpha (Theme::magenta, (0.14f + 0.08f * f.pulse) * meltSoft * A), o.centre.x + f.R, o.centre.y + f.R, false);
         grad.addColour (0.5, alpha (Theme::violet, (0.14f + 0.08f * f.pulse) * meltSoft * A));
         g.setGradientFill (grad);
         g.strokePath (bodyPath, juce::PathStrokeType (wideGlow, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 
     const float shimmerT = f.time * 2.2f;
-    const float hueCycles = 1.0f + 0.5f * f.density;
+    const float hueCycles = 1.5f + 0.7f * f.density;
     for (int i = 0; i < segs; ++i)
     {
         const int i0 = (i * ObjectField::kSamples) / segs;
@@ -718,7 +848,7 @@ void AntiMatterVisualizer::drawRim (juce::Graphics& g, const Frame& f, int L)
         const float u = (float) i / (float) segs;
         const float shimmer = 0.82f + 0.18f * std::sin (u * kTwoPi * 5.0f + shimmerT) * (0.5f + 0.5f * f.surface);
         const float bright = sat ((0.22f + 0.78f * fres) * shimmer * (0.9f + 0.35f * f.pulse));
-        const auto col = iridescence.lit (u * hueCycles + f.hue + 0.02f * noise.noise (u * 12.0f, f.time * 0.4f) * f.surface * 10.0f, sat ((fres - 0.55f) * 0.9f));
+        const auto col = iridescence.lit (u * hueCycles + f.hue + 0.2f * noise.noise (u * 12.0f, f.time * 0.4f) * f.surface, sat ((fres - 0.55f) * 0.9f));
         // extend slightly along the tangent so anti-aliased seams never show
         const float tx = p1.x - p0.x, ty = p1.y - p0.y;
         const float tl = std::sqrt (tx * tx + ty * ty);
@@ -730,7 +860,7 @@ void AntiMatterVisualizer::drawRim (juce::Graphics& g, const Frame& f, int L)
         quad.lineTo (p1.x + n1.x * wOut + ex, p1.y + n1.y * wOut + ey);
         quad.lineTo (p0.x + n0.x * wOut - ex, p0.y + n0.y * wOut - ey);
         quad.closeSubPath();
-        g.setColour (alpha (col, (0.25f + 0.75f * bright) * meltSoft * A));
+        g.setColour (alpha (col, (0.3f + 0.7f * bright) * meltSoft * A));
         g.fillPath (quad);
     }
 
@@ -823,15 +953,26 @@ void AntiMatterVisualizer::drawNodes (juce::Graphics& g, const Frame& f)
     const auto c = f.centre;
     const float ringR = f.R * 1.28f;
 
+    // Octave dial: faint ring with ticks every octave (30 Hz .. 15 kHz), the scale the node markers use.
+    {
+        g.setColour (alpha (juce::Colours::white, 0.05f));
+        g.drawEllipse (c.x - ringR, c.y - ringR, ringR * 2.0f, ringR * 2.0f, 1.0f);
+        for (int k = 0; k < 9; ++k)
+        {
+            const float a = -kPi * 0.5f + (float) k / 9.0f * kTwoPi;
+            const float len = (k % 3 == 0 ? 7.0f : 4.0f) * f.px;
+            g.setColour (alpha (juce::Colours::white, k % 3 == 0 ? 0.16f : 0.09f));
+            g.drawLine (juce::Line<float> (polar (c, a, ringR - len * 0.5f), polar (c, a, ringR + len * 0.5f)), 1.0f);
+        }
+    }
+
     // Fundamental marker: a small ivory tick at the pitch's position on the dial.
     if (f.life > 0.02f || smooth.numVisualNodes > 0)
     {
         const float a = -kPi * 0.5f + f.pitchU * kTwoPi;
-        const auto p = polar (c, a, ringR);
         const float d = (3.0f + 2.0f * f.energy) * f.px;
         g.setColour (alpha (Theme::ivory, 0.25f + 0.55f * f.life));
         g.drawLine (juce::Line<float> (polar (c, a, ringR - d), polar (c, a, ringR + d)), juce::jmax (1.0f, 1.2f * f.px));
-        juce::ignoreUnused (p);
     }
 
     for (int i = 0; i < smooth.numVisualNodes && i < VisualStateSnapshot::kVisualNodes; ++i)

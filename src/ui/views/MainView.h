@@ -40,6 +40,9 @@ public:
                std::vector<ParamGroup> groups, juce::Colour accent);
     void resized() override;
 
+    /** The designed page inside this group, when there is one (used to reach its sub-tabs). */
+    juce::Component* designedPage() const noexcept { return page.get(); }
+
 private:
     struct Section
     {

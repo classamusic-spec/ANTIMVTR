@@ -5,11 +5,45 @@
 #include "AMModRing.h"
 #include "AMModAssign.h"
 #include "dsp/mod/ModulationSnapshot.h"
+#include "ui/UILayout.h"
 
 #include <optional>
 
 namespace am::ui
 {
+
+/**
+    Concentric geometry of a knob, derived from its square footprint.
+
+    From the rim inwards: the modulation orbit (where AMModRing lives), a
+    clear moat, the value arc, and the sphere body. Keeping the orbit
+    reserved whether or not the knob is modulated means the knob never
+    changes size when a routing is added.
+*/
+struct KnobRings
+{
+    float ringStroke = 1.1f;     ///< stroke of the modulation orbit
+    float trackWidth = 1.4f;     ///< stroke of the value arc
+    juce::Rectangle<float> orbit, arc, body;
+
+    /** Builds the geometry for a footprint (the largest centred square is used). */
+    static KnobRings forFootprint (juce::Rectangle<float> footprint, bool hero) noexcept
+    {
+        KnobRings r;
+        const float d = juce::jmin (footprint.getWidth(), footprint.getHeight());
+        const auto square = footprint.withSizeKeepingCentre (d, d);
+        const auto radii = layout::knobRadii (d, hero);
+        r.ringStroke = radii.ringStroke;
+        r.trackWidth = radii.trackWidth;
+        r.orbit = square.withSizeKeepingCentre (radii.orbit, radii.orbit);
+        r.arc   = square.withSizeKeepingCentre (radii.arc, radii.arc);
+        r.body  = square.withSizeKeepingCentre (radii.body, radii.body);
+        return r;
+    }
+
+    /** Gap in pixels between the outside of the value arc and the middle of the orbit. */
+    float moat() const noexcept { return (orbit.getWidth() - arc.getWidth()) * 0.5f - trackWidth * 0.5f; }
+};
 
 /**
     The ANTI-MATR knob: sphere-like dark base with rim light, a thin value
@@ -64,6 +98,7 @@ public:
     void mouseUp (const juce::MouseEvent&) override;
 
     juce::Rectangle<float> knobBounds() const;
+    KnobRings rings() const { return KnobRings::forFootprint (knobBounds(), hero); }
     float labelHeight() const;
 
 private:

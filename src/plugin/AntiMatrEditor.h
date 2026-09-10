@@ -4,6 +4,7 @@
 #include "ui/AntiMatrLookAndFeel.h"
 #include "ui/views/MainView.h"
 #include "ui/views/TopBar.h"
+#include "ui/components/AMTooltip.h"
 
 namespace am
 {
@@ -31,6 +32,14 @@ public:
     /** The DSP LAB view (dev builds only, else nullptr). */
     juce::Component* labViewComponent() noexcept { return labView.get(); }
 
+    /** The component behind a navigation index (0 = MAIN), for tools that drive the editor. */
+    juce::Component* pageComponent (int index) noexcept
+    {
+        if (index <= 0) return &mainView;
+        const int deep = index - 1;
+        return deep < (int) pages.size() ? pages[(size_t) deep].get() : labView.get();
+    }
+
     static constexpr int kMinWidth  = 1100;
     static constexpr int kMinHeight = 690;
 
@@ -44,7 +53,7 @@ private:
     ui::MainView mainView;
     std::vector<std::unique_ptr<juce::Component>> pages;   // index 1.. = deep pages
     std::unique_ptr<juce::Component> labView;
-    juce::TooltipWindow tooltips { this, 600 };
+    ui::AMTooltipWindow tooltips { this, 600 };
     int page = 0;
     int frameCounter = 0;
 };

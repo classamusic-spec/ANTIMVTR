@@ -8,7 +8,8 @@ SourcePanel::SourcePanel (AntiMatrProcessor& p)
     : AMPanel ("Source", "Choose your energy", Theme::blue),
       processor (p),
       selector ({ { "Wave", Icon::Wave, Theme::violet }, { "Dust", Icon::Dust, Theme::blue },
-                  { "Impact", Icon::Impact, Theme::cyan }, { "Sample", Icon::Sample, Theme::ivory } })
+                  { "Impact", Icon::Impact, Theme::cyan }, { "Sample", Icon::Sample, Theme::ivory },
+                  { "Gesture", Icon::Gesture, Theme::magenta } })
 {
     addAndMakeVisible (selector);
     addAndMakeVisible (wave);
@@ -64,7 +65,8 @@ void SourcePanel::resized()
 {
     auto area = contentBounds();
     const int gap = juce::jmax (4, area.getHeight() / 40);
-    auto selectorArea = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.30f));
+    auto selectorArea = area.removeFromTop (juce::jmin (juce::roundToInt ((float) area.getHeight() * 0.34f),
+                                                        selector.preferredHeight (area.getWidth())));
     area.removeFromTop (gap);
     auto knobArea = area.removeFromBottom (juce::roundToInt ((float) area.getHeight() * 0.42f));
     area.removeFromBottom (gap);

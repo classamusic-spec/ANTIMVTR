@@ -16,8 +16,10 @@ int AMPanel::padding() const
 
 juce::Rectangle<int> AMPanel::headerBounds() const
 {
+    // The floor keeps room for the title *and* its subtitle, so a short panel does not
+    // silently drop the subtitle its neighbours are showing.
     const int h = compact ? juce::jlimit (26, 40, juce::roundToInt ((float) getHeight() * 0.12f))
-                          : juce::jlimit (34, 64, juce::roundToInt ((float) getHeight() * 0.155f));
+                          : juce::jlimit (38, 64, juce::roundToInt ((float) getHeight() * 0.155f));
     const int pad = padding();
     return getLocalBounds().withHeight (h).reduced (pad, 0).withTrimmedTop (pad / 2);
 }
@@ -56,7 +58,7 @@ void AMPanel::paint (juce::Graphics& g)
     const float titleMaxW = (headerRightBoundsUsed ? h.getWidth() * 0.5f : h.getWidth()) - 4.0f;
     draw::trackedText (g, title, titleArea, juce::Justification::centredLeft, draw::fitFont (Theme::titleFont (titleH), title, titleMaxW, 8.0f), Theme::textPrimary);
 
-    if (! compact && subtitle.isNotEmpty() && h.getHeight() > 34.0f)
+    if (! compact && subtitle.isNotEmpty() && h.getHeight() > titleH * 1.35f + subH * 1.2f)
     {
         auto subArea = h.withTop (titleArea.getBottom() - 1.0f).withHeight (subH * 1.5f);
         draw::trackedText (g, subtitle, subArea, juce::Justification::centredLeft, Theme::captionFont (subH), Theme::textSecondary);

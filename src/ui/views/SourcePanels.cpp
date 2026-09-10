@@ -1,10 +1,24 @@
 #include "SourcePanels.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
 
 namespace
 {
+    /** One line per gesture model, shown under the model list. */
+    juce::StringArray gestureDescriptions()
+    {
+        return {
+            "Stick and slip locked to the note. Pressure grips, speed drives, roughness roars in the slip.",
+            "Dense friction grains. Speed sets how many, roughness how bright the surface is.",
+            "Slow, dark, periodic friction with a breathing amplitude.",
+            "Turbulent air through a formant body. Pressure opens it, speed stirs the turbulence.",
+            "Broad, harsh rasp: hard contact, saturated and torn by roughness.",
+            "Buzz and spark: jittered pulse trains, sputtering with pressure."
+        };
+    }
+
     juce::String secondsText (double seconds)
     {
         return seconds < 1.0 ? juce::String (juce::roundToInt (seconds * 1000.0)) + " MS"
@@ -16,6 +30,8 @@ namespace
 SampleWaveView::SampleWaveView (juce::Colour c) : accent (c)
 {
     setMouseCursor (juce::MouseCursor::PointingHandCursor);
+    setTooltip ("Drag the START and END handles to choose the part of the sample that plays. "
+                "Click anywhere to move the nearer handle there.");
 }
 
 void SampleWaveView::setSample (SampleRef s)
@@ -39,9 +55,18 @@ void SampleWaveView::resized()
     rebuildPeaks();
 }
 
+juce::Rectangle<float> SampleWaveView::rulerArea() const
+{
+    auto b = getLocalBounds().toFloat().reduced (2.0f, 2.0f);
+    if (sample == nullptr || sample->isEmpty()) return {};
+    return b.removeFromBottom (juce::jlimit (13.0f, 22.0f, b.getHeight() * 0.09f));
+}
+
 juce::Rectangle<float> SampleWaveView::plotArea() const
 {
-    return getLocalBounds().toFloat().reduced (2.0f, 2.0f);
+    auto b = getLocalBounds().toFloat().reduced (2.0f, 2.0f);
+    const auto ruler = rulerArea();
+    return ruler.isEmpty() ? b : b.withTrimmedBottom (ruler.getHeight());
 }
 
 void SampleWaveView::rebuildPeaks()
@@ -52,14 +77,18 @@ void SampleWaveView::rebuildPeaks()
     peakWidth = width;
     minPeaks.assign ((size_t) width, 0.0f);
     maxPeaks.assign ((size_t) width, 0.0f);
+    rmsPeaks.assign ((size_t) width, 0.0f);
+    normalise = 1.0f;
     if (sample == nullptr || sample->isEmpty()) return;
 
     const int frames = sample->numFrames;
+    float loudest = 0.0f;
     for (int x = 0; x < width; ++x)
     {
         const int from = (int) ((int64_t) frames * x / width);
         const int to = juce::jmax (from + 1, (int) ((int64_t) frames * (x + 1) / width));
-        float lo = 0.0f, hi = 0.0f;
+        float lo = 0.0f, hi = 0.0f, sum = 0.0f;
+        int count = 0;
         for (int c = 0; c < sample->numChannels; ++c)
         {
             const float* d = sample->channel (c);
@@ -68,11 +97,17 @@ void SampleWaveView::rebuildPeaks()
             {
                 lo = juce::jmin (lo, d[i]);
                 hi = juce::jmax (hi, d[i]);
+                sum += d[i] * d[i];
+                ++count;
             }
         }
         minPeaks[(size_t) x] = lo;
         maxPeaks[(size_t) x] = hi;
+        rmsPeaks[(size_t) x] = count > 0 ? std::sqrt (sum / (float) count) : 0.0f;
+        loudest = juce::jmax (loudest, juce::jmax (-lo, hi));
     }
+    // Quiet material still fills the view; the gain applied is stated in the corner.
+    normalise = loudest > 1.0e-4f ? juce::jlimit (1.0f, 24.0f, 0.96f / loudest) : 1.0f;
 }
 
 float SampleWaveView::xForPosition (float position01) const
@@ -132,70 +167,165 @@ void SampleWaveView::mouseUp (const juce::MouseEvent&)
     if (onDragEnd) onDragEnd();
 }
 
+void SampleWaveView::paintEmptyState (juce::Graphics& g)
+{
+    auto area = getLocalBounds().toFloat().reduced (2.0f);
+    const float unit = juce::jlimit (10.0f, 17.0f, juce::jmin (area.getWidth() * 0.02f, area.getHeight() * 0.09f));
+
+    auto card = juce::Rectangle<float> (juce::jmin (area.getWidth() - unit * 2.0f, unit * 24.0f),
+                                        juce::jmin (area.getHeight() - unit * 2.0f, unit * 8.4f)).withCentre (area.getCentre());
+    const float corner = juce::jmin (12.0f, card.getHeight() * 0.14f);
+
+    juce::Path outline;
+    outline.addRoundedRectangle (card, corner);
+    const float dashes[] = { 5.0f, 5.0f };
+    juce::Path dashed;
+    juce::PathStrokeType (1.0f).createDashedStroke (dashed, outline, dashes, 2);
+    g.setColour (accent.withAlpha (0.28f));
+    g.fillPath (dashed);
+
+    auto inner = card.reduced (unit, unit * 0.9f);
+    Icons::draw (g, Icon::Sample, inner.removeFromTop (unit * 2.4f).withSizeKeepingCentre (unit * 2.2f, unit * 2.2f),
+                 accent.withAlpha (0.45f), 1.0f);
+    inner.removeFromTop (unit * 0.5f);
+    draw::trackedText (g, "NO SAMPLE LOADED", inner.removeFromTop (unit * 1.5f), juce::Justification::centred,
+                       Theme::labelFontStrong (unit * 0.9f), Theme::textSecondary);
+    draw::trackedText (g, "DROP AN AUDIO FILE HERE, OR PICK A BUILT-IN ENERGY ABOVE",
+                       inner.removeFromTop (unit * 1.5f), juce::Justification::centred,
+                       draw::fitFont (Theme::captionFont (unit * 0.72f), "DROP AN AUDIO FILE HERE, OR PICK A BUILT-IN ENERGY ABOVE", inner.getWidth()),
+                       Theme::textDim);
+}
+
+void SampleWaveView::paintRuler (juce::Graphics& g)
+{
+    const auto ruler = rulerArea();
+    const auto area = plotArea();
+    if (ruler.isEmpty() || sample == nullptr) return;
+
+    const double seconds = sample->lengthSeconds();
+    if (seconds <= 0.0) return;
+
+    const double step = layout::waveRulerStep (seconds);
+
+    const float h = juce::jlimit (7.0f, 9.5f, ruler.getHeight() * 0.58f);
+    g.setColour (Theme::borderSoft);
+    g.drawLine (area.getX(), ruler.getY(), area.getRight(), ruler.getY(), 1.0f);
+
+    for (int i = 0; (double) i * step <= seconds + 1.0e-6; ++i)
+    {
+        const double t = (double) i * step;
+        const float x = area.getX() + (float) (t / seconds) * area.getWidth();
+        g.setColour (Theme::textDim.withAlpha (0.5f));
+        g.drawLine (x, ruler.getY(), x, ruler.getY() + ruler.getHeight() * 0.35f, 1.0f);
+        if (i == 0) continue;
+        const juce::String label = step < 1.0 ? juce::String (juce::roundToInt (t * 1000.0)) : juce::String (t, t < 10.0 ? 1 : 0);
+        const auto box = juce::Rectangle<float> (x - 26.0f, ruler.getY() + ruler.getHeight() * 0.3f, 52.0f, ruler.getHeight() * 0.7f);
+        if (box.getRight() > area.getRight() + 4.0f) continue;
+        draw::trackedText (g, label, box, juce::Justification::centred, Theme::valueFont (h), Theme::textSecondary.withAlpha (0.75f));
+    }
+    draw::trackedText (g, step < 1.0 ? "MS" : "S", ruler.withTrimmedLeft (ruler.getWidth() - 22.0f),
+                       juce::Justification::centredRight, Theme::captionFont (h * 0.92f), Theme::textDim.withAlpha (0.8f));
+}
+
 void SampleWaveView::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
     draw::insetSurface (g, bounds, 8.0f);
 
-    const auto area = plotArea();
-    const float mid = area.getCentreY();
-
     if (sample == nullptr || sample->isEmpty())
     {
-        draw::trackedText (g, "NO SAMPLE", area, juce::Justification::centred,
-                           Theme::captionFont (juce::jlimit (9.0f, 13.0f, area.getHeight() * 0.09f)), Theme::textDim);
+        paintEmptyState (g);
         return;
     }
 
+    const auto area = plotArea();
+    const float mid = area.getCentreY();
+
     // Selection: everything outside start..end is dimmed.
     const float xs = xForPosition (start), xe = xForPosition (end);
-    g.setColour (juce::Colours::black.withAlpha (0.45f));
-    g.fillRect (area.withRight (xs));
-    g.fillRect (area.withLeft (xe));
-    g.setColour (accent.withAlpha (0.05f + 0.05f * energy));
+    g.setColour (accent.withAlpha (0.045f + 0.05f * energy));
     g.fillRect (area.withLeft (xs).withRight (juce::jmax (xs + 1.0f, xe)));
 
-    // Waveform: a filled envelope lit from the centre line outwards.
-    juce::Path body;
-    const int width = (int) minPeaks.size();
-    const float scale = area.getHeight() * 0.44f;
-    body.startNewSubPath (area.getX(), mid);
-    for (int x = 0; x < width; ++x)
-        body.lineTo (area.getX() + (float) x, mid - maxPeaks[(size_t) x] * scale);
-    for (int x = width - 1; x >= 0; --x)
-        body.lineTo (area.getX() + (float) x, mid - minPeaks[(size_t) x] * scale);
-    body.closeSubPath();
+    // Amplitude guides at half scale give the envelope a sense of level.
+    for (float f : { -0.5f, 0.5f })
+    {
+        g.setColour (juce::Colours::white.withAlpha (0.035f));
+        g.drawLine (area.getX(), mid + f * area.getHeight() * 0.44f, area.getRight(), mid + f * area.getHeight() * 0.44f, 1.0f);
+    }
 
-    juce::ColourGradient body_grad (accent.withAlpha (0.42f + 0.2f * energy), area.getCentreX(), mid,
-                                    accent.withAlpha (0.04f), area.getCentreX(), area.getY(), false);
-    body_grad.addColour (0.5, accent.withAlpha (0.14f));
-    g.setGradientFill (body_grad);
-    g.fillPath (body);
+    // Waveform: a filled peak envelope with a brighter RMS core.
+    auto envelope = [&] (const std::vector<float>& lo, const std::vector<float>& hi, float gain)
+    {
+        juce::Path body;
+        const int width = (int) lo.size();
+        body.startNewSubPath (area.getX(), mid);
+        for (int x = 0; x < width; ++x)
+            body.lineTo (area.getX() + (float) x, mid - juce::jlimit (-1.0f, 1.0f, hi[(size_t) x] * gain) * area.getHeight() * 0.44f);
+        for (int x = width - 1; x >= 0; --x)
+            body.lineTo (area.getX() + (float) x, mid - juce::jlimit (-1.0f, 1.0f, lo[(size_t) x] * gain) * area.getHeight() * 0.44f);
+        body.closeSubPath();
+        return body;
+    };
+
+    const auto peaks = envelope (minPeaks, maxPeaks, normalise);
+    juce::ColourGradient grad (accent.withAlpha (0.46f + 0.2f * energy), area.getCentreX(), mid,
+                               accent.withAlpha (0.05f), area.getCentreX(), area.getY(), false);
+    grad.addColour (0.5, accent.withAlpha (0.16f));
+    g.setGradientFill (grad);
+    g.fillPath (peaks);
     g.setColour (accent.withAlpha (0.85f));
-    g.strokePath (body, juce::PathStrokeType (1.0f));
+    g.strokePath (peaks, juce::PathStrokeType (1.0f));
 
-    draw::hairline (g, area.getX(), mid, area.getRight(), mid, 0.12f);
+    {
+        std::vector<float> lo ((size_t) rmsPeaks.size());
+        for (size_t i = 0; i < rmsPeaks.size(); ++i) lo[i] = -rmsPeaks[i];
+        g.setColour (accent.withAlpha (0.30f));
+        g.fillPath (envelope (lo, rmsPeaks, normalise));
+    }
 
-    // Handles: a bright edge, a grip tab and a label that stays inside the view.
-    const float grip = juce::jlimit (6.0f, 10.0f, area.getHeight() * 0.05f);
-    const float labelWidth = 44.0f;
+    draw::hairline (g, area.getX(), mid, area.getRight(), mid, 0.14f);
+
+    // Everything outside the playback range is pushed back.
+    g.setColour (Theme::background.withAlpha (0.62f));
+    g.fillRect (area.withRight (xs));
+    g.fillRect (area.withLeft (xe));
+
+    paintRuler (g);
+
+    if (normalise > 1.05f)
+        draw::trackedText (g, "NORMALISED +" + juce::String (20.0f * std::log10 (normalise), 1) + " DB",
+                           area.reduced (6.0f, 4.0f).removeFromTop (12.0f), juce::Justification::topRight,
+                           Theme::captionFont (8.5f), Theme::textDim);
+
+    // Handles: a bright edge, a grip tab at the top and a label that stays inside the view.
+    const float grip = juce::jlimit (7.0f, 12.0f, area.getHeight() * 0.055f);
+    const float labelH = juce::jlimit (9.0f, 12.0f, area.getHeight() * 0.05f);
+    const float labelWidth = juce::jmax (40.0f, labelH * 4.2f);
+
     for (int i = 0; i < 2; ++i)
     {
         const float x = i == 0 ? xs : xe;
         const bool lit = hovered == i || dragging == i;
         const float edge = juce::jlimit (area.getX(), area.getRight() - 2.0f, i == 0 ? x : x - 2.0f);
-        g.setColour (accent.withAlpha (lit ? 1.0f : 0.75f));
+        g.setColour (accent.withAlpha (lit ? 1.0f : 0.8f));
         g.fillRect (edge, area.getY(), 2.0f, area.getHeight());
-        juce::Rectangle<float> tab (i == 0 ? edge : edge + 2.0f - grip, area.getY(), grip, grip);
-        g.fillRect (tab);
-        if (lit) draw::glowRoundedRect (g, tab, 2.0f, accent, 10.0f, 0.9f);
+
+        juce::Path tab;
+        const float tx = i == 0 ? edge : edge + 2.0f;
+        tab.startNewSubPath (tx, area.getY());
+        tab.lineTo (tx + (i == 0 ? grip : -grip), area.getY());
+        tab.lineTo (tx, area.getY() + grip);
+        tab.closeSubPath();
+        if (lit) draw::glowPath (g, tab, accent, 1.0f, grip, 0.9f);
+        g.setColour (accent.withAlpha (lit ? 1.0f : 0.85f));
+        g.fillPath (tab);
 
         auto label = juce::Rectangle<float> (i == 0 ? edge + 5.0f : edge - labelWidth - 3.0f,
-                                             area.getBottom() - 15.0f, labelWidth, 12.0f);
+                                             area.getBottom() - labelH - 3.0f, labelWidth, labelH);
         label.setX (juce::jlimit (area.getX() + 3.0f, area.getRight() - labelWidth - 3.0f, label.getX()));
         draw::trackedText (g, i == 0 ? "START" : "END", label,
                            i == 0 ? juce::Justification::centredLeft : juce::Justification::centredRight,
-                           Theme::captionFont (8.0f), accent.withAlpha (lit ? 0.95f : 0.5f));
+                           Theme::labelFont (labelH * 0.78f), accent.withAlpha (lit ? 1.0f : 0.7f));
     }
 }
 
@@ -366,9 +496,22 @@ void SamplePanel::paintOverChildren (juce::Graphics& g)
     draw::trackedText (g, infoLine, header.reduced ((float) padding(), 0.0f), juce::Justification::centredRight,
                        Theme::captionFont (juce::jlimit (8.0f, 10.5f, header.getHeight() * 0.30f)), Theme::textSecondary);
 
-    if (statusLine.isNotEmpty())
-        draw::trackedText (g, statusLine, statusStrip.toFloat(), juce::Justification::centredLeft, Theme::captionFont (9.0f),
-                           statusIsWarning ? Theme::amber : Theme::cyan);
+    if (! statusStrip.isEmpty())
+    {
+        const auto strip = statusStrip.toFloat();
+        const float h = juce::jlimit (8.0f, 10.5f, strip.getHeight() * 0.62f);
+        const juce::String text = statusLine.isNotEmpty() ? statusLine
+                                                          : juce::String ("DRAG THE HANDLES TO SET THE PLAYBACK RANGE");
+        const auto colour = statusLine.isEmpty() ? Theme::textDim
+                                                 : (statusIsWarning ? Theme::amber : Theme::cyan);
+        if (statusLine.isNotEmpty())
+        {
+            g.setColour (colour.withAlpha (0.8f));
+            g.fillRoundedRectangle (strip.withWidth (2.0f).reduced (0.0f, 1.0f).toFloat(), 1.0f);
+        }
+        draw::trackedText (g, text, strip.withTrimmedLeft (statusLine.isNotEmpty() ? 8.0f : 0.0f),
+                           juce::Justification::centredLeft, Theme::captionFont (h), colour);
+    }
 
     if (dropActive)
     {
@@ -394,10 +537,12 @@ void SamplePanel::resized()
     // ---- controls row
     auto bottom = area.removeFromBottom (juce::jlimit (86, 150, (int) ((float) area.getHeight() * 0.34f)));
     area.removeFromBottom (gap);
-    // The waveform keeps a sane height on tall windows; the slack below it carries the status line.
-    const int waveHeight = juce::jmin (area.getHeight(), juce::jmax (200, getHeight() / 2));
-    waveView.setBounds (area.removeFromTop (waveHeight));
-    statusStrip = area.withTrimmedTop (gap / 2).withHeight (juce::jmax (14, getHeight() / 26));
+
+    // The status line is a slim strip directly under the waveform; the waveform takes
+    // everything else, so there is never a band of empty panel between the two.
+    statusStrip = area.removeFromBottom (juce::jlimit (14, 22, area.getHeight() / 14));
+    area.removeFromBottom (gap / 2);
+    waveView.setBounds (area);
 
     auto analyze = bottom.removeFromRight (juce::jlimit (120, 200, bottom.getWidth() / 5));
     analyzeButton.setBounds (analyze.withSizeKeepingCentre (analyze.getWidth(), juce::jlimit (28, 38, analyze.getHeight() / 3)));
@@ -405,73 +550,7 @@ void SamplePanel::resized()
 
     std::vector<juce::Component*> comps;
     for (auto& c : controls) comps.push_back (&c->component());
-    layoutGrid (bottom, comps, (int) comps.size(), 2, 2);
-}
-
-//==============================================================================
-GesturePanel::ModeList::ModeList (juce::StringArray items, juce::Colour c)
-    : names (std::move (items)), accent (c)
-{
-    setMouseCursor (juce::MouseCursor::PointingHandCursor);
-}
-
-void GesturePanel::ModeList::setSelected (int index)
-{
-    index = juce::jlimit (0, juce::jmax (0, names.size() - 1), index);
-    if (index == selected) return;
-    selected = index;
-    repaint();
-}
-
-int GesturePanel::ModeList::rowAt (juce::Point<int> p) const
-{
-    if (names.isEmpty() || ! getLocalBounds().contains (p)) return -1;
-    const float rowHeight = (float) getHeight() / (float) names.size();
-    return juce::jlimit (0, names.size() - 1, (int) ((float) p.y / juce::jmax (1.0f, rowHeight)));
-}
-
-void GesturePanel::ModeList::mouseDown (const juce::MouseEvent& e)
-{
-    const int row = rowAt (e.getPosition());
-    if (row >= 0 && onSelect) onSelect (row);
-}
-
-void GesturePanel::ModeList::mouseMove (const juce::MouseEvent& e)
-{
-    const int row = rowAt (e.getPosition());
-    if (row != hovered) { hovered = row; repaint(); }
-}
-
-void GesturePanel::ModeList::paint (juce::Graphics& g)
-{
-    if (names.isEmpty()) return;
-    const float rowHeight = (float) getHeight() / (float) names.size();
-    const float fontHeight = juce::jlimit (9.0f, 12.5f, rowHeight * 0.36f);
-
-    for (int i = 0; i < names.size(); ++i)
-    {
-        auto row = juce::Rectangle<float> (0.0f, (float) i * rowHeight, (float) getWidth(), rowHeight).reduced (0.0f, 1.5f);
-        const bool isSelected = i == selected;
-        const bool isHovered = i == hovered;
-
-        if (isSelected)
-        {
-            g.setColour (accent.withAlpha (0.13f));
-            g.fillRoundedRectangle (row, 5.0f);
-            draw::glowRoundedRect (g, row, 5.0f, accent, 10.0f, 0.5f);
-            g.setColour (accent);
-            g.fillRoundedRectangle (row.withWidth (2.5f), 1.2f);
-        }
-        else if (isHovered)
-        {
-            g.setColour (juce::Colours::white.withAlpha (0.05f));
-            g.fillRoundedRectangle (row, 5.0f);
-        }
-
-        draw::trackedText (g, names[i], row.withTrimmedLeft (12.0f), juce::Justification::centredLeft,
-                           Theme::captionFont (fontHeight),
-                           isSelected ? Theme::textPrimary : (isHovered ? Theme::textSecondary.brighter (0.2f) : Theme::textSecondary));
-    }
+    layoutGrid (bottom, comps, (int) comps.size(), gap / 2, 2);
 }
 
 //==============================================================================
@@ -480,17 +559,19 @@ GesturePanel::GesturePanel (AntiMatrProcessor& p)
 {
     auto& apvts = processor.parameters();
 
-    mode = std::make_unique<ModeList> (paramChoices (Param::gestureMode), Theme::magenta);
+    mode = std::make_unique<AMOptionList> (paramChoices (Param::gestureMode), Theme::magenta);
+    mode->setDescriptions (gestureDescriptions());
+    mode->setTooltip ("The friction model that turns pressure and speed into excitation.");
     addAndMakeVisible (*mode);
 
     auto* modeParam = apvts.getParameter (ParameterRegistry::get (Param::gestureMode).id);
     modeAttachment = std::make_unique<juce::ParameterAttachment> (*modeParam, [this] (float v)
     {
         currentMode = juce::jlimit (0, paramChoices (Param::gestureMode).size() - 1, (int) std::lround (v));
-        mode->setSelected (currentMode);
+        mode->setSelected (currentMode, juce::dontSendNotification);
         repaint();
     });
-    mode->onSelect = [this] (int index) { modeAttachment->setValueAsCompleteGesture ((float) index); };
+    mode->onChange = [this] (int index) { modeAttachment->setValueAsCompleteGesture ((float) index); };
     modeAttachment->sendInitialUpdate();
 
     pad.setTooltip ("Drag: pressure (x) and speed (y). Double-click resets.");
@@ -534,41 +615,15 @@ void GesturePanel::timerCallback()
     setActivity (juce::jlimit (0.0f, 1.0f, vs.sourceRms * 2.0f));
 }
 
-void GesturePanel::paintOverChildren (juce::Graphics& g)
-{
-    static const char* descriptions[] = {
-        "Stick and slip locked to the note. Pressure grips, speed drives, roughness roars in the slip.",
-        "Dense friction grains. Speed sets how many, roughness how bright the surface is.",
-        "Slow, dark, periodic friction with a breathing amplitude.",
-        "Turbulent air through a formant body. Pressure opens it, speed stirs the turbulence.",
-        "Broad, harsh rasp: hard contact, saturated and torn by roughness.",
-        "Buzz and spark: jittered pulse trains, sputtering with pressure."
-    };
-
-    auto area = descriptionArea.toFloat();
-    if (area.isEmpty()) return;
-
-    juce::AttributedString text;
-    text.append (descriptions[(size_t) juce::jlimit (0, 5, currentMode)],
-                 Theme::bodyFont (juce::jlimit (10.0f, 12.5f, area.getHeight() * 0.20f)), Theme::textSecondary.brighter (0.1f));
-    text.setLineSpacing (3.0f);
-    juce::TextLayout layout;
-    layout.createLayout (text, area.getWidth());
-    layout.draw (g, area);
-}
-
 void GesturePanel::resized()
 {
     auto area = contentBounds();
     if (area.isEmpty()) return;
     const int gap = juce::jmax (6, area.getWidth() / 90);
 
-    auto left = area.removeFromLeft (juce::jlimit (140, 250, (int) ((float) area.getWidth() * 0.21f)));
+    auto left = area.removeFromLeft (juce::jlimit (150, 270, (int) ((float) area.getWidth() * 0.23f)));
     area.removeFromLeft (gap);
-    const int rows = juce::jmax (1, paramChoices (Param::gestureMode).size());
-    mode->setBounds (left.removeFromTop (juce::jmin (left.getHeight() - 40, rows * juce::jlimit (26, 40, left.getHeight() / (rows + 2)))));
-    left.removeFromTop (gap);
-    descriptionArea = left;
+    mode->setBounds (left);
 
     auto padArea = area.removeFromLeft (juce::jlimit (160, 460, (int) ((float) area.getWidth() * 0.46f)));
     area.removeFromLeft (gap);
@@ -576,7 +631,7 @@ void GesturePanel::resized()
 
     std::vector<juce::Component*> comps;
     for (auto& c : controls) comps.push_back (&c->component());
-    layoutGrid (area, comps, 2, 2, 2);
+    layoutGrid (area, comps, 2, gap, gap);
 }
 
 } // namespace am::ui

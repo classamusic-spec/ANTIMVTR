@@ -1,4 +1,5 @@
 #include "Pages.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -34,10 +35,27 @@ BoundControl* ParamPanel::control (Param p)
     return headerToggle != nullptr && headerToggle->param() == p ? headerToggle.get() : nullptr;
 }
 
-void ParamPanel::setHeaderToggle (Param p)
+void ParamPanel::setHeaderToggle (Param p, bool asSwitch)
 {
-    headerToggle = std::make_unique<BoundControl> (processor.parameters(), p, getAccent(), " ");
-    addAndMakeVisible (headerToggle->component());
+    if (asSwitch)
+    {
+        headerSwitch = std::make_unique<AMSegment> (juce::StringArray { "Off", "On" }, getAccent());
+        headerSwitch->setTooltip (paramTooltip (p));
+        auto* param = processor.parameters().getParameter (ParameterRegistry::get (p).id);
+        auto* raw = headerSwitch.get();
+        headerSwitchAttachment = std::make_unique<juce::ParameterAttachment> (*param, [raw] (float v)
+        {
+            raw->setSelected (v >= 0.5f ? 1 : 0, juce::dontSendNotification);
+        });
+        headerSwitch->onChange = [this] (int i) { headerSwitchAttachment->setValueAsCompleteGesture (i == 1 ? 1.0f : 0.0f); };
+        headerSwitchAttachment->sendInitialUpdate();
+        addAndMakeVisible (*headerSwitch);
+    }
+    else
+    {
+        headerToggle = std::make_unique<BoundControl> (processor.parameters(), p, getAccent(), " ");
+        addAndMakeVisible (headerToggle->component());
+    }
     resized();
 }
 
@@ -69,14 +87,23 @@ void ParamPanel::resized()
         const int w = juce::jlimit (44, 60, h.getHeight());
         headerToggle->component().setBounds (h.removeFromRight (w).withSizeKeepingCentre (w, juce::jlimit (22, 30, h.getHeight())));
     }
+    if (headerSwitch != nullptr)
+    {
+        auto h = headerRightBounds();
+        const int w = juce::jlimit (88, 130, h.getWidth() / 2);
+        headerSwitch->setBounds (h.removeFromRight (w).withSizeKeepingCentre (w, juce::jlimit (22, 30, h.getHeight())));
+    }
     std::vector<juce::Component*> comps;
     for (auto& c : controls) comps.push_back (&c->component());
     if (comps.empty()) return;
     auto area = contentBounds();
+    if (display != nullptr && displayFraction > 0.0f && area.getHeight() > 90)
+    {
+        display->setBounds (area.removeFromTop (juce::roundToInt ((float) area.getHeight() * displayFraction)));
+        area.removeFromTop (juce::jmax (4, area.getHeight() / 24));
+    }
     const int n = (int) comps.size();
-    int cols = columns > 0 ? columns : juce::jlimit (1, n, juce::jmax (1, area.getWidth() / 96));
-    // avoid a lonely last row when possible
-    if (columns <= 0 && n > cols && n % cols == 1 && cols > 2) --cols;
+    const int cols = columns > 0 ? columns : layout::gridColumns (n, area.getWidth(), area.getHeight());
     layoutGrid (area, comps, cols, 2, 2);
 }
 
@@ -102,16 +129,29 @@ public:
             "Bowed, scraped and rubbed excitation. Pressure, speed and roughness turn friction into motion." };
         static const juce::Colour accents[] = { Theme::violet, Theme::blue, Theme::cyan, Theme::ivory, Theme::magenta };
 
+        juce::ignoreUnused (taglines);
         auto b = getLocalBounds().toFloat();
         draw::insetSurface (g, b, 8.0f);
-        auto area = b.reduced (12.0f, 10.0f);
-        const float titleH = juce::jlimit (11.0f, 15.0f, area.getHeight() * 0.14f);
-        draw::trackedText (g, names[source], area.removeFromTop (titleH * 1.4f), juce::Justification::centredLeft, Theme::displayFont (titleH, 0.2f), accents[source]);
-        draw::trackedText (g, taglines[source], area.removeFromTop (titleH * 1.1f), juce::Justification::centredLeft, Theme::captionFont (titleH * 0.62f), Theme::textSecondary);
-        area.removeFromTop (6.0f);
+        auto area = b.reduced (juce::jlimit (10.0f, 18.0f, b.getWidth() * 0.05f), juce::jlimit (9.0f, 16.0f, b.getHeight() * 0.09f));
+
+        // The selector above already names the source and its tagline, so the card
+        // carries the accent rule and the description only.
+        const float titleH = juce::jlimit (10.0f, 14.0f, area.getHeight() * 0.13f);
+        auto rule = area.removeFromTop (titleH * 1.5f);
+        draw::trackedText (g, "ABOUT  " + juce::String (names[source]), rule, juce::Justification::centredLeft,
+                           Theme::captionFont (titleH * 0.78f), accents[source].withAlpha (0.85f));
+        {
+            juce::Path line;
+            const float y = rule.getBottom() - 1.0f;
+            line.startNewSubPath (rule.getX(), y);
+            line.lineTo (rule.getX() + juce::jmin (rule.getWidth() * 0.3f, 54.0f), y);
+            draw::glowPath (g, line, accents[source], 1.0f, 5.0f, 0.35f);
+        }
+        area.removeFromTop (juce::jmax (6.0f, titleH * 0.5f));
+
         juce::AttributedString text;
-        text.append (bodies[source], Theme::bodyFont (juce::jlimit (10.5f, 12.5f, titleH * 0.85f)), Theme::textSecondary.brighter (0.15f));
-        text.setLineSpacing (3.0f);
+        text.append (bodies[source], Theme::bodyFont (juce::jlimit (10.5f, 13.5f, area.getHeight() * 0.13f)), Theme::textSecondary.brighter (0.15f));
+        text.setLineSpacing (3.5f);
         juce::TextLayout layout;
         layout.createLayout (text, area.getWidth());
         layout.draw (g, area);
@@ -122,9 +162,12 @@ private:
 
 SourcePage::SourcePage (AntiMatrProcessor& p)
     : processor (p),
-      selector ({ { "Wave", Icon::Wave, Theme::violet }, { "Dust", Icon::Dust, Theme::blue }, { "Impact", Icon::Impact, Theme::cyan },
-                  { "Sample", Icon::Sample, Theme::ivory }, { "Gesture", Icon::Gesture, Theme::magenta } })
+      selector ({ { "Wave", Icon::Wave, Theme::violet, "Fractured forms" }, { "Dust", Icon::Dust, Theme::blue, "Particle field" },
+                  { "Impact", Icon::Impact, Theme::cyan, "Strike field" }, { "Sample", Icon::Sample, Theme::ivory, "Imported matter" },
+                  { "Gesture", Icon::Gesture, Theme::magenta, "Living gesture" } })
 {
+    selector.setOrientation (AMSourceSelector::Orientation::Column);
+    selector.setTooltip ("Source: what creates the energy Matter is struck with.");
     addAndMakeVisible (sourcePanel);
     addAndMakeVisible (wavePanel);
     wavePanel.setCompact (true);
@@ -221,14 +264,21 @@ void SourcePage::resized()
     area.removeFromLeft (gap);
     sourcePanel.setBounds (left);
     {
+        // Selector at the top, description anchored to the bottom, MODE / LEVEL centred between
+        // them: the panel fills edge to edge instead of leaving a band under the thumbnails.
+        // A column of energies fills the panel: thumbnail, name and tagline per row,
+        // then MODE / LEVEL and the description of whatever is selected.
         auto c = sourcePanel.contentBounds();
-        selector.setBounds (c.removeFromTop (juce::roundToInt ((float) c.getHeight() * 0.30f)));
-        c.removeFromTop (gap);
-        auto row = c.removeFromTop (juce::jlimit (60, 90, c.getHeight() / 4));
+        if (info != nullptr)
+        {
+            info->setBounds (c.removeFromBottom (juce::jlimit (130, 210, juce::roundToInt ((float) c.getHeight() * 0.27f))));
+            c.removeFromBottom (gap);
+        }
+        auto row = c.removeFromBottom (juce::jlimit (66, 96, juce::roundToInt ((float) c.getHeight() * 0.2f)));
+        c.removeFromBottom (gap);
         if (modeControl != nullptr) modeControl->component().setBounds (row.removeFromLeft (row.getWidth() / 2));
         if (levelControl != nullptr) levelControl->component().setBounds (row);
-        c.removeFromTop (gap);
-        if (info != nullptr) info->setBounds (c.removeFromTop (juce::jmin (c.getHeight(), 190)));
+        selector.setBounds (c);
     }
     // SAMPLE owns the whole right side: its own waveform carries the start/end handles.
     wavePanel.setVisible (samplePanel == nullptr);
@@ -249,12 +299,15 @@ void SourcePage::resized()
         return;
     }
 
+    // Widths are fractions of the whole row: measuring against the shrinking remainder
+    // squeezed every section after the first (PITCH ended up half the width it asked for).
     float total = 0.0f;
     for (auto& s : sections) total += s.weight;
+    const int usable = area.getWidth() - gap * (int) juce::jmax ((size_t) 1, sections.size()) + gap;
     for (size_t i = 0; i < sections.size(); ++i)
     {
         const bool last = i + 1 == sections.size();
-        const int w = last ? area.getWidth() : juce::roundToInt ((float) (area.getWidth() - gap * (int) (sections.size() - 1)) * sections[i].weight / total);
+        const int w = last ? area.getWidth() : juce::roundToInt ((float) usable * sections[i].weight / juce::jmax (0.001f, total));
         sections[i].panel->setBounds (area.removeFromLeft (w));
         area.removeFromLeft (gap);
     }
@@ -303,12 +356,20 @@ void ShapePage::resized()
     auto left = area.removeFromLeft (juce::roundToInt ((float) area.getWidth() * 0.46f));
     area.removeFromLeft (gap);
     matter.setBounds (left);
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.33f));
+
+    // The right column is shared out by what each panel holds — a row of pickers needs far
+    // less height than two rows of knobs — so no panel carries a band of empty graphite.
+    const float weights[] = { 1.0f, 1.15f, 1.85f };   // materials, topology, response
+    const int usable = area.getHeight() - gap * 2;
+    float total = 0.0f;
+    for (float w : weights) total += w;
+    const int materialsH = juce::roundToInt ((float) usable * weights[0] / total);
+    const int topologyH  = juce::roundToInt ((float) usable * weights[1] / total);
+
+    materials.setBounds (area.removeFromTop (materialsH));
     area.removeFromTop (gap);
-    materials.setBounds (top);
-    auto mid = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.5f));
+    topology.setBounds (area.removeFromTop (topologyH));
     area.removeFromTop (gap);
-    topology.setBounds (mid);
     response.setBounds (area);
 }
 
@@ -333,13 +394,33 @@ EvolvePage::EvolvePage (AntiMatrProcessor& p)
     : processor (p),
       operators (p, "Operators", "Movement & change", Theme::violet, { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet }, 4),
       bend (p, "Bend", "Deformation detail", Theme::violet, { Param::evolveBendPivot, Param::evolveBendRange, Param::evolveBendCurve }, 3),
-      magnet (p, "Magnet", "Alignment target", Theme::violet, { Param::evolveMagnetTarget, Param::evolveCrush, Param::evolveFreeze }, 3),
       motion (p, "Motion", "Speed of change", Theme::violet, { Param::evolveSpeed, Param::evolveMotion, Param::evolveScatterSeed }, 3)
 {
-    for (auto* panel : { &operators, &bend, &magnet, &motion }) addAndMakeVisible (*panel);
+    operators.setHeroKnobs (true);
+    for (auto* panel : { &operators, &bend, &motion }) addAndMakeVisible (*panel);
+    addAndMakeVisible (magnetPanel);
     addAndMakeVisible (fieldPanel);
+
+    // Seven alignment targets: a list shows them all instead of hiding six behind a stepper.
+    magnetList = std::make_unique<AMOptionList> (paramChoices (Param::evolveMagnetTarget), Theme::violet);
+    magnetList->setTooltip (paramTooltip (Param::evolveMagnetTarget));
+    magnetPanel.addAndMakeVisible (*magnetList);
+    {
+        auto* target = processor.parameters().getParameter (ParameterRegistry::get (Param::evolveMagnetTarget).id);
+        magnetAttachment = std::make_unique<juce::ParameterAttachment> (*target, [this] (float v)
+        {
+            magnetList->setSelected ((int) std::lround (v), juce::dontSendNotification);
+        });
+        magnetList->onChange = [this] (int i) { magnetAttachment->setValueAsCompleteGesture ((float) i); };
+        magnetAttachment->sendInitialUpdate();
+    }
     fieldPanel.addAndMakeVisible (field);
     field.setTooltip ("Drag: gravity (x) and scatter (y). Double-click resets.");
+    for (auto param : { Param::evolveCrush, Param::evolveFreeze })
+    {
+        fieldControls.push_back (std::make_unique<BoundControl> (processor.parameters(), param, Theme::violet));
+        fieldPanel.addAndMakeVisible (fieldControls.back()->component());
+    }
 
     const juce::String names[] = { "Bend", "Melt", "Tear", "Magnet" };
     const Icon icons[] = { Icon::Bend, Icon::Melt, Icon::Tear, Icon::Magnet };
@@ -378,14 +459,25 @@ void EvolvePage::resized()
     auto right = area.removeFromRight (juce::roundToInt ((float) area.getWidth() * 0.36f));
     area.removeFromRight (gap);
     fieldPanel.setBounds (right);
-    field.setBounds (fieldPanel.contentBounds());
+    {
+        // The pad is square, so the slack under it carries the rest of the field state.
+        auto c = fieldPanel.contentBounds();
+        const int extras = juce::jlimit (64, 104, c.getHeight() / 6);
+        auto footer = c.removeFromBottom (extras);
+        field.setBounds (c.withTrimmedBottom (gap / 2));
+        std::vector<juce::Component*> comps;
+        for (auto& f : fieldControls) comps.push_back (&f->component());
+        layoutGrid (footer, comps, (int) comps.size(), gap, 0);
+    }
 
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.56f));
+    // The bottom row takes only the height its controls need; the operators absorb the rest.
+    const int bottomH = juce::jlimit (150, 218, juce::roundToInt ((float) area.getHeight() * 0.30f));
+    auto top = area.removeFromTop (juce::jmax (120, area.getHeight() - bottomH - gap));
     area.removeFromTop (gap);
     operators.setBounds (top);
     {
         auto c = operators.contentBounds();
-        auto cellRow = c.removeFromTop (juce::roundToInt ((float) c.getHeight() * 0.5f));
+        auto cellRow = c.removeFromTop (juce::roundToInt ((float) c.getHeight() * 0.46f));
         layoutKnobRow (cellRow, { cells[0].get(), cells[1].get(), cells[2].get(), cells[3].get() });
         c.removeFromTop (gap / 2);
         std::vector<juce::Component*> knobs;
@@ -393,10 +485,13 @@ void EvolvePage::resized()
             if (auto* ctl = operators.control (param)) knobs.push_back (&ctl->component());
         layoutGrid (c, knobs, 4);
     }
-    const int w = (area.getWidth() - gap * 2) / 3;
+    // MAGNET holds a single choice, so it gets a narrow column instead of an empty third.
+    const int magnetW = juce::jlimit (130, 220, juce::roundToInt ((float) area.getWidth() * 0.21f));
+    const int w = (area.getWidth() - gap * 2 - magnetW) / 2;
     bend.setBounds (area.removeFromLeft (w));
     area.removeFromLeft (gap);
-    magnet.setBounds (area.removeFromLeft (w));
+    magnetPanel.setBounds (area.removeFromLeft (magnetW));
+    magnetList->setBounds (magnetPanel.contentBounds());
     area.removeFromLeft (gap);
     motion.setBounds (area);
 }
@@ -413,7 +508,7 @@ void EvolvePage::timerCallback()
     field.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 4.0f));
 
     const auto& mod = latestModulation (processor);
-    for (auto* panel : { &operators, &bend, &magnet, &motion }) panel->refreshModRings (mod);
+    for (auto* panel : { &operators, &bend, &motion }) panel->refreshModRings (mod);
 }
 
 //==============================================================================
@@ -421,9 +516,9 @@ FracturePage::FracturePage (AntiMatrProcessor& p)
     : processor (p),
       engine (p, "Fracture", "Break into new realities", Theme::magenta, { Param::fractureMode, Param::fractureFragments, Param::fractureMix }, 3),
       sequencer (p, "Sequencer", "Fragment steps", Theme::magenta, { Param::fractureSteps, Param::fractureRate, Param::fractureSync, Param::fractureDivision, Param::fractureSwing, Param::fractureDirection, Param::fractureProbability, Param::fractureSeed, Param::fractureRetrig }, 9),
-      spectral (p, "Spectral", "Amount, motion & tone", Theme::magenta, { Param::fractureAmount, Param::fractureSpread, Param::fractureSequence, Param::fractureRandom, Param::fractureFeedback, Param::fracturePitch, Param::fractureDelay, Param::fractureDecay, Param::fractureTone, Param::fractureEvolve }, 5)
+      spectral (p, "Spectral", "Amount, motion & tone", Theme::magenta, { Param::fractureAmount, Param::fractureSpread, Param::fractureSequence, Param::fractureRandom, Param::fractureFeedback, Param::fracturePitch, Param::fractureDelay, Param::fractureDecay, Param::fractureTone, Param::fractureEvolve }, 10)
 {
-    engine.setHeaderToggle (Param::fractureOn);
+    engine.setHeaderToggle (Param::fractureOn, true);
     for (auto* panel : { &engine, &sequencer, &spectral }) addAndMakeVisible (*panel);
     engine.addAndMakeVisible (spectrum);
     sequencer.addAndMakeVisible (steps);
@@ -483,31 +578,39 @@ void FracturePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.40f));
+    // SPECTRAL carries ten knobs in two rows, so it keeps enough height for them to be
+    // the same size as every other knob in the plug-in instead of shrinking to fit.
+    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.34f));
     area.removeFromTop (gap);
     engine.setBounds (top);
     {
+        // Three controls beside the spectrum: stacked when the panel is tall enough for
+        // three full-size rows, side by side when it is not, so nothing ever shrinks to a dot.
         auto c = engine.contentBounds();
-        auto controls = c.removeFromRight (juce::jlimit (240, 360, c.getWidth() / 4));
+        const bool stacked = c.getHeight() >= 200;
+        auto controls = c.removeFromRight (stacked ? juce::jlimit (240, 360, c.getWidth() / 4)
+                                                   : juce::jlimit (300, 460, c.getWidth() / 3));
         c.removeFromRight (gap);
         spectrum.setBounds (c);
         std::vector<juce::Component*> comps;
         for (auto param : { Param::fractureMode, Param::fractureFragments, Param::fractureMix })
             if (auto* ctl = engine.control (param)) comps.push_back (&ctl->component());
-        layoutGrid (controls, comps, 1, 0, 4);
+        layoutGrid (controls, comps, stacked ? 1 : 3, gap / 2, 4);
     }
-    auto mid = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.5f));
+    auto mid = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.50f));
     area.removeFromTop (gap);
     sequencer.setBounds (mid);
     {
+        // The controls take nearly half the panel so five to a row leaves each cell wide
+        // enough for a choice pill and its caption without either colliding with its neighbour.
         auto c = sequencer.contentBounds();
-        auto controls = c.removeFromRight (juce::jlimit (300, 520, c.getWidth() / 2));
+        auto controls = c.removeFromRight (juce::jlimit (360, 720, juce::roundToInt ((float) c.getWidth() * 0.46f)));
         c.removeFromRight (gap);
         steps.setBounds (c);
         std::vector<juce::Component*> comps;
         for (auto param : { Param::fractureSteps, Param::fractureRate, Param::fractureSync, Param::fractureDivision, Param::fractureSwing, Param::fractureDirection, Param::fractureProbability, Param::fractureSeed, Param::fractureRetrig })
             if (auto* ctl = sequencer.control (param)) comps.push_back (&ctl->component());
-        layoutGrid (controls, comps, 5, 2, 2);
+        layoutGrid (controls, comps, 5, 4, 2);
     }
     spectral.setBounds (area);
 }
@@ -678,6 +781,25 @@ ModPage::ModPage (AntiMatrProcessor& p) : processor (p)
     tabPanels[4].back()->setHeroKnobs (true);
     panel (tabPanels[5], "Amp", "Amplitude envelope", { Param::ampAttack, Param::ampDecay, Param::ampSustain, Param::ampRelease, Param::ampCurve, Param::ampVelocity }, 6);
     panel (tabPanels[5], "Master", "Voices, tuning & output", { Param::masterGain, Param::masterVoices, Param::masterQuality, Param::masterMode, Param::masterGlide, Param::masterBendRange, Param::masterTranspose, Param::masterFine }, 4);
+    // Every envelope panel shows the shape its knobs are making.
+    {
+        const Param sets[][5] =
+        {
+            { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve },
+            { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve },
+            { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve },
+            { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve },
+        };
+        for (int i = 0; i < 4; ++i)
+        {
+            juce::ignoreUnused (sets);
+            envelopeViews.push_back (std::make_unique<AMEnvelopeView> (Theme::amber));
+            tabPanels[2][(size_t) i]->setDisplay (envelopeViews.back().get(), 0.46f);
+        }
+        envelopeViews.push_back (std::make_unique<AMEnvelopeView> (Theme::amber));
+        tabPanels[5][0]->setDisplay (envelopeViews.back().get(), 0.44f);
+    }
+
     showTab (0);
     startTimerHz (20);
 }
@@ -687,11 +809,33 @@ void ModPage::timerCallback()
     if (! isShowing()) return;
     const auto& mod = latestModulation (processor);
     for (auto& pp : tabPanels[(size_t) current]) pp->refreshModRings (mod);
+
+    if (current != 2 && current != 5) return;
+    static const Param sets[][5] =
+    {
+        { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve },
+        { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve },
+        { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve },
+        { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve },
+        { Param::ampAttack,  Param::ampDecay,  Param::ampSustain,  Param::ampRelease,  Param::ampCurve },
+    };
+    const auto values = processor.currentParamValues();
+    const auto& vs = processor.diagnostics().visualSnapshots.latest();
+    const float activity = juce::jlimit (0.0f, 1.0f, (float) vs.activeVoices * 0.5f);
+    const int from = current == 2 ? 0 : 4, to = current == 2 ? 4 : 5;
+    for (int i = from; i < to && i < (int) envelopeViews.size(); ++i)
+    {
+        envelopeViews[(size_t) i]->setEnvelope (paramValue (values, sets[i][0]), paramValue (values, sets[i][1]),
+                                                paramValue (values, sets[i][2]), paramValue (values, sets[i][3]),
+                                                paramValue (values, sets[i][4]));
+        envelopeViews[(size_t) i]->setActivity (activity);
+    }
 }
 
 void ModPage::showTab (int index)
 {
     current = juce::jlimit (0, (int) tabPanels.size() - 1, index);
+    tabs.setSelected (current, juce::dontSendNotification);   // the bar and the content can never disagree
     for (int t = 0; t < (int) tabPanels.size(); ++t)
         for (auto& pp : tabPanels[(size_t) t]) pp->setVisible (t == current);
     if (routings != nullptr) routings->setVisible (current == 0);
@@ -712,10 +856,14 @@ void ModPage::resized()
     }
     auto& list = tabPanels[(size_t) current];
     if (list.empty()) return;
-    if (list.size() == 1) { list[0]->setBounds (area.withSizeKeepingCentre (juce::jmin (area.getWidth(), 900), juce::jmin (area.getHeight(), 360))); return; }
+    if (list.size() == 1) { list[0]->setBounds (area.withSizeKeepingCentre (juce::jmin (area.getWidth(), 1280), juce::jmin (area.getHeight(), 560))); return; }
     if (list.size() == 2)
     {
-        auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.5f) - gap / 2);
+        // Weighted by content: a panel with one row of knobs does not need the same
+        // height as one with two, plus a curve display.
+        const float w0 = (float) list[0]->rowsNeeded() + (list[0]->hasDisplay() ? 1.5f : 0.0f) + 0.7f;
+        const float w1 = (float) list[1]->rowsNeeded() + (list[1]->hasDisplay() ? 1.5f : 0.0f) + 0.7f;
+        auto top = area.removeFromTop (juce::roundToInt ((float) (area.getHeight() - gap) * w0 / juce::jmax (0.1f, w0 + w1)));
         area.removeFromTop (gap);
         list[0]->setBounds (top);
         list[1]->setBounds (area);

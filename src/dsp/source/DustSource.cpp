@@ -494,10 +494,20 @@ void DustSource::updateFrozen()
         const float amp = amps[k] * norm;
         float gl, gr;
         panGains (q.pan * p.spread, gl, gr);
-        const float delta = q.rRand * p.stereo;
-        q.gainL  = amp * gl;
-        q.gainRc = amp * gr * Tables::sineAt (wrap01 (delta + 0.25f));
-        q.gainRs = amp * gr * Tables::sineAt (wrap01 (delta));
+        q.gainL = amp * gl;
+        if (p.stereo <= 0.0f)
+        {
+            // Bit-exact mono: the right channel reuses the left gain (no table lookup, no phase term),
+            // so FMA contraction on arm64 cannot make the channels drift apart by a rounding step.
+            q.gainRc = gl == gr ? q.gainL : amp * gr;
+            q.gainRs = 0.0f;
+        }
+        else
+        {
+            const float delta = q.rRand * p.stereo;
+            q.gainRc = amp * gr * Tables::sineAt (wrap01 (delta + 0.25f));
+            q.gainRs = amp * gr * Tables::sineAt (wrap01 (delta));
+        }
     }
 }
 
@@ -520,7 +530,8 @@ void DustSource::renderFrozen (float* l, float* r, int n)
             q.s = ns;
             q.c = nc;
             sumL += ns * q.gainL;
-            sumR += ns * q.gainRc + nc * q.gainRs;
+            sumR += ns * q.gainRc;       // same expression shape as the left channel: identical rounding when the gains match
+            sumR += nc * q.gainRs;
         }
         l[i] = sumL;
         r[i] = sumR;

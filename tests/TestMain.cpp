@@ -7,12 +7,23 @@
 
     Usage: AntiMatrTests [category-or-test-name] [--seed N]
 */
+namespace
+{
+    /** Logs to stdout on every platform (JUCE's default logger goes to the debugger output on Windows). */
+    class ConsoleRunner : public juce::UnitTestRunner
+    {
+    protected:
+        void logMessage (const juce::String& message) override { std::cout << message << std::endl; }
+    };
+}
+
 int main (int argc, char* argv[])
 {
     juce::ArgumentList args (argc, argv);
     juce::ScopedJuceInitialiser_GUI init;
+    std::cout << "ANTI-MATR tests: " << juce::UnitTest::getAllTests().size() << " suites registered" << std::endl;
 
-    juce::UnitTestRunner runner;
+    ConsoleRunner runner;
     runner.setAssertOnFailure (false);
     runner.setPassesAreLogged (false);
 

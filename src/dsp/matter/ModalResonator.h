@@ -46,8 +46,8 @@ inline void fastSinCos (float w, float& sn, float& cs) noexcept
     toward per-block targets. Coupling is an antisymmetric stencil on the x
     states (two strided bands, an optional hub and a few explicit edges)
     applied to the state before the rotation, z' = D·R·(I + K)·z, and scaled
-    so the coupled system is provably contractive (see finalizeCoupling). The per-sample loops are lane-structured (kLanes)
-    so they vectorise without fast-math.
+    so the coupled system is provably contractive (see finalizeCoupling). The per-sample loops use juce::dsp::SIMDRegister
+    (4 lanes on SSE/NEON) and skip groups of nodes that are inactive and silent.
 */
 class ModalBank
 {

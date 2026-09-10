@@ -445,7 +445,7 @@ public:
             expectEquals ((int) engine.diagnostics().safety.count (SafetyEvent::ResonatorReset), 0);
         }
 
-        beginTest ("Legato replica (diagnostic)");
+        beginTest ("Legato through the full engine: node frequencies follow the voice glide");
         {
             auto mono = ParameterRegistry::defaults();
             mono[(size_t) paramIndex (Param::ampAttack)] = 0.001f;
@@ -470,7 +470,7 @@ public:
                 engine.process (chunk, midi, mono, transport);
                 if (pos % (128 * 10) == 0 && pos <= 128 * 120)
                 {
-                    const int fv = engine.voiceManager().mostRecentVoice();
+                    const int fv = std::max (0, engine.voiceManager().mostRecentVoice());
                     const auto& m = engine.voiceManager().voice (fv).matter();
                     trace += juce::String (pos / 128) + ":" + juce::String (engine.voiceManager().voice (fv).noteState().frequency, 1) + "/" + juce::String (m.renderedFrequency (0), 1) + "/" + juce::String (m.node (0).energy, 3) + " ";
                 }
@@ -478,6 +478,8 @@ public:
             auto zc = [&] (int a, int b) { int c = 0; for (int i = a + 1; i < b; ++i) if ((audio.getSample (0, i - 1) < 0.0f) != (audio.getSample (0, i) < 0.0f)) ++c; return c; };
             logMessage ("legato replica crossings: early " + juce::String (zc (128 * 20, 128 * 20 + 2400)) + " late " + juce::String (zc (128 * 90, 128 * 90 + 2400)) + " back " + juce::String (zc (128 * 300, 128 * 300 + 2400)));
             logMessage ("block:noteHz/node0Hz/energy " + trace);
+            expect (zc (128 * 90, 128 * 90 + 2400) > zc (128 * 20, 128 * 20 + 2400), "pitch should rise after the legato note");
+            expect (zc (128 * 300, 128 * 300 + 2400) < zc (128 * 90, 128 * 90 + 2400), "pitch should fall back after the release");
         }
 
         beginTest ("Benchmark: 16 voices x 64 nodes, 48 kHz / 128 samples (informational)");

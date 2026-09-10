@@ -88,7 +88,7 @@ class StructureLibrary
 {
 public:
     static const StructureLibrary& get();
-    static void ensureBuilt() { (void) get(); }
+    static void ensureBuilt() { (void) get(); (void) materialProfile (MaterialType::Crystal); }   // builds every static table off the audio thread
 
     const StructureTable& anchor (FormAnchor a) const noexcept { return anchors[(size_t) a]; }
 

@@ -156,6 +156,12 @@ public:
         window->setContentComponentSize (width, height);
         window->setVisible (true);
 
+        // Park the pointer clear of the interface. A snapshot should show every
+        // control resting, not whichever one happens to sit under the mouse showing
+        // its value in place of its label.
+        if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+            juce::Desktop::setMousePosition (display->totalArea.getBottomRight().translated (-2, -2));
+
         startTimerHz (50);
     }
 

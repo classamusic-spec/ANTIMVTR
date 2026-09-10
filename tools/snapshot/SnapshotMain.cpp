@@ -4,7 +4,7 @@
     Usage (run under xvfb-run on headless Linux):
       AntiMatrSnapshot --out shot.png [--width 1600 --height 1000] [--wait 800] [--set id=value ...] [--labtab N]
                        [--sample path|builtin:N] [--analyze]
-                       [--page 0..7] [--note 60] [--preset "Void Bloom"]
+                       [--page 0..7] [--modtab N] [--note 60] [--preset "Void Bloom"]
                        [--mod "lfo1>shape.decay:0.5" ...]
 
     --mod adds a modulation routing before the editor opens, so the knob
@@ -20,6 +20,7 @@
 #include "plugin/AntiMatrProcessor.h"
 #include "plugin/AntiMatrEditor.h"
 #include "dev/dsplab/DSPLabView.h"
+#include "ui/views/Pages.h"
 #include "state/ModRouting.h"
 
 namespace
@@ -143,6 +144,10 @@ public:
             if (hasOption (args, "--labtab"))
                 if (auto* lab = dynamic_cast<am::dev::DSPLabView*> (e->labViewComponent()))
                     lab->selectTab (optionValue (args, "--labtab").getIntValue());
+            if (hasOption (args, "--modtab"))
+                if (auto* group = dynamic_cast<am::ui::GroupPage*> (e->pageComponent (page)))
+                    if (auto* mod = dynamic_cast<am::ui::ModPage*> (group->designedPage()))
+                        mod->showTab (optionValue (args, "--modtab").getIntValue());
         }
 
         window = std::make_unique<juce::DocumentWindow> ("ANTI-MATR", juce::Colours::black, juce::DocumentWindow::allButtons);

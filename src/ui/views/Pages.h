@@ -7,6 +7,7 @@
 #include "ui/components/AMXYPad.h"
 #include "ui/components/AMStepEditor.h"
 #include "ui/components/AMOptionList.h"
+#include "ui/components/AMEnvelopeView.h"
 
 namespace am::ui
 {
@@ -29,6 +30,16 @@ public:
         for panels big enough that an unlabelled pill would read as a mystery. */
     void setHeaderToggle (Param p, bool asSwitch = false);
     void setColumns (int c) { columns = c; resized(); }
+    /** Rows of controls this panel lays out (used to share height between panels). */
+    int rowsNeeded() const noexcept
+    {
+        const int n = (int) controls.size();
+        const int cols = columns > 0 ? columns : juce::jmax (1, n);
+        return n == 0 ? 0 : (n + cols - 1) / cols;
+    }
+    bool hasDisplay() const noexcept { return display != nullptr; }
+    /** Places a display (a curve, a scope) across the top `fraction` of the content area. */
+    void setDisplay (juce::Component* c, float fraction) { display = c; displayFraction = fraction; if (c != nullptr) addAndMakeVisible (*c); resized(); }
     /** Draws the live modulation rings on every knob in the panel. */
     void refreshModRings (const ModulationSnapshot& s);
     void setHeroKnobs (bool hero);
@@ -41,6 +52,8 @@ private:
     std::unique_ptr<BoundControl> headerToggle;
     std::unique_ptr<AMSegment> headerSwitch;
     std::unique_ptr<juce::ParameterAttachment> headerSwitchAttachment;
+    juce::Component* display = nullptr;
+    float displayFraction = 0.0f;
     int columns = 0;
 };
 
@@ -173,14 +186,17 @@ public:
     ~ModPage() override { stopTimer(); }
     void resized() override;
 
+    /** Selects one of the tabs (ROUTINGS, LFO, ENVELOPES, CHAOS, MACROS, AMP & MASTER). */
+    void showTab (int index);
+
 private:
     void timerCallback() override;
-    void showTab (int index);
     AntiMatrProcessor& processor;
     AMTabBar tabs { { "Routings", "LFO", "Envelopes", "Chaos", "Macros", "Amp & Master" }, Theme::amber,
                     { Icon::Grid, Icon::Lfo, Icon::Env, Icon::Chaos, Icon::Macro, Icon::Settings } };
     std::vector<std::vector<std::unique_ptr<ParamPanel>>> tabPanels;
     std::unique_ptr<ModRoutingPanel> routings;
+    std::vector<std::unique_ptr<AMEnvelopeView>> envelopeViews;   // one per envelope panel, plus AMP
     int current = 0;
 };
 

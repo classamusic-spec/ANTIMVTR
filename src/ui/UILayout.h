@@ -150,6 +150,41 @@ inline double waveRulerStep (double seconds) noexcept
 
 //==============================================================================
 /**
+    How an envelope display shares its width between attack, decay, the sustain
+    plateau and release.
+
+    The three timed stages are shown in proportion to their lengths (compressed
+    by a cube root so a 10 s release does not squeeze a 5 ms attack out of
+    existence) and the plateau keeps a fixed share, so the same settings always
+    draw the same shape and a longer stage always looks longer.
+*/
+struct EnvelopeStages
+{
+    float attack = 0.0f, decay = 0.0f, sustain = 0.0f, release = 0.0f;   ///< fractions of the width, summing to 1
+};
+
+inline EnvelopeStages envelopeStages (float attackSeconds, float decaySeconds, float releaseSeconds) noexcept
+{
+    auto weigh = [] (float seconds)
+    {
+        const float s = std::isfinite (seconds) ? juce::jmax (0.0f, seconds) : 0.0f;
+        return std::cbrt (s + 0.002f);
+    };
+    constexpr float plateau = 0.22f;
+    const float a = weigh (attackSeconds), d = weigh (decaySeconds), r = weigh (releaseSeconds);
+    const float total = juce::jmax (1.0e-6f, a + d + r);
+    const float scale = 1.0f - plateau;
+
+    EnvelopeStages s;
+    s.attack  = a / total * scale;
+    s.decay   = d / total * scale;
+    s.release = r / total * scale;
+    s.sustain = plateau;
+    return s;
+}
+
+//==============================================================================
+/**
     A modulation depth written in the destination's own units: a signed share
     of the parameter's range, with the unit appended when it has one.
 */

@@ -96,6 +96,11 @@ void ParamPanel::resized()
     for (auto& c : controls) comps.push_back (&c->component());
     if (comps.empty()) return;
     auto area = contentBounds();
+    if (display != nullptr && displayFraction > 0.0f && area.getHeight() > 90)
+    {
+        display->setBounds (area.removeFromTop (juce::roundToInt ((float) area.getHeight() * displayFraction)));
+        area.removeFromTop (juce::jmax (4, area.getHeight() / 24));
+    }
     const int n = (int) comps.size();
     int cols = columns > 0 ? columns : juce::jlimit (1, n, juce::jmax (1, area.getWidth() / 96));
     // avoid a lonely last row when possible
@@ -773,6 +778,25 @@ ModPage::ModPage (AntiMatrProcessor& p) : processor (p)
     tabPanels[4].back()->setHeroKnobs (true);
     panel (tabPanels[5], "Amp", "Amplitude envelope", { Param::ampAttack, Param::ampDecay, Param::ampSustain, Param::ampRelease, Param::ampCurve, Param::ampVelocity }, 6);
     panel (tabPanels[5], "Master", "Voices, tuning & output", { Param::masterGain, Param::masterVoices, Param::masterQuality, Param::masterMode, Param::masterGlide, Param::masterBendRange, Param::masterTranspose, Param::masterFine }, 4);
+    // Every envelope panel shows the shape its knobs are making.
+    {
+        const Param sets[][5] =
+        {
+            { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve },
+            { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve },
+            { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve },
+            { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve },
+        };
+        for (int i = 0; i < 4; ++i)
+        {
+            juce::ignoreUnused (sets);
+            envelopeViews.push_back (std::make_unique<AMEnvelopeView> (Theme::amber));
+            tabPanels[2][(size_t) i]->setDisplay (envelopeViews.back().get(), 0.46f);
+        }
+        envelopeViews.push_back (std::make_unique<AMEnvelopeView> (Theme::amber));
+        tabPanels[5][0]->setDisplay (envelopeViews.back().get(), 0.44f);
+    }
+
     showTab (0);
     startTimerHz (20);
 }
@@ -782,11 +806,33 @@ void ModPage::timerCallback()
     if (! isShowing()) return;
     const auto& mod = latestModulation (processor);
     for (auto& pp : tabPanels[(size_t) current]) pp->refreshModRings (mod);
+
+    if (current != 2 && current != 5) return;
+    static const Param sets[][5] =
+    {
+        { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve },
+        { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve },
+        { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve },
+        { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve },
+        { Param::ampAttack,  Param::ampDecay,  Param::ampSustain,  Param::ampRelease,  Param::ampCurve },
+    };
+    const auto values = processor.currentParamValues();
+    const auto& vs = processor.diagnostics().visualSnapshots.latest();
+    const float activity = juce::jlimit (0.0f, 1.0f, (float) vs.activeVoices * 0.5f);
+    const int from = current == 2 ? 0 : 4, to = current == 2 ? 4 : 5;
+    for (int i = from; i < to && i < (int) envelopeViews.size(); ++i)
+    {
+        envelopeViews[(size_t) i]->setEnvelope (paramValue (values, sets[i][0]), paramValue (values, sets[i][1]),
+                                                paramValue (values, sets[i][2]), paramValue (values, sets[i][3]),
+                                                paramValue (values, sets[i][4]));
+        envelopeViews[(size_t) i]->setActivity (activity);
+    }
 }
 
 void ModPage::showTab (int index)
 {
     current = juce::jlimit (0, (int) tabPanels.size() - 1, index);
+    tabs.setSelected (current, juce::dontSendNotification);   // the bar and the content can never disagree
     for (int t = 0; t < (int) tabPanels.size(); ++t)
         for (auto& pp : tabPanels[(size_t) t]) pp->setVisible (t == current);
     if (routings != nullptr) routings->setVisible (current == 0);
@@ -807,10 +853,14 @@ void ModPage::resized()
     }
     auto& list = tabPanels[(size_t) current];
     if (list.empty()) return;
-    if (list.size() == 1) { list[0]->setBounds (area.withSizeKeepingCentre (juce::jmin (area.getWidth(), 900), juce::jmin (area.getHeight(), 360))); return; }
+    if (list.size() == 1) { list[0]->setBounds (area.withSizeKeepingCentre (juce::jmin (area.getWidth(), 1280), juce::jmin (area.getHeight(), 560))); return; }
     if (list.size() == 2)
     {
-        auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.5f) - gap / 2);
+        // Weighted by content: a panel with one row of knobs does not need the same
+        // height as one with two, plus a curve display.
+        const float w0 = (float) list[0]->rowsNeeded() + (list[0]->hasDisplay() ? 1.5f : 0.0f) + 0.7f;
+        const float w1 = (float) list[1]->rowsNeeded() + (list[1]->hasDisplay() ? 1.5f : 0.0f) + 0.7f;
+        auto top = area.removeFromTop (juce::roundToInt ((float) (area.getHeight() - gap) * w0 / juce::jmax (0.1f, w0 + w1)));
         area.removeFromTop (gap);
         list[0]->setBounds (top);
         list[1]->setBounds (area);

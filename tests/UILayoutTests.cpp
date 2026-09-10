@@ -248,6 +248,67 @@ public:
 };
 
 //==============================================================================
+class EnvelopeStageTests : public juce::UnitTest
+{
+public:
+    EnvelopeStageTests() : juce::UnitTest ("Envelope display stages", "uilayout") {}
+
+    void runTest() override
+    {
+        beginTest ("The four stages always fill the width exactly once");
+        for (float a : { 0.001f, 0.05f, 1.0f, 10.0f })
+        {
+            for (float d : { 0.001f, 0.2f, 4.0f })
+            {
+                for (float r : { 0.0f, 0.3f, 20.0f })
+                {
+                    const auto s = envelopeStages (a, d, r);
+                    const float total = s.attack + s.decay + s.sustain + s.release;
+                    expectWithinAbsoluteError (total, 1.0f, 1.0e-4f);
+                    expect (s.attack >= 0.0f && s.decay >= 0.0f && s.release >= 0.0f, "negative stage");
+                    expect (s.sustain > 0.05f, "the sustain plateau vanished");
+                }
+            }
+        }
+
+        beginTest ("A longer stage is always drawn wider");
+        {
+            const auto shortAttack = envelopeStages (0.01f, 0.5f, 0.5f);
+            const auto longAttack  = envelopeStages (2.00f, 0.5f, 0.5f);
+            expect (longAttack.attack > shortAttack.attack, "a longer attack was not wider");
+            expect (longAttack.decay < shortAttack.decay, "the other stages did not give way");
+
+            const auto shortRelease = envelopeStages (0.1f, 0.1f, 0.05f);
+            const auto longRelease  = envelopeStages (0.1f, 0.1f, 8.0f);
+            expect (longRelease.release > shortRelease.release, "a longer release was not wider");
+        }
+
+        beginTest ("A very short stage still gets a visible slice");
+        {
+            // A 5 ms attack next to a 10 s release must not be compressed out of existence.
+            const auto s = envelopeStages (0.005f, 1.0f, 10.0f);
+            expect (s.attack > 0.02f, "attack only " + juce::String (s.attack, 4) + " of the width");
+        }
+
+        beginTest ("Equal times share the timed width equally");
+        {
+            const auto s = envelopeStages (0.5f, 0.5f, 0.5f);
+            expectWithinAbsoluteError (s.attack, s.decay, 1.0e-5f);
+            expectWithinAbsoluteError (s.decay, s.release, 1.0e-5f);
+        }
+
+        beginTest ("Nonsense times do not produce nonsense stages");
+        for (float bad : { -1.0f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity() })
+        {
+            const auto s = envelopeStages (bad, bad, bad);
+            const float total = s.attack + s.decay + s.sustain + s.release;
+            expect (std::isfinite (total), "non-finite stages");
+            expectWithinAbsoluteError (total, 1.0f, 1.0e-3f);
+        }
+    }
+};
+
+//==============================================================================
 class ModDepthTextTests : public juce::UnitTest
 {
 public:
@@ -280,4 +341,5 @@ static ModScopeGridTests modScopeGridTests;
 static KnobGeometryTests knobGeometryTests;
 static SourceSelectorLayoutTests sourceSelectorLayoutTests;
 static WaveRulerTests waveRulerTests;
+static EnvelopeStageTests envelopeStageTests;
 static ModDepthTextTests modDepthTextTests;

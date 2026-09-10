@@ -32,6 +32,14 @@ public:
     /** The DSP LAB view (dev builds only, else nullptr). */
     juce::Component* labViewComponent() noexcept { return labView.get(); }
 
+    /** The component behind a navigation index (0 = MAIN), for tools that drive the editor. */
+    juce::Component* pageComponent (int index) noexcept
+    {
+        if (index <= 0) return &mainView;
+        const int deep = index - 1;
+        return deep < (int) pages.size() ? pages[(size_t) deep].get() : labView.get();
+    }
+
     static constexpr int kMinWidth  = 1100;
     static constexpr int kMinHeight = 690;
 

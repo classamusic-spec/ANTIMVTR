@@ -20,6 +20,40 @@ AMKnob::AMKnob (const juce::String& labelText, juce::Colour accentColour)
     addAndMakeVisible (ring);
 }
 
+AMKnob::~AMKnob()
+{
+    if (modTarget.has_value()) ModAssign::get().removeChangeListener (this);
+}
+
+void AMKnob::setModTarget (std::optional<Param> p)
+{
+    if (p.has_value() == modTarget.has_value() && (! p.has_value() || *p == *modTarget)) return;
+    if (modTarget.has_value() && ! p.has_value()) ModAssign::get().removeChangeListener (this);
+    if (! modTarget.has_value() && p.has_value()) ModAssign::get().addChangeListener (this);
+    modTarget = p;
+    repaint();
+}
+
+bool AMKnob::isAssignTarget() const noexcept
+{
+    return modTarget.has_value() && ModAssign::get().isArmed();
+}
+
+bool AMKnob::refreshModRing (const ModulationSnapshot& snapshot)
+{
+    if (! modTarget.has_value()) return false;
+    const int index = paramIndex (*modTarget);
+    if (index < 0 || index >= kNumParams || snapshot.targeted[index] == 0) { ring.clear(); return false; }
+
+    const auto& d = ParameterRegistry::get (*modTarget);
+    const float base = d.clampValue ((float) getValue());
+    ring.setBase (d.toNormalised (base));
+    ring.setCurrent (d.toNormalised (d.clampValue (base + snapshot.modulation[index])));
+    ring.setRange (d.toNormalised (d.clampValue (base + snapshot.modMin[index])),
+                   d.toNormalised (d.clampValue (base + snapshot.modMax[index])));
+    return true;
+}
+
 void AMKnob::setLabel (const juce::String& text) { label = text; labelUpper = text.toUpperCase(); repaint(); }
 void AMKnob::setAccent (juce::Colour c) { accent = c; repaint(); }
 
@@ -125,6 +159,16 @@ void AMKnob::paint (juce::Graphics& g)
         g.drawLine (juce::Line<float> (inner, outer), w);
     }
 
+    // Assign mode: every modulatable knob offers itself as a destination.
+    if (isAssignTarget())
+    {
+        const auto halo = kb.expanded (trackW * 1.6f);
+        g.setColour (Theme::amber.withAlpha (0.16f + 0.14f * lit));
+        g.fillEllipse (halo);
+        g.setColour (Theme::amber.withAlpha (0.55f + 0.45f * lit));
+        g.drawEllipse (halo, juce::jmax (1.0f, trackW * 0.7f));
+    }
+
     // Label / value (cross-fades with hover)
     if (labelUpper.isNotEmpty())
     {
@@ -150,6 +194,9 @@ void AMKnob::mouseDown (const juce::MouseEvent& e)
         showContextMenu();
         return;
     }
+    // Assign mode swallows the click instead of starting a drag.
+    if (modTarget.has_value() && ModAssign::get().assignTo (*modTarget))
+        return;
     setMouseDragSensitivity (e.mods.isShiftDown() ? 1400 : 240);
     dragging = true;
     juce::Slider::mouseDown (e);

@@ -10,6 +10,11 @@ juce::StringArray paramChoices (Param p)
     return items;
 }
 
+const ModulationSnapshot& latestModulation (AntiMatrProcessor& p)
+{
+    return p.diagnostics().modulationSnapshots.latest();
+}
+
 juce::String paramTooltip (Param p)
 {
     const auto& d = ParameterRegistry::get (p);
@@ -26,6 +31,7 @@ BoundKnob::BoundKnob (juce::AudioProcessorValueTreeState& apvts, Param p, juce::
     attachment = std::make_unique<SliderAttachment> (apvts, d.id, knob);
     knob.setDoubleClickReturnValue (true, d.defaultValue);
     if (d.min < 0.0f && d.max > 0.0f) knob.setBipolar (true);
+    if (d.modulatable) knob.setModTarget (p);
     knob.setTooltip (paramTooltip (p));
 }
 
@@ -60,6 +66,7 @@ BoundControl::BoundControl (juce::AudioProcessorValueTreeState& apvts, Param p, 
         sliderAttachment = std::make_unique<SliderAttachment> (apvts, d.id, *k);
         k->setDoubleClickReturnValue (true, d.defaultValue);
         if (d.min < 0.0f && d.max > 0.0f) k->setBipolar (true);
+        if (d.modulatable) k->setModTarget (p);
         comp = std::move (k);
     }
     if (auto* tc = dynamic_cast<juce::SettableTooltipClient*> (comp.get())) tc->setTooltip (paramTooltip (p));

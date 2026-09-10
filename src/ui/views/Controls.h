@@ -15,6 +15,8 @@ using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
 struct BoundKnob
 {
     BoundKnob (juce::AudioProcessorValueTreeState& apvts, Param p, juce::Colour accent, const juce::String& labelOverride = {});
+    /** Draws the live modulation ring; false when nothing is routed to this parameter. */
+    bool refreshModRing (const ModulationSnapshot& s) { return knob.refreshModRing (s); }
     Param param;
     AMKnob knob;
     std::unique_ptr<SliderAttachment> attachment;
@@ -36,6 +38,9 @@ public:
     Param param() const noexcept { return parameter; }
     bool isKnob() const noexcept { return kind == ParamKind::Float || kind == ParamKind::Int; }
 
+    /** Draws the live modulation ring; false when nothing is routed to this parameter. */
+    bool refreshModRing (const ModulationSnapshot& s) { auto* k = knob(); return k != nullptr && k->refreshModRing (s); }
+
 private:
     Param parameter;
     ParamKind kind;
@@ -53,5 +58,8 @@ juce::StringArray paramChoices (Param p);
 
 /** Human-readable tooltip for a parameter. */
 juce::String paramTooltip (Param p);
+
+/** The most recent modulation snapshot published by the engine (message thread). */
+const ModulationSnapshot& latestModulation (AntiMatrProcessor& p);
 
 } // namespace am::ui

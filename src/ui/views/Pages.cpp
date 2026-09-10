@@ -56,6 +56,11 @@ void ParamPanel::setAccentFor (Param p, juce::Colour colour)
     }
 }
 
+void ParamPanel::refreshModRings (const ModulationSnapshot& snapshot)
+{
+    for (auto& c : controls) c->refreshModRing (snapshot);
+}
+
 void ParamPanel::resized()
 {
     if (headerToggle != nullptr)
@@ -252,6 +257,10 @@ void SourcePage::timerCallback()
     const Param mp = modeParams[juce::jlimit (0, 4, currentSource)];
     const auto choices = paramChoices (mp);
     wave.setCaption (choices[juce::jlimit (0, choices.size() - 1, paramChoice (processor.currentParamValues(), mp))]);
+
+    const auto& mod = latestModulation (processor);
+    if (levelControl != nullptr) levelControl->refreshModRing (mod);
+    for (auto& section : sections) section.panel->refreshModRings (mod);
 }
 
 //==============================================================================
@@ -290,10 +299,15 @@ void ShapePage::timerCallback()
 {
     if (! isShowing()) return;
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
+    const auto& mod = latestModulation (processor);
+    for (auto* panel : { &matter, &materials, &topology, &response }) panel->refreshModRings (mod);
+
+    // Without a routing the ring still shows where the engine's effective value sits.
     const Param mp[] = { Param::shapeDensity, Param::shapeForm, Param::shapeMass, Param::shapeTension, Param::shapeDecay, Param::shapeSurface };
     const float values[] = { vs.density, vs.form, vs.mass, vs.tension, vs.decay, vs.surface };
     for (int i = 0; i < 6; ++i)
-        if (auto* c = matter.control (mp[i])) if (auto* k = c->knob()) k->modRing().setCurrent (values[i]);
+        if (! mod.isModulated (mp[i]))
+            if (auto* c = matter.control (mp[i])) if (auto* k = c->knob()) k->modRing().setCurrent (values[i]);
     matter.setActivity (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
 }
 
@@ -380,6 +394,9 @@ void EvolvePage::timerCallback()
     operators.setActivity (juce::jlimit (0.0f, 1.0f, total * 0.5f));
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
     field.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 4.0f));
+
+    const auto& mod = latestModulation (processor);
+    for (auto* panel : { &operators, &bend, &magnet, &motion }) panel->refreshModRings (mod);
 }
 
 //==============================================================================
@@ -451,6 +468,9 @@ void FracturePage::timerCallback()
     spectrum.setActivity (vs.fractureOn ? vs.fractureActivity : 0.0f);
     spectrum.setMagnitudes (bands.data(), AMSpectrumView::kBands);
     engine.setActivity (vs.fractureOn ? vs.fractureActivity * 0.8f : 0.0f);
+
+    const auto& mod = latestModulation (processor);
+    for (auto* panel : { &engine, &sequencer, &spectral }) panel->refreshModRings (mod);
 
     // Playhead: advanced from the engine's sample clock at the sequencer rate
     // (the division at 120 BPM when synced) until the engine publishes a step index.
@@ -549,6 +569,10 @@ void SpacePage::timerCallback()
     picker.activity = juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f);
     picker.repaint();
     spacePanel.setActivity (vs.spaceActivity * 0.5f);
+
+    const auto& mod = latestModulation (processor);
+    for (auto& m : macros) m->refreshModRing (mod);
+    for (auto& module : modules) module->refreshModRings (mod);
 }
 
 //==============================================================================
@@ -564,24 +588,35 @@ ModPage::ModPage (AntiMatrProcessor& p) : processor (p)
         addChildComponent (*pp);
         list.push_back (std::move (pp));
     };
-    tabPanels.resize (5);
-    panel (tabPanels[0], "LFO 1", "Low frequency oscillator", { Param::lfo1Rate, Param::lfo1Shape, Param::lfo1Sync, Param::lfo1Division, Param::lfo1Phase, Param::lfo1Symmetry, Param::lfo1Depth, Param::lfo1Retrig, Param::lfo1Fade }, 5);
-    panel (tabPanels[0], "LFO 2", "", { Param::lfo2Rate, Param::lfo2Shape, Param::lfo2Sync, Param::lfo2Division, Param::lfo2Phase, Param::lfo2Symmetry, Param::lfo2Depth, Param::lfo2Retrig, Param::lfo2Fade }, 5);
-    panel (tabPanels[0], "LFO 3", "", { Param::lfo3Rate, Param::lfo3Shape, Param::lfo3Sync, Param::lfo3Division, Param::lfo3Phase, Param::lfo3Symmetry, Param::lfo3Depth, Param::lfo3Retrig, Param::lfo3Fade }, 5);
-    panel (tabPanels[0], "LFO 4", "", { Param::lfo4Rate, Param::lfo4Shape, Param::lfo4Sync, Param::lfo4Division, Param::lfo4Phase, Param::lfo4Symmetry, Param::lfo4Depth, Param::lfo4Retrig, Param::lfo4Fade }, 5);
-    panel (tabPanels[1], "Envelope 1", "Modulation envelope", { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve, Param::env1Loop }, 6, "Env 1");
-    panel (tabPanels[1], "Envelope 2", "", { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve, Param::env2Loop }, 6, "Env 2");
-    panel (tabPanels[1], "Envelope 3", "", { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve, Param::env3Loop }, 6, "Env 3");
-    panel (tabPanels[1], "Envelope 4", "", { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve, Param::env4Loop }, 6, "Env 4");
-    panel (tabPanels[2], "Chaos 1", "Unstable generator", { Param::chaos1Type, Param::chaos1Rate, Param::chaos1Depth, Param::chaos1Stability, Param::chaos1Symmetry, Param::chaos1Seed }, 6);
-    panel (tabPanels[2], "Chaos 2", "", { Param::chaos2Type, Param::chaos2Rate, Param::chaos2Depth, Param::chaos2Stability, Param::chaos2Symmetry, Param::chaos2Seed }, 6);
-    panel (tabPanels[2], "Chaos 3", "", { Param::chaos3Type, Param::chaos3Rate, Param::chaos3Depth, Param::chaos3Stability, Param::chaos3Symmetry, Param::chaos3Seed }, 6);
-    panel (tabPanels[2], "Chaos 4", "", { Param::chaos4Type, Param::chaos4Rate, Param::chaos4Depth, Param::chaos4Stability, Param::chaos4Symmetry, Param::chaos4Seed }, 6);
-    panel (tabPanels[3], "Macros", "Eight performance controls", { Param::macro1, Param::macro2, Param::macro3, Param::macro4, Param::macro5, Param::macro6, Param::macro7, Param::macro8 }, 4);
-    tabPanels[3].back()->setHeroKnobs (true);
-    panel (tabPanels[4], "Amp", "Amplitude envelope", { Param::ampAttack, Param::ampDecay, Param::ampSustain, Param::ampRelease, Param::ampCurve, Param::ampVelocity }, 6);
-    panel (tabPanels[4], "Master", "Voices, tuning & output", { Param::masterGain, Param::masterVoices, Param::masterQuality, Param::masterMode, Param::masterGlide, Param::masterBendRange, Param::masterTranspose, Param::masterFine }, 4);
+    routings = std::make_unique<ModRoutingPanel> (processor);
+    addChildComponent (*routings);
+
+    tabPanels.resize (6);
+    panel (tabPanels[1], "LFO 1", "Low frequency oscillator", { Param::lfo1Rate, Param::lfo1Shape, Param::lfo1Sync, Param::lfo1Division, Param::lfo1Phase, Param::lfo1Symmetry, Param::lfo1Depth, Param::lfo1Retrig, Param::lfo1Fade }, 5);
+    panel (tabPanels[1], "LFO 2", "", { Param::lfo2Rate, Param::lfo2Shape, Param::lfo2Sync, Param::lfo2Division, Param::lfo2Phase, Param::lfo2Symmetry, Param::lfo2Depth, Param::lfo2Retrig, Param::lfo2Fade }, 5);
+    panel (tabPanels[1], "LFO 3", "", { Param::lfo3Rate, Param::lfo3Shape, Param::lfo3Sync, Param::lfo3Division, Param::lfo3Phase, Param::lfo3Symmetry, Param::lfo3Depth, Param::lfo3Retrig, Param::lfo3Fade }, 5);
+    panel (tabPanels[1], "LFO 4", "", { Param::lfo4Rate, Param::lfo4Shape, Param::lfo4Sync, Param::lfo4Division, Param::lfo4Phase, Param::lfo4Symmetry, Param::lfo4Depth, Param::lfo4Retrig, Param::lfo4Fade }, 5);
+    panel (tabPanels[2], "Envelope 1", "Modulation envelope", { Param::env1Attack, Param::env1Decay, Param::env1Sustain, Param::env1Release, Param::env1Curve, Param::env1Loop }, 6, "Env 1");
+    panel (tabPanels[2], "Envelope 2", "", { Param::env2Attack, Param::env2Decay, Param::env2Sustain, Param::env2Release, Param::env2Curve, Param::env2Loop }, 6, "Env 2");
+    panel (tabPanels[2], "Envelope 3", "", { Param::env3Attack, Param::env3Decay, Param::env3Sustain, Param::env3Release, Param::env3Curve, Param::env3Loop }, 6, "Env 3");
+    panel (tabPanels[2], "Envelope 4", "", { Param::env4Attack, Param::env4Decay, Param::env4Sustain, Param::env4Release, Param::env4Curve, Param::env4Loop }, 6, "Env 4");
+    panel (tabPanels[3], "Chaos 1", "Unstable generator", { Param::chaos1Type, Param::chaos1Rate, Param::chaos1Depth, Param::chaos1Stability, Param::chaos1Symmetry, Param::chaos1Seed }, 6);
+    panel (tabPanels[3], "Chaos 2", "", { Param::chaos2Type, Param::chaos2Rate, Param::chaos2Depth, Param::chaos2Stability, Param::chaos2Symmetry, Param::chaos2Seed }, 6);
+    panel (tabPanels[3], "Chaos 3", "", { Param::chaos3Type, Param::chaos3Rate, Param::chaos3Depth, Param::chaos3Stability, Param::chaos3Symmetry, Param::chaos3Seed }, 6);
+    panel (tabPanels[3], "Chaos 4", "", { Param::chaos4Type, Param::chaos4Rate, Param::chaos4Depth, Param::chaos4Stability, Param::chaos4Symmetry, Param::chaos4Seed }, 6);
+    panel (tabPanels[4], "Macros", "Eight performance controls", { Param::macro1, Param::macro2, Param::macro3, Param::macro4, Param::macro5, Param::macro6, Param::macro7, Param::macro8 }, 4);
+    tabPanels[4].back()->setHeroKnobs (true);
+    panel (tabPanels[5], "Amp", "Amplitude envelope", { Param::ampAttack, Param::ampDecay, Param::ampSustain, Param::ampRelease, Param::ampCurve, Param::ampVelocity }, 6);
+    panel (tabPanels[5], "Master", "Voices, tuning & output", { Param::masterGain, Param::masterVoices, Param::masterQuality, Param::masterMode, Param::masterGlide, Param::masterBendRange, Param::masterTranspose, Param::masterFine }, 4);
     showTab (0);
+    startTimerHz (20);
+}
+
+void ModPage::timerCallback()
+{
+    if (! isShowing()) return;
+    const auto& mod = latestModulation (processor);
+    for (auto& pp : tabPanels[(size_t) current]) pp->refreshModRings (mod);
 }
 
 void ModPage::showTab (int index)
@@ -589,6 +624,7 @@ void ModPage::showTab (int index)
     current = juce::jlimit (0, (int) tabPanels.size() - 1, index);
     for (int t = 0; t < (int) tabPanels.size(); ++t)
         for (auto& pp : tabPanels[(size_t) t]) pp->setVisible (t == current);
+    if (routings != nullptr) routings->setVisible (current == 0);
     resized();
 }
 
@@ -598,6 +634,12 @@ void ModPage::resized()
     auto area = getLocalBounds().reduced (pad, pad / 2);
     tabs.setBounds (area.removeFromTop (juce::jlimit (28, 38, area.getHeight() / 16)).withSizeKeepingCentre (juce::jmin (area.getWidth(), 640), juce::jlimit (28, 38, area.getHeight() / 16)));
     area.removeFromTop (gap);
+    if (current == 0)
+    {
+        if (routings != nullptr)
+            routings->setBounds (area.withSizeKeepingCentre (juce::jmin (area.getWidth(), 1180), area.getHeight()));
+        return;
+    }
     auto& list = tabPanels[(size_t) current];
     if (list.empty()) return;
     if (list.size() == 1) { list[0]->setBounds (area.withSizeKeepingCentre (juce::jmin (area.getWidth(), 900), juce::jmin (area.getHeight(), 360))); return; }

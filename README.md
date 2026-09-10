@@ -47,35 +47,45 @@ scripts         build / test / render / snapshot / validate helpers
 
 ## Status
 
-Integrated so far (all on the branch, tests green, pluginval strictness 5 passes):
+Integrated on the branch, tests green (2.68 M assertions), pluginval strictness 5
+passes on the VST3:
 
-* **Sources** — WAVE (8 procedural banks × 16 frames, mip-mapped, BLEP/BLAMP
-  sync, unison), DUST (stochastic particle exciter), IMPACT (strike models).
-  SAMPLE and GESTURE are in progress.
+* **Sources** — WAVE (8 procedural banks x 16 frames, mip-mapped, BLEP/BLAMP
+  sync, unison), DUST (stochastic particle exciter), IMPACT (strike models),
+  SAMPLE (built-in procedural samples, one-shot / loop / reverse / granular,
+  ANALYZE to Matter) and GESTURE (bow, scrape, rub, breath, friction,
+  electrical).
 * **Matter** — SIMD coupled-form modal node graph (up to 64 nodes per voice),
   9 materials with morphing, 7 FORM anchors, topologies, contractive coupling,
   velocity-scaled strike with coherence normalisation and per-note scatter.
   Dry material renders (Crystal / Metal / Membrane / Organic / String /
-  Liquid) are audibly distinct — see `renders/gate*/` after
-  `scripts/render.sh`.
-* **Voice lifetime** — the amplitude envelope shapes the excitation; Matter
-  rings out per its Decay after note-off (30 s cap), stolen voices fade in 3 ms.
+  Liquid) are audibly distinct.
+* **Evolve** — the eight operators (BEND, MELT, TEAR, MAGNET, GRAVITY,
+  SCATTER, FREEZE, CRUSH) as partial-domain transformations of the node graph,
+  re-applied every block so they never accumulate.
+* **Modulation** — 4 LFOs, 4 envelopes, 4 chaos generators, 8 macros and the
+  MIDI sources, routed through a mod matrix that reaches every modulatable
+  parameter, per voice. 64 voices with 64 routings run at 71 % of realtime.
 * **Fracture** — post-mix STFT fragment engine (1024/2048, 75 % overlap,
   mel-spaced fragments, step sequencer, dynamic latency reporting).
 * **Space** — curated FX racks per Space type (distortion, chorus, delay,
   granular delay, frequency shifter, spectral diffusion, pitch shifter,
   reverb, EQ, compressor, limiter) recalled on type change, macros live.
+* **Voice lifetime** — the amplitude envelope shapes the excitation; Matter
+  rings out per its Decay after note-off (30 s cap), stolen voices fade in 3 ms.
 * **Master** — gain, DC guard, NaN scrub, instant-attack limiter, safety
   counters; polyphony headroom (N^-0.3).
+* **State** — JSON patches with migration, A/B slots with continuous safe
+  morphing, DNA-aware mutation, code-generated factory presets.
 * **UI** — full design system (pure code, no bitmaps), Main page with the
   procedural ANTI-MATTER object, Source / Shape / Evolve / Fracture / Space /
-  Mod pages, preset browser, resizable from 1100×690 to 1600×1000+.
+  Mod pages, mod rings on every knob, preset browser, resizable from 1100x690
+  to 1600x1000+.
 * **DSP LAB** — hidden developer workspace (page 8 in dev builds): signal
-  inspector, Matter node/topology views, performance, safety, presets, events.
-* **Tools** — `AntiMatrRender` (MIDI → WAV + JSON metrics), `AntiMatrSnapshot`
-  (editor → PNG), `scripts/analyze.py` (spectrograms).
-
-In progress: Evolve operators, modulation engine and mod matrix, Sample +
-Gesture sources, factory content and mutation/DNA refinement.
+  inspector, Matter node/topology views, per-fragment Fracture activity,
+  performance, safety, preset validator, events.
+* **Tools** — `AntiMatrRender` (MIDI to WAV + JSON metrics, with `--mod`,
+  `--sample`, `--dry`), `AntiMatrSnapshot` (editor to PNG), `scripts/analyze.py`
+  (spectrograms).
 
 See `docs/SPEC.md` §94 for the phase roadmap.

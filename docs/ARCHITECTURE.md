@@ -55,7 +55,16 @@ POST-SPACE / MASTER.
   never touches APVTS.
 * `ControlGraph` turns base values into *effective* values: smoothing per the
   descriptor's `SmoothingKind`, plus modulation contributions added per block
-  and never written back to the host.
+  and never written back to the host. It also publishes a `generation()` that
+  advances only when an effective value actually changed.
+* `ModulationEngine` compiles the `ModRoutingTable` (handed over from the
+  message thread) into a `ModPlan`, advances the global sources once per block,
+  and feeds mono contributions into the `ControlGraph`. Each voice's
+  `VoiceModulator` advances its own retriggered sources and produces the
+  voice's `ParamValues`. It refreshes the untouched parameters only when the
+  control-graph generation or the plan changed, and otherwise rewrites just the
+  modulated slots — copying the whole array per voice per block is what makes
+  per-voice modulation expensive, not the routing arithmetic.
 * Non-parameter state (fragment tables, sequencer steps, mod routings, sample
   paths, DNA, seeds, A/B) lives in `PatchState` JSON sections and travels to
   the engine through explicit message-thread → audio-thread handoffs (added

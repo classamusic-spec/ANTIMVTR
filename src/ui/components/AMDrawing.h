@@ -408,6 +408,39 @@ inline void chassisBackground (juce::Graphics& g, juce::Rectangle<float> bounds)
     edge (bounds.withLeft (bounds.getRight() - fx), bounds.getRight(), bounds.getY(), bounds.getRight() - fx, bounds.getY());
 }
 
+/**
+    The glass over a recessed screen: a broad diagonal sweep from the top-left,
+    a tight highlight along the inside of the top edge and a faint thickening
+    toward the lower right. A highlight layer — it must never haze the display.
+*/
+inline void screenGlass (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float strength = 1.0f)
+{
+    if (strength <= 0.01f || bounds.getWidth() < 4.0f || bounds.getHeight() < 4.0f) return;
+    juce::Graphics::ScopedSaveState save (g);
+    juce::Path clip;
+    clip.addRoundedRectangle (bounds, corner);
+    g.reduceClipRegion (clip);
+
+    juce::ColourGradient sweep (juce::Colours::white.withAlpha (0.055f * strength), bounds.getX(), bounds.getY(),
+                                juce::Colours::transparentWhite,
+                                bounds.getX() + bounds.getWidth() * 0.62f, bounds.getY() + bounds.getHeight() * 0.85f, false);
+    sweep.addColour (0.35, juce::Colours::white.withAlpha (0.018f * strength));
+    g.setGradientFill (sweep);
+    g.fillRect (bounds);
+
+    juce::ColourGradient thickness (juce::Colours::transparentBlack, bounds.getX(), bounds.getY(),
+                                    juce::Colours::black.withAlpha (0.25f * strength), bounds.getRight(), bounds.getBottom(), false);
+    thickness.addColour (0.55, juce::Colours::transparentBlack);
+    g.setGradientFill (thickness);
+    g.fillRect (bounds);
+
+    const float lip = juce::jmin (bounds.getHeight() * 0.16f, 8.0f);
+    juce::ColourGradient crest (juce::Colours::white.withAlpha (0.09f * strength), bounds.getX(), bounds.getY() + 1.0f,
+                                juce::Colours::transparentWhite, bounds.getX(), bounds.getY() + lip, false);
+    g.setGradientFill (crest);
+    g.fillRect (bounds.withHeight (lip).reduced (corner * 0.5f, 0.0f));
+}
+
 /** Panel surface (the standard slab). */
 inline void panelSurface (juce::Graphics& g, juce::Rectangle<float> bounds, float corner)
 {

@@ -86,6 +86,8 @@ void AMEnvelopeView::paint (juce::Graphics& g)
     draw::glowPath (g, path, accent, juce::jmax (1.2f, plot.getHeight() * 0.022f), plot.getHeight() * 0.09f, 0.45f + 0.4f * activity);
 
     // Stage boundaries and their letters, so the shape is readable as A D S R.
+    draw::screenGlass (g, b, corner, 0.9f);
+
     const juce::String names[] = { "A", "D", "S", "R" };
     const float spans[] = { stages.attack, stages.decay, stages.sustain, stages.release };
     auto labels = juce::Rectangle<float> (plot.getX(), plot.getBottom(), w, labelH);

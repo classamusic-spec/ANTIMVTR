@@ -37,13 +37,12 @@ void SpaceArt::stars (juce::Graphics& g, juce::Rectangle<float> a, int seed, int
 
 void SpaceArt::draw (juce::Graphics& g, juce::Rectangle<float> area, int type, float phase, float activity, float corner)
 {
+    // The art sits behind glass, in a recess cut into the panel.
+    draw::insetWell (g, area, corner, juce::Colour (0xff06060b));
+
     juce::Graphics::ScopedSaveState save (g);
     juce::Path clip; clip.addRoundedRectangle (area, corner);
     g.reduceClipRegion (clip);
-
-    juce::ColourGradient bg (juce::Colour (0xff07070d), area.getX(), area.getY(), juce::Colour (0xff030305), area.getX(), area.getBottom(), false);
-    g.setGradientFill (bg);
-    g.fillRect (area);
 
     switch (juce::jlimit (0, kNumTypes - 1, type))
     {
@@ -57,13 +56,12 @@ void SpaceArt::draw (juce::Graphics& g, juce::Rectangle<float> area, int type, f
         default: dust (g, area, phase, activity); break;
     }
 
-    // vignette + glass edge
+    // vignette, then the glass over the screen
     juce::ColourGradient vignette (juce::Colours::transparentBlack, area.getCentreX(), area.getCentreY(),
                                    juce::Colours::black.withAlpha (0.5f), area.getX(), area.getY(), true);
     g.setGradientFill (vignette);
     g.fillRect (area);
-    g.setColour (juce::Colours::white.withAlpha (0.06f));
-    g.drawRoundedRectangle (area.reduced (0.5f), corner, 1.0f);
+    draw::screenGlass (g, area, corner, 1.0f);
 }
 
 void SpaceArt::nebula (juce::Graphics& g, juce::Rectangle<float> a, float phase, float activity)

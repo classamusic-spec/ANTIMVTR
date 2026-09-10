@@ -155,6 +155,7 @@ public:
     {
         tableGeometry();
         frequencyAccuracy();
+        pitchOffsets();
         aliasing();
         unisonBehaviour();
         determinism();
@@ -260,6 +261,53 @@ private:
                         juce::String (Wavetables::bankName (b)) + " off-grid energy "
                             + juce::String (g.junkPowerDb(), 1) + " dB");
             }
+        }
+    }
+
+    //==========================================================================
+    void pitchOffsets()
+    {
+        beginTest ("Octave / semitone / fine tuning are exact");
+
+        const double sr = 48000.0;
+        constexpr int order = 16, fftSize = 1 << order;
+        const double binHz = sr / (double) fftSize;
+
+        struct Case { int octave, semi; float fine; };
+        const Case cases[] = { { 0, 0, 0.0f }, { 1, 7, 50.0f }, { -2, -5, -33.0f },
+                               { 2, 12, 0.0f }, { -1, 0, 12.5f } };
+
+        for (const auto& c : cases)
+        {
+            WaveHarness h;
+            selectBank (h, 0, 0.0f);                 // sine frame: one clean partial
+            h.set (Param::waveOctave, (float) c.octave);
+            h.set (Param::waveSemi, (float) c.semi);
+            h.set (Param::waveFine, c.fine);
+
+            const double base = 440.0;
+            h.render (sr, base, fftSize + 8192, 512);
+            expect (allFinite (h.left));
+
+            const double expected = base * std::exp2 (((double) c.octave * 12.0 + (double) c.semi
+                                                       + (double) c.fine * 0.01) / 12.0);
+            const auto mag = spectrum (h.left, 4096, order, Win::blackmanHarris);
+            int peakBin = 1;
+            for (int k = 2; k < (int) mag.size(); ++k) if (mag[(size_t) k] > mag[(size_t) peakBin]) peakBin = k;
+
+            // The power-weighted centroid of the window's main lobe is an
+            // unbiased sub-bin frequency estimate.
+            double num = 0.0, den = 0.0;
+            for (int k = juce::jmax (1, peakBin - 5); k <= juce::jmin ((int) mag.size() - 1, peakBin + 5); ++k)
+            {
+                const double m = (double) mag[(size_t) k] * mag[(size_t) k];
+                num += m * (double) k; den += m;
+            }
+            const double measured = (den > 0.0 ? num / den : (double) peakBin) * binHz;
+            const double cents = 1200.0 * std::log2 (measured / expected);
+            expect (std::abs (cents) < 1.0,
+                    "oct " + juce::String (c.octave) + " semi " + juce::String (c.semi)
+                        + " fine " + juce::String (c.fine) + ": " + juce::String (cents, 3) + " cents off");
         }
     }
 

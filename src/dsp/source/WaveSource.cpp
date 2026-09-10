@@ -108,13 +108,10 @@ void WaveSource::render (float* l, float* r, int n, const RenderContext& ctx, co
     juce::FloatVectorOperations::clear (r, n);
     if (n <= 0) return;
 
-    if (sineTab == nullptr || blepTab == nullptr)
-    {
-        Wavetables::prewarm();
-        sineTab  = Wavetables::sineTable();
-        blepTab  = Wavetables::blepTable();
-        blampTab = Wavetables::blampTable();
-    }
+    // prepare() always builds the shared cache first. If it somehow has not
+    // run, stay silent rather than allocating on the audio thread.
+    if (sineTab == nullptr || blepTab == nullptr || blampTab == nullptr)
+        return;
 
     //--------------------------------------------------------------- parameters
     const int   bankIndex = juce::jlimit (0, kWaveNumBanks - 1, ctx.choice (Param::waveTable));

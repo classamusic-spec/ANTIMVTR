@@ -196,8 +196,8 @@ inline void contactShadow (juce::Graphics& g, juce::Rectangle<float> bounds, flo
     {
         const float t = (float) i / (float) steps;
         const float spread = radius * t;
-        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.20f * strength * (1.0f - t) * (1.0f - t) + 0.02f * strength)));
-        g.fillRoundedRectangle (bounds.expanded (spread * 0.7f).translated (spread * 0.26f, spread * 0.52f), corner + spread * 0.7f);
+        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.22f * strength * (1.0f - t) * (1.0f - t) + 0.02f * strength)));
+        g.fillRoundedRectangle (bounds.expanded (spread * 0.62f).translated (spread * 0.18f, spread * 0.34f), corner + spread * 0.62f);
     }
 }
 
@@ -243,6 +243,7 @@ struct SlabStyle
     juce::Colour top    = Theme::panelTop;
     juce::Colour bottom = Theme::panel;
     float shadow = 1.0f;   ///< drop shadow beneath the slab
+    float shadowRadius = 0.0f;  ///< how far the shadow reaches (0 chooses from the size)
     float bevel  = 1.0f;   ///< light top-left / dark bottom-right edge
     float brush  = 1.0f;   ///< brushed-metal streaks
     float sheen  = 1.0f;   ///< broad diagonal light from the top-left
@@ -257,7 +258,10 @@ inline void raisedSlab (juce::Graphics& g, juce::Rectangle<float> bounds, float 
     if (bounds.getWidth() < 2.0f || bounds.getHeight() < 2.0f) return;
 
     if (style.shadow > 0.01f)
-        contactShadow (g, bounds, corner, juce::jlimit (3.0f, 16.0f, juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.055f), style.shadow);
+        contactShadow (g, bounds, corner,
+                       style.shadowRadius > 0.0f ? style.shadowRadius
+                                                 : juce::jlimit (3.0f, 10.0f, juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.03f),
+                       style.shadow);
 
     // A hard dark line just outside the slab separates it from the chassis.
     g.setColour (Theme::panelEdge.withAlpha (0.85f));

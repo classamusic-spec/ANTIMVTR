@@ -161,7 +161,8 @@ void AMPresetCard::paint (juce::Graphics& g)
     area.removeFromTop (juce::jmin (10.0f, area.getHeight() * 0.1f));
     const float nameH = juce::jlimit (9.0f, 14.0f, area.getHeight() * 0.22f);
     auto nameArea = area.removeFromTop (nameH * 1.5f);
-    draw::trackedText (g, name, nameArea, juce::Justification::centredLeft, Theme::displayFont (nameH, 0.14f),
+    draw::trackedText (g, name.toUpperCase(), nameArea, juce::Justification::centredLeft,
+                       draw::fitFont (Theme::labelFontStrong (nameH), name.toUpperCase(), nameArea.getWidth()),
                        Theme::textPrimary.interpolatedWith (accent, 0.3f * on));
     if (on > 0.5f)
     {

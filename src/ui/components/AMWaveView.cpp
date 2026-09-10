@@ -232,7 +232,8 @@ void AMSpectrumView::paint (juce::Graphics& g)
             {
                 const float x = inner.getX() + inner.getWidth() * ((float) i + 0.5f) / (float) kBands;
                 const float y = inner.getBottom() - juce::jlimit (0.0f, 1.0f, slow[(size_t) i] * 0.97f) * inner.getHeight() * 0.9f;
-                draw::glowDot (g, { x, y }, 1.3f, Theme::textPrimary, 0.5f * activity);
+                const float u = (float) i / (float) (kBands - 1);
+                draw::glowDot (g, { x, y }, 1.3f, Theme::blue.interpolatedWith (accent, u), 0.5f * activity);
             }
         }
     }

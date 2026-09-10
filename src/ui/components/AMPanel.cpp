@@ -10,9 +10,15 @@ AMPanel::AMPanel (const juce::String& t, const juce::String& s, juce::Colour a)
     setInterceptsMouseClicks (false, true);
 }
 
+juce::Rectangle<float> AMPanel::slabBounds() const
+{
+    const auto b = getLocalBounds().toFloat();
+    return b.reduced (layout::panelShadowMargin (b.getWidth(), b.getHeight()));
+}
+
 int AMPanel::padding() const
 {
-    return juce::roundToInt (layout::panelPadding ((float) getWidth()));
+    return juce::roundToInt (layout::panelPadding (slabBounds().getWidth()));
 }
 
 juce::Rectangle<int> AMPanel::headerBounds() const
@@ -22,7 +28,7 @@ juce::Rectangle<int> AMPanel::headerBounds() const
     const int h = compact ? juce::jlimit (26, 40, juce::roundToInt ((float) getHeight() * 0.12f))
                           : juce::jlimit (38, 64, juce::roundToInt ((float) getHeight() * 0.155f));
     const int pad = padding();
-    return getLocalBounds().withHeight (h).reduced (pad, 0).withTrimmedTop (pad / 2);
+    return slabBounds().toNearestInt().withHeight (h).reduced (pad, 0).withTrimmedTop (pad / 2);
 }
 
 juce::Rectangle<int> AMPanel::headerRightBounds() const
@@ -36,12 +42,12 @@ juce::Rectangle<int> AMPanel::contentBounds() const
 {
     const auto h = headerBounds();
     const int pad = padding();
-    return getLocalBounds().withTrimmedTop (h.getBottom() + pad / 2).reduced (pad, 0).withTrimmedBottom (pad);
+    return slabBounds().toNearestInt().withTop (h.getBottom() + pad / 2).reduced (pad, 0).withTrimmedBottom (pad);
 }
 
 void AMPanel::paint (juce::Graphics& g)
 {
-    const auto b = getLocalBounds().toFloat().reduced (1.5f);
+    const auto b = slabBounds();
     // SPEC section 1: a corner radius of about 1.2 % of the editor width, taken from
     // the panel's own bounds so a short panel is not over-rounded.
     const float corner = juce::jlimit (5.0f, Theme::kPanelRadius, juce::jmin (b.getWidth() * 0.045f, b.getHeight() * 0.16f));
@@ -49,7 +55,11 @@ void AMPanel::paint (juce::Graphics& g)
     if (activity > 0.02f)
         draw::glowRoundedRect (g, b, corner, accent, 16.0f, activity * 0.35f);
 
-    draw::raisedSlab (g, b, corner);
+    draw::SlabStyle style;
+    // The shadow reaches exactly as far as the margin the slab was inset by, so the
+    // whole of it lands inside the component.
+    style.shadowRadius = layout::panelShadowMargin ((float) getWidth(), (float) getHeight()) * 1.1f;
+    draw::raisedSlab (g, b, corner, style);
 
     // Four screws bolt the slab to the chassis, one inset from each corner.
     const auto hardware = layout::panelHardware (b.getWidth(), b.getHeight());

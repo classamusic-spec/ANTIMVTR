@@ -193,7 +193,7 @@ void TopBar::paint (juce::Graphics& g)
     const float h = juce::jlimit (10.0f, 14.0f, pill.getHeight() * 0.36f);
     const auto nameArea = pill.reduced (pill.getHeight() + 4.0f, 0.0f);
     const auto name = processor.currentPresetName().toUpperCase();
-    const auto font = draw::fitFont (Theme::displayFont (h, 0.2f), name, nameArea.getWidth());
+    const auto font = draw::fitFont (Theme::titleFont (h), name, nameArea.getWidth());
     draw::trackedText (g, name, nameArea.translated (0.0f, 1.0f), juce::Justification::centred, font, juce::Colours::black.withAlpha (0.7f));
     draw::trackedText (g, name, nameArea, juce::Justification::centred, font, Theme::textPrimary);
 

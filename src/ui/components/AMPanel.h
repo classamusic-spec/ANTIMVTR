@@ -20,6 +20,9 @@ public:
     juce::Rectangle<int> contentBounds() const;
     juce::Rectangle<int> headerBounds() const;
 
+    /** The slab itself: the component's bounds less the margin its shadow falls into. */
+    juce::Rectangle<float> slabBounds() const;
+
     /** Space on the right of the header for controls (toggles etc.). */
     juce::Rectangle<int> headerRightBounds() const;
 

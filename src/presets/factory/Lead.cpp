@@ -117,6 +117,310 @@ manager.addFactory ({ "Solar Filament", "LEAD", { "lead", "bright", "burning", "
     sharedMacros (r, Param::spaceSize, Param::waveScan);
     r.commit (s);
 }});
+
+manager.addFactory ({ "Steel Reed", "LEAD", { "metallic", "bowed", "bright", "mid", "melodic" }, [] (PatchState& s)
+{
+    gesture (s, 0 /* BOW */, 0.72f, 0.56f, 0.34f, 0.26f, 0.12f, 0.38f);
+    amp (s, 0.008f, 0.28f, 0.92f, 0.28f, 0.35f);
+    shape (s, 0.42f, 0.50f, 0.28f, 0.76f, 0.56f, 0.42f);
+    material (s, MaterialType::Metal, MaterialType::Crystal, 0.30f);
+    topology (s, 1 /* RING */, 0.46f, 0.42f, 311);
+    matter (s, 0.88f, 0.60f, 0.46f, 0.32f);
+    evolve (s, 0.10f, 0.0f, 0.0f, 0.32f, 0.44f, 0.06f, 0.0f, 0.30f, 0.18f);
+    set (s, Param::evolveMagnetTarget, 4 /* CHROMATIC */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.05f);
+    space (s, SpacePresets::Chamber, 0.20f, 0.30f, 0.62f, 0.22f);
+
+    lfo (s, 1, 5.80f, 0 /* SINE */, 1.0f, true, 0.50f);
+    lfo (s, 2, 0.31f, 1 /* TRIANGLE */, 1.0f, false);
+    env (s, 1, 0.003f, 0.14f, 0.0f, 0.12f, 0.25f);
+    macros (s, 0.25f, 0.45f, 0.25f, 0.45f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::shapePitch,       0.005f)
+     .bi  (ModSource::LFO2,      Param::gesturePosition,  0.110f)
+     .uni (ModSource::Env1,      Param::gesturePressure,  0.280f)
+     .uni (ModSource::Velocity,  Param::gesturePressure,  0.240f)
+     .uni (ModSource::Velocity,  Param::shapeStrike,      0.300f)
+     .bi  (ModSource::KeyTrack,  Param::shapeSurface,    -0.140f)
+     .uni (ModSource::ModWheel,  Param::lfo1Depth,        0.600f)
+     .uni (ModSource::Macro1,    Param::gestureMotion,    0.400f)
+     .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.320f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,      0.220f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::gestureRoughness, 0.380f);
+    sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Brass Lantern", "LEAD", { "warm", "hollow", "blown", "mid", "melodic" }, [] (PatchState& s)
+{
+    gesture (s, 3 /* BREATH */, 0.56f, 0.40f, 0.20f, 0.46f, 0.26f, 0.52f);
+    amp (s, 0.09f, 0.60f, 0.86f, 0.45f, 0.55f);
+    shape (s, 0.50f, 0.30f, 0.52f, 0.54f, 0.62f, 0.24f);
+    material (s, MaterialType::Metal, MaterialType::Wood, 0.44f);
+    topology (s, 0 /* CHAIN */, 0.40f, 0.58f, 907);
+    matter (s, 0.92f, 0.60f, 0.30f, 0.42f);
+    evolve (s, 0.0f, 0.14f, 0.0f, 0.24f, 0.56f, 0.08f, 0.0f, 0.22f, 0.30f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.11f);
+    space (s, SpacePresets::Nebula, 0.30f, 0.48f, 0.44f, 0.30f);
+
+    lfo (s, 1, 4.60f, 0 /* SINE */, 1.0f, true, 0.80f);
+    lfo (s, 2, 0.24f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    env (s, 1, 0.30f, 1.10f, 0.55f, 0.60f, 0.6f);
+    macros (s, 0.30f, 0.40f, 0.35f, 0.40f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::shapePitch,       0.006f)
+     .bi  (ModSource::LFO2,      Param::gestureBandwidth, 0.130f)
+     .uni (ModSource::Env1,      Param::gestureSpeed,     0.220f)
+     .uni (ModSource::Velocity,  Param::gesturePressure,  0.280f)
+     .uni (ModSource::Pressure,  Param::gestureSpeed,     0.320f)
+     .bi  (ModSource::KeyTrack,  Param::gestureBandwidth, 0.120f)
+     .uni (ModSource::ModWheel,  Param::lfo1Depth,        0.550f)
+     .uni (ModSource::Macro1,    Param::gestureMotion,    0.380f)
+     .uni (ModSource::Macro2,    Param::shapeTension,     0.240f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,      0.260f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.350f);
+    sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Sung Wire", "LEAD", { "vocal", "formant", "organic", "mid", "melodic" }, [] (PatchState& s)
+{
+    wave (s, 2 /* FORMANT */, 0.34f, 0.48f, 0.22f, 2, 0.07f, 0.28f);
+    set (s, Param::wavePM, 0.14f);
+    set (s, Param::waveModRatio, 1.0f);
+    amp (s, 0.04f, 0.42f, 0.88f, 0.38f, 0.5f);
+    shape (s, 0.54f, 0.40f, 0.44f, 0.58f, 0.60f, 0.30f);
+    material (s, MaterialType::Organic, MaterialType::Membrane, 0.38f);
+    topology (s, 2 /* CLUSTERS */, 0.50f, 0.52f, 523);
+    matter (s, 0.78f, 0.58f, 0.34f, 0.46f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.40f, 0.50f, 0.10f, 0.0f, 0.26f, 0.26f);
+    set (s, Param::evolveMagnetTarget, 6 /* CUSTOM (harmonic) */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.13f);
+    space (s, SpacePresets::Dream, 0.30f, 0.44f, 0.50f, 0.30f);
+
+    lfo (s, 1, 5.10f, 0 /* SINE */, 1.0f, true, 0.55f);
+    lfo (s, 2, 0.18f, 1 /* TRIANGLE */, 1.0f, false, 0.60f);
+    env (s, 2, 0.45f, 1.60f, 0.70f, 0.70f, 0.6f);
+    macros (s, 0.30f, 0.45f, 0.30f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::shapePitch,     0.005f)
+     .bi  (ModSource::LFO2,      Param::wavePosition,   0.120f)
+     .uni (ModSource::Env2,      Param::waveMorph,      0.320f)
+     .uni (ModSource::Env2,      Param::shapeForm,      0.160f)
+     .uni (ModSource::Velocity,  Param::waveScan,       0.220f)
+     .bi  (ModSource::NoteRandom, Param::wavePosition,  0.060f)
+     .uni (ModSource::ModWheel,  Param::wavePosition,   0.400f)
+     .uni (ModSource::Macro1,    Param::lfo2Depth,      0.500f)
+     .uni (ModSource::Macro2,    Param::waveScan,       0.300f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,    0.200f)
+     .uni (ModSource::Macro3,    Param::spaceMix,       0.300f)
+     .uni (ModSource::Macro4,    Param::waveMorph,      0.400f);
+    sharedMacros (r, Param::ampRelease, Param::wavePM);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Feedback Halo", "LEAD", { "metallic", "resonant", "evolving", "high", "melodic" }, [] (PatchState& s)
+{
+    wave (s, 1 /* HARMONIC */, 0.28f, 0.35f, 0.10f, 1, 0.04f, 0.20f);
+    amp (s, 0.012f, 0.35f, 0.82f, 0.55f, 0.45f);
+    shape (s, 0.46f, 0.56f, 0.34f, 0.72f, 0.64f, 0.26f);
+    material (s, MaterialType::Metal, MaterialType::Crystal, 0.52f);
+    topology (s, 5 /* STAR */, 0.42f, 0.56f, 641);
+    matter (s, 0.72f, 0.52f, 0.36f, 0.50f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.46f, 0.42f, 0.10f, 0.0f, 0.34f, 0.22f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.07f);
+    fracture (s, 0 /* SPECTRAL */, 0.44f, 0.38f, 0.55f, 0.35f, 0.58f, 0.22f, 0.66f, 0.62f, 0.30f,
+              2 /* 32 */, 6 /* 1/4T */, 4, 0.0f, 0 /* FORWARD */, 1.0f, 0.10f, 613,
+              FractureShape { 32, 0.04f, 0.30f, 0.30f, 0.62f, 0.50f, 0.78f, 0.20f, 0.80f,
+                              1.0f, 0.85f, 0.55f, 1.0f, kOctaveTerrace, "XXLX", nullptr });
+    space (s, SpacePresets::Shimmer, 0.32f, 0.52f, 0.60f, 0.34f);
+
+    lfo (s, 1, 6.40f, 0 /* SINE */, 1.0f, true, 0.60f);
+    env (s, 2, 0.90f, 2.40f, 0.75f, 0.90f, 0.6f);
+    env (s, 1, 0.006f, 0.20f, 0.0f, 0.20f, 0.3f);
+    macros (s, 0.35f, 0.50f, 0.35f, 0.45f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::shapePitch,        0.004f)
+     .uni (ModSource::Env2,      Param::fractureFeedback,  0.220f)
+     .uni (ModSource::Env2,      Param::fractureMix,       0.240f)
+     .uni (ModSource::Env1,      Param::shapeExcite,       0.220f)
+     .uni (ModSource::Velocity,  Param::fractureAmount,    0.260f)
+     .bi  (ModSource::KeyTrack,  Param::fractureTone,     -0.180f)
+     .uni (ModSource::ModWheel,  Param::lfo1Depth,         0.550f)
+     .uni (ModSource::Macro1,    Param::fractureEvolve,    0.400f)
+     .uni (ModSource::Macro2,    Param::fractureTone,      0.300f)
+     .uni (ModSource::Macro2,    Param::wavePosition,      0.250f)
+     .uni (ModSource::Macro3,    Param::spaceMix,          0.300f)
+     .uni (ModSource::Macro4,    Param::fractureFeedback,  0.250f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Bowed Girder", "LEAD", { "dark", "low", "bowed", "metallic", "melodic" }, [] (PatchState& s)
+{
+    gesture (s, 0 /* BOW */, 0.80f, 0.30f, 0.44f, 0.62f, 0.16f, 0.30f);
+    amp (s, 0.05f, 0.55f, 0.82f, 0.50f, 0.5f);
+    shape (s, 0.38f, 0.22f, 0.72f, 0.44f, 0.70f, 0.34f);
+    material (s, MaterialType::String, MaterialType::Metal, 0.54f);
+    topology (s, 3 /* LATTICE */, 0.64f, 0.38f, 419);
+    matter (s, 0.86f, 0.54f, 0.30f, 0.38f);
+    set (s, Param::shapePitch, -12.0f);
+    evolve (s, 0.14f, 0.0f, 0.0f, 0.0f, 0.62f, 0.08f, 0.0f, 0.20f, 0.22f);
+    set (s, Param::evolveBendPivot, 0.30f);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.14f);
+    space (s, SpacePresets::Void, 0.26f, 0.58f, 0.34f, 0.30f);
+
+    lfo (s, 1, 4.90f, 0 /* SINE */, 1.0f, true, 0.70f);
+    lfo (s, 2, 0.14f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    env (s, 1, 0.12f, 0.80f, 0.40f, 0.50f, 0.5f);
+    macros (s, 0.25f, 0.40f, 0.30f, 0.45f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::shapePitch,       0.004f)
+     .bi  (ModSource::LFO2,      Param::gesturePressure,  0.100f)
+     .uni (ModSource::Env1,      Param::evolveBend,       0.200f)
+     .uni (ModSource::Velocity,  Param::gesturePressure,  0.300f)
+     .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.220f)
+     .uni (ModSource::Pressure,  Param::gestureSpeed,     0.280f)
+     .uni (ModSource::ModWheel,  Param::lfo1Depth,        0.500f)
+     .uni (ModSource::Macro1,    Param::gestureMotion,    0.350f)
+     .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.340f)
+     .uni (ModSource::Macro2,    Param::shapeSurface,     0.180f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::shapeCoupling,    0.300f);
+    sharedMacros (r, Param::ampRelease, Param::gestureRoughness);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Rolling Iron", "LEAD", { "metallic", "struck", "rhythmic", "mid", "melodic" }, [] (PatchState& s)
+{
+    impact (s, 4 /* METAL STRIKE */, 0.70f, 0.60f, 0.22f, 0.70f, 0.45f, 0.14f, 0.46f);
+    amp (s, 0.003f, 0.50f, 0.76f, 0.40f, 0.35f);
+    shape (s, 0.44f, 0.60f, 0.36f, 0.68f, 0.58f, 0.38f);
+    material (s, MaterialType::Metal, MaterialType::Crystal, 0.34f);
+    topology (s, 1 /* RING */, 0.54f, 0.48f, 733);
+    matter (s, 0.90f, 0.62f, 0.50f, 0.44f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.34f, 0.46f, 0.12f, 0.0f, 0.36f, 0.20f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    set (s, Param::masterMode, 1 /* MONO */);
+    fracture (s, 1 /* RHYTHMIC */, 0.34f, 0.30f, 0.40f, 0.55f, 0.24f, 0.28f, 0.44f, 0.55f, 0.20f,
+              1 /* 16 */, 4 /* 1/16 */, 8, 0.12f, 0 /* FORWARD */, 0.90f, 0.20f, 251,
+              FractureShape { 16, 0.03f, 0.26f, 0.10f, 0.34f, 0.35f, 0.58f, 0.20f, 0.75f,
+                              1.0f, 0.90f, 0.55f, 0.90f, kFifthTerrace, "XoXoXXoX", nullptr });
+    space (s, SpacePresets::Machine, 0.24f, 0.36f, 0.56f, 0.28f);
+
+    lfo (s, 1, 0.42f, 1 /* TRIANGLE */, 1.0f, true);
+    env (s, 1, 0.004f, 0.30f, 0.20f, 0.25f, 0.3f);
+    macros (s, 0.35f, 0.45f, 0.25f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,       Param::impactRate,       0.120f)
+     .uni (ModSource::Env1,       Param::impactBrightness, 0.240f)
+     .uni (ModSource::Velocity,   Param::impactHardness,   0.300f)
+     .uni (ModSource::Velocity,   Param::impactVelocity,   0.200f)
+     .bi  (ModSource::NoteRandom, Param::impactRandom,     0.150f)
+     .bi  (ModSource::KeyTrack,   Param::impactLength,    -0.200f)
+     .uni (ModSource::ModWheel,   Param::impactRate,       0.400f)
+     .uni (ModSource::Macro1,     Param::fractureSequence, 0.380f)
+     .uni (ModSource::Macro2,     Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro2,     Param::shapeExcite,      0.200f)
+     .uni (ModSource::Macro3,     Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,     Param::fractureAmount,   0.340f);
+    sharedMacros (r, Param::fractureDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Ceramic Whistle", "LEAD", { "glassy", "blown", "air", "high", "melodic" }, [] (PatchState& s)
+{
+    wave (s, 0 /* BASIC */, 0.16f, 0.22f, 0.06f, 1, 0.03f, 0.18f, 0, 0.72f);
+    dust (s, 4 /* FILTERED */, 0.62f, 0.72f, 0.28f, 0.26f, 0.45f, 0.55f, 137, 0.34f);
+    set (s, Param::sourceMode, 1 /* LAYER */);
+    set (s, Param::impactLevel, 0.0f);
+    set (s, Param::sampleLevel, 0.0f);
+    set (s, Param::gestureLevel, 0.0f);
+    amp (s, 0.06f, 0.40f, 0.90f, 0.35f, 0.5f);
+    shape (s, 0.34f, 0.66f, 0.22f, 0.70f, 0.54f, 0.20f);
+    material (s, MaterialType::Crystal, MaterialType::Void, 0.34f);
+    topology (s, 5 /* STAR */, 0.30f, 0.62f, 877);
+    matter (s, 0.80f, 0.56f, 0.28f, 0.52f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.30f, 0.38f, 0.14f, 0.0f, 0.28f, 0.24f);
+    set (s, Param::evolveMagnetTarget, 1 /* FIFTH */);
+    set (s, Param::masterMode, 2 /* LEGATO */);
+    set (s, Param::masterGlide, 0.08f);
+    space (s, SpacePresets::Dust, 0.30f, 0.46f, 0.66f, 0.30f);
+
+    lfo (s, 1, 5.40f, 0 /* SINE */, 1.0f, true, 0.65f);
+    lfo (s, 2, 0.36f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    env (s, 1, 0.05f, 0.45f, 0.30f, 0.30f, 0.5f);
+    macros (s, 0.30f, 0.50f, 0.35f, 0.40f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::shapePitch,    0.005f)
+     .bi  (ModSource::LFO2,      Param::dustColor,     0.140f)
+     .uni (ModSource::Env1,      Param::dustDensity,   0.260f)
+     .uni (ModSource::Velocity,  Param::dustLevel,     0.180f)
+     .uni (ModSource::Velocity,  Param::shapeExcite,   0.220f)
+     .bi  (ModSource::KeyTrack,  Param::dustColor,    -0.200f)
+     .uni (ModSource::ModWheel,  Param::lfo1Depth,     0.560f)
+     .uni (ModSource::Macro1,    Param::lfo2Depth,     0.450f)
+     .uni (ModSource::Macro2,    Param::wavePosition,  0.280f)
+     .uni (ModSource::Macro2,    Param::dustColor,     0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,      0.320f)
+     .uni (ModSource::Macro4,    Param::dustLevel,     0.300f);
+    sharedMacros (r, Param::ampRelease, Param::dustJitter);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Salt Tongue", "LEAD", { "dirty", "harsh", "synthetic", "mid", "melodic" }, [] (PatchState& s)
+{
+    wave (s, 3 /* FOLDED */, 0.58f, 0.52f, 0.16f, 3, 0.18f, 0.42f);
+    set (s, Param::waveRing, 0.22f);
+    set (s, Param::waveModRatio, 1.5f);
+    amp (s, 0.006f, 0.32f, 0.88f, 0.30f, 0.4f);
+    shape (s, 0.58f, 0.72f, 0.40f, 0.62f, 0.50f, 0.52f);
+    material (s, MaterialType::Metal, MaterialType::Void, 0.36f);
+    topology (s, 4 /* RANDOM */, 0.52f, 0.44f, 1097);
+    matter (s, 0.66f, 0.62f, 0.42f, 0.40f);
+    evolve (s, 0.0f, 0.0f, 0.18f, 0.38f, 0.48f, 0.16f, 0.44f, 0.50f, 0.28f);
+    set (s, Param::evolveMagnetTarget, 4 /* CHROMATIC */);
+    set (s, Param::masterMode, 1 /* MONO */);
+    set (s, Param::masterGlide, 0.04f);
+    space (s, SpacePresets::Machine, 0.26f, 0.34f, 0.48f, 0.32f);
+
+    lfo (s, 1, 5.90f, 0 /* SINE */, 1.0f, true, 0.45f);
+    chaos (s, 1, 2 /* LOGISTIC */, 3.20f, 0.40f, 0.70f, 0.5f, 331);
+    env (s, 1, 0.005f, 0.25f, 0.15f, 0.20f, 0.3f);
+    macros (s, 0.35f, 0.45f, 0.25f, 0.55f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::shapePitch,   0.005f)
+     .bi  (ModSource::Chaos1,    Param::evolveCrush,  0.120f)
+     .uni (ModSource::Env1,      Param::waveRing,     0.240f)
+     .uni (ModSource::Velocity,  Param::evolveCrush,  0.200f)
+     .uni (ModSource::Velocity,  Param::waveMorph,    0.240f)
+     .bi  (ModSource::KeyTrack,  Param::waveDetune,  -0.150f)
+     .uni (ModSource::ModWheel,  Param::evolveTear,   0.350f)
+     .uni (ModSource::Macro1,    Param::evolveMotion, 0.400f)
+     .uni (ModSource::Macro2,    Param::wavePosition, 0.320f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,  0.220f)
+     .uni (ModSource::Macro3,    Param::spaceMix,     0.300f)
+     .uni (ModSource::Macro4,    Param::evolveCrush,  0.380f);
+    sharedMacros (r, Param::ampDecay, Param::evolveTear);
+    r.commit (s);
+}});
 }
 
 } // namespace am::FactoryContent

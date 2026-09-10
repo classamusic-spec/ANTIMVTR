@@ -140,11 +140,11 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
 
         ctx.numSamples = chunkSize;
 
-        // --- Polyphony headroom: one voice sits at -3.7 dB, sixteen at -9.7 dB, sixty-four at -12.7 dB,
+        // --- Polyphony headroom: one voice sits at -3.7 dB, four at -8 dB, sixteen at -12 dB, sixty-four at -16 dB,
         //     eased over ~40 ms so notes joining a chord never step the level.
         {
             const int active = std::max (1, voices.activeVoiceCount());
-            const float target = 0.65f / std::pow ((float) active, 0.25f);
+            const float target = 0.65f / std::pow ((float) active, 0.3f);
             const float alpha = juce::jlimit (0.0f, 1.0f, (float) chunkSize / (float) (0.04 * sr));
             polyphonyGain += (target - polyphonyGain) * alpha;
             juce::FloatVectorOperations::multiply (mL, polyphonyGain, chunkSize);

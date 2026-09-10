@@ -30,7 +30,7 @@ private:
     OnePoleSmoother gainSmoother;
     DCBlocker dcL, dcR;
     float envelope = 0.0f;         // limiter detector
-    float attackCoeff = 0.0f, releaseCoeff = 0.0f;
+    float releaseCoeff = 0.0f;
     float currentReduction = 1.0f;
     float dcEstimate = 0.0f;       // slow (~300 ms) running mean for DC detection
     static constexpr float kCeiling = 0.98f;

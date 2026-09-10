@@ -11,7 +11,6 @@ void MasterSection::prepare (double sampleRate, int)
     gainSmoother.reset (1.0f);
     dcL.prepare (sampleRate, 5.0f);
     dcR.prepare (sampleRate, 5.0f);
-    attackCoeff  = (float) std::exp (-1.0 / (0.0005 * sr));
     releaseCoeff = (float) std::exp (-1.0 / (0.080 * sr));
     reset();
 }
@@ -54,9 +53,10 @@ void MasterSection::process (float* l, float* r, int n, const RenderContext& ctx
         }
 
         // 4. Fast peak limiter.
+        // Instant attack: a strike transient is shorter than any detector time constant, so the gain is
+        // computed from the current sample (no lookahead latency) and released over 80 ms.
         const float peak = std::max (std::abs (a), std::abs (b));
-        const float coeff = peak > envelope ? attackCoeff : releaseCoeff;
-        envelope = peak + coeff * (envelope - peak);
+        envelope = peak > envelope ? peak : peak + releaseCoeff * (envelope - peak);
         float reduction = 1.0f;
         if (envelope > kCeiling)
         {
@@ -67,7 +67,8 @@ void MasterSection::process (float* l, float* r, int n, const RenderContext& ctx
         b *= reduction;
         currentReduction = reduction;
 
-        // 5. Final safety clip in case the detector lags on a single-sample spike.
+        // 5. Final safety clip (cannot trigger after the instant-attack limiter, kept as a hard guarantee).
+        if (a > 1.0f || a < -1.0f || b > 1.0f || b < -1.0f) ++limited;
         l[i] = juce::jlimit (-1.0f, 1.0f, a);
         r[i] = juce::jlimit (-1.0f, 1.0f, b);
         dcAccum += l[i] + r[i];

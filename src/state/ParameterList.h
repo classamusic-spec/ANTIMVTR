@@ -98,7 +98,7 @@
     /* WAVE */ \
     AM_UNI    (X, waveLevel,    "source.wave.level",    "Wave Level", Wave, 1.0f, Source) \
     AM_CHOICE (X, waveTable,    "source.wave.table",    "Wavetable",  Wave, "BASIC|HARMONIC|FORMANT|FOLDED|METALLIC|SPECTRAL|FRACTURED|NOISE", 0.0f, Source) \
-    AM_UNI    (X, wavePosition, "source.wave.position", "Position",   Wave, 0.0f, Source) \
+    AM_UNI    (X, wavePosition, "source.wave.position", "Position",   Wave, 0.2f, Source) \
     AM_UNI    (X, waveScan,     "source.wave.scan",     "Scan",       Wave, 0.0f, Source) \
     AM_UNI    (X, waveMorph,    "source.wave.morph",    "Morph",      Wave, 0.0f, Source) \
     AM_FLOAT  (X, wavePhase,    "source.wave.phase",    "Phase",      Wave, 0.0f, 1.0f, 0.0f, 1.0f, "", false, Source, None) \
@@ -174,8 +174,8 @@
     AM_FLOAT  (X, shapePitch,     "shape.pitch",     "Matter Pitch", Shape, -24.0f, 24.0f, 0.0f, 1.0f, "st", true, Pitch, Medium) \
     AM_UNI    (X, shapeStereo,    "shape.stereo",    "Stereo",  Shape, 0.6f, Shape) \
     AM_INT    (X, shapeSeed,      "shape.seed",      "Topology Seed", Shape, 0.0f, 9999.0f, 7.0f, "", false, Chaos) \
-    AM_UNI    (X, shapeExcite,    "shape.excite",    "Excite",  Shape, 0.5f, Shape) \
-    AM_UNI    (X, shapeStrike,    "shape.strike",    "Strike",  Shape, 0.35f, Shape) \
+    AM_UNI    (X, shapeExcite,    "shape.excite",    "Excite",  Shape, 0.6f, Shape) \
+    AM_UNI    (X, shapeStrike,    "shape.strike",    "Strike",  Shape, 0.5f, Shape) \
     /* ---------------------------------------------------------------- EVOLVE */ \
     AM_UNI    (X, evolveBend,     "evolve.bend",     "Bend",    Evolve, 0.0f, Evolve) \
     AM_UNI    (X, evolveMelt,     "evolve.melt",     "Melt",    Evolve, 0.0f, Evolve) \

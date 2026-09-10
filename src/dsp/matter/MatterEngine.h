@@ -106,7 +106,8 @@ private:
     std::array<float, kStrikeBuf> strikeBuf {};
     std::array<float, kMaxBlockSize> excBuf {}, strikeSig {};
     std::array<float, kOutDelay> outRing {};
-    int strikePos = 0, strikeLen = 0, outRingPos = 0;
+    int strikePos = 0, strikeLen = 0, strikePulseLen = 0, outRingPos = 0;
+    float strikeNorm = 1.0f;          ///< coherence normalisation of the strike (see process())
 
     int nodeCount = 0;
     uint32_t seed = 0;

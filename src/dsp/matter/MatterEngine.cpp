@@ -10,6 +10,8 @@ namespace
 {
     constexpr float kSourceGain  = 0.24f;   ///< sustained excitation into the nodes (before damping normalisation)
     constexpr float kStrikeGain  = 1.5f;   ///< strike pulse into the nodes
+    constexpr float kStrikeRef   = 0.90f;  ///< coherent strike sum of the default object (density .5, excite .6, note 60); the strike is normalised towards it
+    constexpr float kStrikeNormPower = 0.75f; ///< 0 = purely physical strike level, 1 = strike peak independent of the node structure
     constexpr float kOutputGain  = 1.0f;
     constexpr float kCouplingMax = 0.0025f; ///< per-sample coupling strength at shape.coupling = 1 (before the stability bound)
     constexpr float kGlideMs     = 12.0f;
@@ -114,7 +116,8 @@ void MatterEngine::buildStrike (const NoteState& note, const ShapeValues& v) noe
 
     const auto& P = morpher.profile();
     const float vel = clamp01 (note.velocity);
-    const float amp = v.strike * (0.25f + 0.75f * std::pow (vel, 1.3f));
+    // STRIKE law: square root so the control feels even (0.35 → 0.36, 1.0 → 0.6); velocity shapes the rest.
+    const float amp = 0.6f * std::sqrt (v.strike) * (0.25f + 0.75f * std::pow (vel, 1.3f));
 
     // Contact time: material, MASS (heavier = softer) and velocity (harder hits are shorter).
     const float contactMs = P.strikeContact * std::exp2 ((v.mass - 0.4f) * 1.5f) * (1.3f - 0.6f * vel);
@@ -124,14 +127,21 @@ void MatterEngine::buildStrike (const NoteState& note, const ShapeValues& v) noe
     const int   noiseLen   = std::min (kStrikeBuf, 4 * L);
 
     Rng rng (hashSeed (note.noteId ^ v.seed, 0x57121CEu));
-    for (int t = 0; t < L; ++t)
-        strikeBuf[(size_t) t] = pulseScale * 0.5f * (1.0f - std::cos ((float) kTwoPi * (float) t / (float) L));
-    for (int t = 0; t < noiseLen; ++t)
+
+    // Strike scatter: every note lands up to 1.5 ms "late" by a seeded amount. Inaudible as timing, but the
+    // strikes of a chord no longer sum sample-aligned (sixteen coherent pulses would otherwise stack +24 dB).
+    const int offset = std::min (kStrikeBuf / 4, (int) (rng.nextFloat() * 0.0015f * (float) sr));
+    const int pulseEnd = std::min (kStrikeBuf, offset + L);
+    const int noiseEnd = std::min (kStrikeBuf, offset + noiseLen);
+    for (int t = offset; t < pulseEnd; ++t)
+        strikeBuf[(size_t) t] = pulseScale * 0.5f * (1.0f - std::cos ((float) kTwoPi * (float) (t - offset) / (float) L));
+    for (int t = offset; t < noiseEnd; ++t)
     {
-        const float env = std::exp (-(float) t / (2.0f * (float) L));
+        const float env = std::exp (-(float) (t - offset) / (2.0f * (float) L));
         strikeBuf[(size_t) t] += noisePeak * env * rng.nextBipolar();
     }
-    strikeLen = std::max (L, noiseLen);
+    strikeLen = std::max (pulseEnd, noiseEnd);
+    strikePulseLen = L;
 }
 
 void MatterEngine::noteOn (const NoteState& note, const ParamValues& params, Quality quality)
@@ -294,6 +304,12 @@ void MatterEngine::process (const float* excL, const float* excR, float* outL, f
     float* aIn = bank.inputGain();  float* bIn = bank.strikeGain();
     int invalidFreq = 0, invalidCoeff = 0;
     float rMax = 0.0f;
+    // Coherent strike sum: every node starts in phase at the strike, so the peak of the response grows with the
+    // excitation-weighted output sum (~sqrt N for N equal nodes) while the ring RMS does not. The pulse's contact
+    // time low-passes what each node receives (H ≈ 1 / (1 + (f·L)²)).
+    const bool  strikeActive = strikeLen > strikePos;
+    const float pulseSeconds = (float) strikePulseLen / (float) sr;
+    float coherentSum = 0.0f;
 
     for (int i = 0; i < N; ++i)
     {
@@ -334,6 +350,17 @@ void MatterEngine::process (const float* excL, const float* excR, float* outL, f
         aIn[i] = active ? exc * kSourceGain * dampNorm : 0.0f;
         bIn[i] = active ? exc * strikeNodeGain : 0.0f;
         if (active) rMax = std::max (rMax, r);
+        if (active && strikeActive)
+        {
+            const float fl = fr * pulseSeconds;
+            coherentSum += exc * g / (1.0f + fl * fl);
+        }
+    }
+    if (strikeActive)
+    {
+        const float target = std::pow (kStrikeRef / std::max (0.05f, coherentSum), kStrikeNormPower);
+        strikeNorm = std::clamp (target, 0.2f, 1.5f);
+        for (int i = 0; i < N; ++i) bIn[i] *= strikeNorm;
     }
     reportSafety (ctx, SafetyEvent::InvalidFrequency, invalidFreq);
     reportSafety (ctx, SafetyEvent::InvalidCoefficient, invalidCoeff);

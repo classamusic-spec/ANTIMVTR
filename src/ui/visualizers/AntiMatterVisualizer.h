@@ -103,6 +103,7 @@ private:
     int   quality = 0;
     float paintMsAverage = 0.0f;
     int   framesSinceQualityChange = 0;
+    int   recoveryWaitFrames = 240;    // doubles after every drop so a marginal machine does not oscillate
     bool  profileToStderr = false;
     static constexpr int kLayers = 17;
     std::array<double, kLayers> frameLayerMs {}, layerMsAverage {};

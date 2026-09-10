@@ -202,12 +202,13 @@ void AntiMatterVisualizer::integrate (float dt)
 void AntiMatterVisualizer::updateQuality()
 {
     ++framesSinceQualityChange;
-    if (frameCounter % 30 != 0) return;
+    if (frameCounter % 30 != 0 || frameCounter < 60) return;   // warm-up: ignore first-frame allocations and cache fills
     if (paintMsAverage > 8.0f && quality < 2)
     {
         ++quality; framesSinceQualityChange = 0; backdropAge = 1000;
+        recoveryWaitFrames = juce::jmin (1200, recoveryWaitFrames * 2);
     }
-    else if (paintMsAverage < 3.5f && quality > 0 && framesSinceQualityChange > 240)
+    else if (paintMsAverage < 5.0f && quality > 0 && framesSinceQualityChange > recoveryWaitFrames)
     {
         --quality; framesSinceQualityChange = 0; backdropAge = 1000;
     }

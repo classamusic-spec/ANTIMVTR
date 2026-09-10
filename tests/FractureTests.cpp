@@ -488,6 +488,31 @@ private:
 
         logMessage ("  feedback peak " + juce::String (peak, 3)
                     + ", FeedbackClamp events " + juce::String ((int) h.diag.safety.count (SafetyEvent::FeedbackClamp)));
+
+        // Drive the delay line past its ceiling on purpose: the clamp must engage,
+        // report itself and still leave a finite, bounded output.
+        Harness hot (sr, 512);
+        hot.set (Param::fractureFeedback, 1.0f);
+        hot.set (Param::fractureDecay, 1.0f);
+        hot.set (Param::fractureDelay, 0.05f);
+        hot.set (Param::fractureFragments, 2.0f);
+
+        auto loud = Harness::unityTable();
+        for (auto& f : loud->fragments) { f.feedback = 1.0f; f.decay = 1.0f; f.delay = 0.02f; f.gain = 2.0f; }
+        hot.engine.publishTable (std::move (loud));
+
+        juce::AudioBuffer<float> big (2, (int) (4.0 * sr));
+        fillTestSignal (big, sr);
+        big.applyGain (6.0f);
+        hot.process (big);
+
+        expect (allFinite (big), "clamped feedback produced non-finite samples");
+        expect (hot.diag.safety.count (SafetyEvent::FeedbackClamp) > 0,
+                "the delay-line ceiling never engaged under deliberate overdrive");
+        expectEquals ((int) hot.diag.safety.count (SafetyEvent::NaN), 0);
+        logMessage ("  overdriven: peak " + juce::String (peakOf (big), 2)
+                    + ", FeedbackClamp events "
+                    + juce::String ((int) hot.diag.safety.count (SafetyEvent::FeedbackClamp)));
     }
 
     //==========================================================================

@@ -716,6 +716,236 @@ manager.addFactory ({ "Buried Engine", "TEXTURE", { "dark", "pulsing", "distant"
     sharedMacros (r, Param::fractureDecay, Param::evolveScatter);
     r.commit (s);
 }});
+
+manager.addFactory ({ "Simmer Skin", "TEXTURE", { "organic", "granular", "breathing", "mid", "wide" }, [] (PatchState& s)
+{
+    dust (s, 7 /* CLOUD */, 0.66f, 0.20f, 0.66f, 0.54f, 0.68f, 0.76f, 12497);
+    amp (s, 0.35f, 1.70f, 0.86f, 1.60f, 0.5f);
+    shape (s, 0.62f, 0.34f, 0.46f, 0.50f, 0.52f, 0.44f);
+    material (s, MaterialType::Liquid, MaterialType::Membrane, 0.42f);
+    topology (s, 2 /* CLUSTERS */, 0.52f, 0.50f, 12497);
+    matter (s, 0.94f, 0.82f, 0.24f, 0.80f, 0.40f);
+    evolve (s, 0.0f, 0.20f, 0.0f, 0.0f, 0.48f, 0.32f, 0.0f, 0.52f, 0.50f);
+    set (s, Param::evolveScatterSeed, 12497);
+    space (s, SpacePresets::Dream, 0.40f, 0.52f, 0.54f, 0.34f);
+
+    lfo (s, 1, 0.72f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    lfo (s, 2, 0.29f, 0 /* SINE */, 1.0f, false);
+    chaos (s, 1, 4 /* TARGETS */, 1.90f, 0.55f, 0.50f, 0.5f, 12497);
+    env (s, 2, 0.80f, 1.40f, 0.35f, 1.20f, 0.5f, true);
+    macros (s, 0.55f, 0.45f, 0.40f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,       Param::dustDensity,   0.240f)
+     .bi  (ModSource::LFO2,       Param::dustGrain,     0.200f)
+     .bi  (ModSource::Chaos1,     Param::dustPosition,  0.220f)
+     .uni (ModSource::Env2,       Param::evolveMelt,    0.220f)
+     .uni (ModSource::Velocity,   Param::dustDensity,   0.200f)
+     .bi  (ModSource::NoteRandom, Param::dustSeed,      0.220f)
+     .bi  (ModSource::KeyTrack,   Param::dustColor,    -0.180f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,  0.400f)
+     .uni (ModSource::Macro1,     Param::lfo1Rate,      0.140f)
+     .uni (ModSource::Macro2,     Param::dustColor,     0.340f)
+     .uni (ModSource::Macro3,     Param::spaceMix,      0.320f)
+     .uni (ModSource::Macro4,     Param::dustGrain,     0.320f)
+     .uni (ModSource::Macro4,     Param::shapeSurface,  0.240f);
+    sharedMacros (r, Param::spaceSize, Param::dustJitter);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Leaf Litter", "TEXTURE", { "wooden", "dry", "close", "rhythmic", "granular" }, [] (PatchState& s)
+{
+    dust (s, 5 /* CRACKLE */, 0.52f, 0.46f, 0.38f, 0.68f, 0.52f, 0.60f, 13007);
+    amp (s, 0.14f, 1.10f, 0.82f, 0.80f, 0.45f);
+    shape (s, 0.50f, 0.44f, 0.44f, 0.46f, 0.42f, 0.52f);
+    material (s, MaterialType::Wood, MaterialType::Organic, 0.38f);
+    topology (s, 3 /* LATTICE */, 0.48f, 0.44f, 13007);
+    matter (s, 0.96f, 0.84f, 0.26f, 0.66f, 0.35f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.46f, 0.34f, 0.0f, 0.62f, 0.46f);
+    set (s, Param::evolveScatterSeed, 13007);
+    fracture (s, 2 /* TRANSIENT */, 0.42f, 0.40f, 0.38f, 0.60f, 0.18f, 0.20f, 0.34f, 0.50f, 0.28f,
+              1 /* 16 */, 4 /* 1/16 */, 8, 0.22f, 3 /* RANDOM */, 0.55f, 0.42f, 13007,
+              FractureShape { 16, 0.02f, 0.22f, 0.06f, 0.26f, 0.28f, 0.48f, 0.24f, 0.80f,
+                              1.0f, 0.85f, 0.60f, 0.55f, nullptr, "XoLoXHo.", nullptr });
+    space (s, SpacePresets::Chamber, 0.22f, 0.28f, 0.50f, 0.22f);
+
+    lfo (s, 1, 0.94f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    lfo (s, 2, 0.21f, 1 /* TRIANGLE */, 1.0f, false);
+    chaos (s, 1, 0 /* WALK */, 2.40f, 0.50f, 0.60f, 0.5f, 13007);
+    macros (s, 0.55f, 0.45f, 0.25f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,       Param::dustDensity,      0.260f)
+     .bi  (ModSource::LFO2,       Param::dustGrain,        0.200f)
+     .bi  (ModSource::Chaos1,     Param::dustJitter,       0.240f)
+     .uni (ModSource::Velocity,   Param::dustDensity,      0.220f)
+     .bi  (ModSource::NoteRandom, Param::dustSeed,         0.240f)
+     .bi  (ModSource::KeyTrack,   Param::dustColor,        0.160f)
+     .uni (ModSource::Macro1,     Param::fractureSequence, 0.380f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro2,     Param::dustColor,        0.320f)
+     .uni (ModSource::Macro2,     Param::fractureTone,     0.240f)
+     .uni (ModSource::Macro3,     Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,     Param::shapeSurface,     0.300f)
+     .uni (ModSource::Macro4,     Param::dustGrain,        0.260f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureProbability);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Radio Ghosts", "TEXTURE", { "vocal", "noisy", "morphing", "distant", "formant" }, [] (PatchState& s)
+{
+    wave (s, 2 /* FORMANT */, 0.40f, 0.50f, 0.44f, 2, 0.14f, 0.40f, 0, 0.50f);
+    dust (s, 0 /* WHITE */, 0.62f, 0.30f, 0.38f, 0.44f, 0.64f, 0.72f, 13513, 0.28f);
+    set (s, Param::sourceMode, 1 /* LAYER */);
+    set (s, Param::impactLevel, 0.0f);
+    set (s, Param::sampleLevel, 0.0f);
+    set (s, Param::gestureLevel, 0.0f);
+    amp (s, 0.40f, 1.80f, 0.80f, 1.60f, 0.55f);
+    shape (s, 0.58f, 0.54f, 0.40f, 0.60f, 0.54f, 0.34f);
+    material (s, MaterialType::Organic, MaterialType::Void, 0.44f);
+    topology (s, 5 /* STAR */, 0.40f, 0.58f, 13513);
+    matter (s, 0.86f, 0.70f, 0.22f, 0.74f, 0.30f);
+    evolve (s, 0.0f, 0.0f, 0.20f, 0.0f, 0.50f, 0.36f, 0.0f, 0.40f, 0.52f);
+    set (s, Param::evolveScatterSeed, 13513);
+    space (s, SpacePresets::Orbit, 0.42f, 0.56f, 0.48f, 0.44f);
+
+    lfo (s, 1, 0.58f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    lfo (s, 2, 0.14f, 1 /* TRIANGLE */, 1.0f, false);
+    chaos (s, 1, 4 /* TARGETS */, 0.80f, 0.60f, 0.45f, 0.5f, 13513);
+    env (s, 2, 1.00f, 1.80f, 0.40f, 1.40f, 0.55f, true);
+    macros (s, 0.55f, 0.45f, 0.45f, 0.55f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,       Param::wavePosition,  0.260f)
+     .bi  (ModSource::LFO2,       Param::waveMorph,     0.220f)
+     .bi  (ModSource::Chaos1,     Param::waveScan,      0.280f)
+     .uni (ModSource::Env2,       Param::dustDensity,   0.240f)
+     .uni (ModSource::Velocity,   Param::waveLevel,     0.200f)
+     .bi  (ModSource::NoteRandom, Param::wavePosition,  0.180f)
+     .bi  (ModSource::KeyTrack,   Param::dustColor,    -0.160f)
+     .uni (ModSource::Macro1,     Param::lfo1Depth,     0.420f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,  0.300f)
+     .uni (ModSource::Macro2,     Param::waveScan,      0.320f)
+     .uni (ModSource::Macro3,     Param::spaceMix,      0.320f)
+     .uni (ModSource::Macro4,     Param::waveMorph,     0.360f)
+     .uni (ModSource::Macro4,     Param::dustLevel,     0.240f);
+    sharedMacros (r, Param::spaceSize, Param::evolveTear);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Sand Drum", "TEXTURE", { "soft", "scraped", "breathing", "close", "mid" }, [] (PatchState& s)
+{
+    gesture (s, 2 /* RUB */, 0.54f, 0.30f, 0.44f, 0.48f, 0.44f, 0.48f);
+    amp (s, 0.40f, 1.60f, 0.80f, 1.20f, 0.55f);
+    shape (s, 0.54f, 0.26f, 0.58f, 0.42f, 0.50f, 0.46f);
+    material (s, MaterialType::Membrane, MaterialType::String, 0.34f);
+    topology (s, 0 /* CHAIN */, 0.46f, 0.42f, 14009);
+    matter (s, 0.94f, 0.72f, 0.20f, 0.56f, 0.35f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.56f, 0.24f, 0.0f, 0.20f, 0.44f);
+    set (s, Param::evolveScatterSeed, 14009);
+    space (s, SpacePresets::Chamber, 0.28f, 0.36f, 0.38f, 0.26f);
+
+    lfo (s, 1, 0.24f, 0 /* SINE */, 1.0f, false);
+    lfo (s, 2, 0.61f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.36f, 0.50f, 0.62f, 0.5f, 14009);
+    env (s, 2, 0.90f, 1.60f, 0.40f, 1.20f, 0.5f, true);
+    macros (s, 0.50f, 0.40f, 0.30f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,      Param::gestureSpeed,     0.240f)
+     .bi  (ModSource::LFO2,      Param::gesturePosition,  0.220f)
+     .bi  (ModSource::Chaos1,    Param::gesturePressure,  0.180f)
+     .uni (ModSource::Env2,      Param::gestureRoughness, 0.240f)
+     .uni (ModSource::Velocity,  Param::gesturePressure,  0.240f)
+     .bi  (ModSource::KeyTrack,  Param::gestureBandwidth, 0.180f)
+     .uni (ModSource::Macro1,    Param::gestureMotion,    0.440f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.280f)
+     .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.320f)
+     .uni (ModSource::Macro2,    Param::shapeSurface,     0.220f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::gestureRoughness, 0.360f);
+    sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "After Blast", "TEXTURE", { "dark", "huge", "impact", "drift", "hollow" }, [] (PatchState& s)
+{
+    impact (s, 3 /* NOISE STRIKE */, 0.42f, 0.40f, 0.62f, 0.90f, 0.65f, 0.20f, 0.0f, 0.86f);
+    dust (s, 1 /* PINK */, 0.48f, 0.28f, 0.46f, 0.34f, 0.66f, 0.74f, 14503, 0.26f);
+    set (s, Param::sourceMode, 1 /* LAYER */);
+    set (s, Param::waveLevel, 0.0f);
+    set (s, Param::sampleLevel, 0.0f);
+    set (s, Param::gestureLevel, 0.0f);
+    amp (s, 0.006f, 2.60f, 0.42f, 3.00f, 0.7f);
+    shape (s, 0.52f, 0.36f, 0.76f, 0.34f, 0.80f, 0.30f);
+    material (s, MaterialType::Metal, MaterialType::Void, 0.50f);
+    topology (s, 2 /* CLUSTERS */, 0.58f, 0.40f, 14503);
+    matter (s, 0.90f, 0.60f, 0.34f, 0.78f, 0.30f);
+    evolve (s, 0.0f, 0.24f, 0.0f, 0.0f, 0.66f, 0.26f, 0.0f, 0.16f, 0.38f);
+    set (s, Param::evolveScatterSeed, 14503);
+    space (s, SpacePresets::Void, 0.56f, 0.90f, 0.30f, 0.46f);
+
+    lfo (s, 1, 0.16f, 5 /* SMOOTH RANDOM */, 1.0f, true);
+    lfo (s, 2, 0.07f, 0 /* SINE */, 1.0f, false);
+    env (s, 1, 0.004f, 1.20f, 0.10f, 1.00f, 0.7f);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.28f, 0.45f, 0.64f, 0.5f, 14503);
+    macros (s, 0.45f, 0.35f, 0.60f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env1,       Param::dustDensity,   0.280f)
+     .bi  (ModSource::LFO1,       Param::dustColor,     0.200f)
+     .bi  (ModSource::LFO2,       Param::spaceSize,     0.120f)
+     .bi  (ModSource::Chaos1,     Param::evolveScatter, 0.160f)
+     .uni (ModSource::Velocity,   Param::impactVelocity, 0.240f)
+     .bi  (ModSource::NoteRandom, Param::impactRandom,  0.160f)
+     .bi  (ModSource::KeyTrack,   Param::shapeMass,    -0.200f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,  0.360f)
+     .uni (ModSource::Macro2,     Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro2,     Param::spaceTone,     0.280f)
+     .uni (ModSource::Macro3,     Param::spaceMix,      0.300f)
+     .uni (ModSource::Macro4,     Param::evolveMelt,    0.300f)
+     .uni (ModSource::Macro4,     Param::dustLevel,     0.240f);
+    sharedMacros (r, Param::spaceSize, Param::dustJitter);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Stretched Tape", "TEXTURE", { "metallic", "morphing", "unstable", "roomy", "cold" }, [] (PatchState& s)
+{
+    sample (s, BuiltInSamples::Kind::MetalPing, 2 /* REVERSE */, 0.04f, 0.94f, 0.36f, 0.52f, 60);
+    amp (s, 0.50f, 2.20f, 0.80f, 2.00f, 0.55f);
+    shape (s, 0.56f, 0.66f, 0.42f, 0.58f, 0.64f, 0.36f);
+    material (s, MaterialType::Metal, MaterialType::String, 0.46f);
+    topology (s, 1 /* RING */, 0.56f, 0.48f, 15013);
+    matter (s, 0.82f, 0.62f, 0.22f, 0.70f, 0.35f);
+    evolve (s, 0.34f, 0.30f, 0.0f, 0.0f, 0.52f, 0.28f, 0.0f, 0.30f, 0.48f);
+    set (s, Param::evolveBendPivot, 0.38f);
+    set (s, Param::evolveBendRange, 0.42f);
+    set (s, Param::evolveScatterSeed, 15013);
+    space (s, SpacePresets::Dream, 0.42f, 0.60f, 0.50f, 0.38f);
+
+    lfo (s, 1, 0.20f, 0 /* SINE */, 1.0f, false);
+    lfo (s, 2, 0.47f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    chaos (s, 1, 3 /* LORENZ */, 0.40f, 0.55f, 0.56f, 0.5f, 15013);
+    env (s, 2, 1.10f, 2.60f, 0.60f, 2.00f, 0.6f);
+    macros (s, 0.50f, 0.45f, 0.45f, 0.55f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,       Param::evolveBend,    0.180f)
+     .bi  (ModSource::LFO2,       Param::sampleStart,   0.160f)
+     .bi  (ModSource::Chaos1,     Param::samplePitch,   0.140f)
+     .uni (ModSource::Env2,       Param::evolveMelt,    0.260f)
+     .uni (ModSource::Env2,       Param::sampleGrain,   0.200f)
+     .uni (ModSource::Velocity,   Param::sampleLevel,   0.200f)
+     .bi  (ModSource::NoteRandom, Param::sampleStart,   0.140f)
+     .bi  (ModSource::KeyTrack,   Param::sampleSpread,  0.160f)
+     .uni (ModSource::Macro1,     Param::evolveMotion,  0.400f)
+     .uni (ModSource::Macro2,     Param::sampleGrain,   0.300f)
+     .uni (ModSource::Macro3,     Param::spaceMix,      0.320f)
+     .uni (ModSource::Macro4,     Param::evolveBend,    0.340f)
+     .uni (ModSource::Macro4,     Param::evolveBendRange, 0.260f);
+    sharedMacros (r, Param::spaceSize, Param::evolveMelt);
+    r.commit (s);
+}});
 }
 
 } // namespace am::FactoryContent

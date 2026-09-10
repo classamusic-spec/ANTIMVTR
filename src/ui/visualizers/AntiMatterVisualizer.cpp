@@ -593,14 +593,15 @@ void AntiMatterVisualizer::drawRibbonSpan (juce::Graphics& g, const Frame& f, co
     // single narrow one is a neon stroke.
     struct Strip { float width, alpha, whiten; };
     static constexpr Strip kFront[5] = {
-        { 2.55f, 0.050f, 0.00f }, { 1.72f, 0.086f, 0.00f }, { 1.15f, 0.195f, 0.02f },
-        { 0.66f, 0.460f, 0.12f }, { 0.17f, 1.000f, 0.55f },
+        { 2.35f, 0.058f, 0.00f }, { 1.62f, 0.092f, 0.00f }, { 1.12f, 0.205f, 0.02f },
+        { 0.64f, 0.470f, 0.12f }, { 0.17f, 1.000f, 0.55f },
     };
-    static constexpr Strip kBack[4] = {
-        { 2.70f, 0.042f, 0.00f }, { 1.75f, 0.068f, 0.00f }, { 1.12f, 0.150f, 0.00f }, { 0.52f, 0.350f, 0.08f },
+    // A ribbon at the back is softer and much fainter, so its widest wash earns nothing.
+    static constexpr Strip kBack[3] = {
+        { 1.95f, 0.060f, 0.00f }, { 1.22f, 0.155f, 0.00f }, { 0.54f, 0.360f, 0.08f },
     };
     const Strip* strips = back ? kBack : kFront;
-    const int count = back ? 4 : 5;
+    const int count = back ? 3 : 5;
     const int first = f.bloom ? 0 : 1;              // reduced quality drops the widest, softest layer
 
     for (int k = first; k < count; ++k)

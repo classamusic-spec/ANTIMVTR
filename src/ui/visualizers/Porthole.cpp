@@ -490,7 +490,7 @@ void AntiMatterVisualizer::drawPlinthGlow (juce::Graphics& g, const Frame& f)
     // Only the part below the stand is ever seen; the plinth covers the rest.
     g.reduceClipRegion (juce::Rectangle<float> (f.bounds.getX(), L.plinthTop - L.plinthHeight * 0.12f,
                                                 f.bounds.getWidth(), f.bounds.getBottom() - L.plinthTop + L.plinthHeight)
-                            .getSmallestIntegerContainer());
+                            .getIntersection (f.bounds).getSmallestIntegerContainer());
     g.addTransform (juce::AffineTransform::scale (1.0f, ry / rx, p.x, p.y));
     gradient.clearColours();
     gradient.isRadial = true;

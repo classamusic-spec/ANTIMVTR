@@ -256,7 +256,7 @@ public:
     {
         const float d = liquid::clean (p.density, 0.0f, 1.0f, 0.5f);
         const float life = liquid::clean (p.life, 0.0f, 1.0f, 0.0f);
-        const int n = 11 + (int) (d * 14.0f) + (int) (life * 2.0f);
+        const int n = 10 + (int) (d * 13.0f) + (int) (life * 2.0f);
         return n < 4 ? 4 : (n > kMaxRibbons ? kMaxRibbons : n);
     }
 

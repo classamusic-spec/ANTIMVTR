@@ -47,17 +47,20 @@ struct PortholeLayout
         w = liquid::clampf (w, 1.0f, 20000.0f);
         h = liquid::clampf (h, 1.0f, 20000.0f);
 
-        // The caption band and the plinth claim fixed fractions of the height and the
-        // porthole takes the rest, so the whole ring stays visible: the plinth's top
-        // ellipse only cuts the last inch of it, the way a stand holds a sphere.
+        // The plinth claims a fixed fraction of the height and the porthole takes the
+        // rest, so the whole ring stays visible: the plinth's top ellipse only cuts the
+        // last inch of it, the way a stand holds a sphere. The flank captions sit in the
+        // top corners, where a centred circle never reaches, so the ring is allowed to
+        // rise past their band.
         l.captionBand = h * 0.085f;
+        const float topGap = h * 0.045f;
         const float plinthBand = h * 0.132f;
-        const float available = h - l.captionBand - plinthBand - h * 0.012f;
+        const float available = h - topGap - plinthBand - h * 0.012f;
         const float diameter = liquid::clampf (w * 0.80f < available ? w * 0.80f : available, 8.0f, 20000.0f);
 
         l.outerR = diameter * 0.5f;
         l.centreX = x + w * 0.5f;
-        l.centreY = y + l.captionBand + l.outerR;
+        l.centreY = y + topGap + l.outerR;
         l.bezelWidth = l.outerR * 0.150f;
         l.glassR = l.outerR - l.bezelWidth;
         l.unit = l.outerR / 170.0f;

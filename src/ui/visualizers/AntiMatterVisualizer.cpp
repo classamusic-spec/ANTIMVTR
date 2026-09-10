@@ -192,9 +192,7 @@ void AntiMatterVisualizer::updateQuality()
     ++framesSinceQualityChange;
     if (frameCounter == 60) paintMsAverage = 0.0f;             // forget the cost of building the cached hardware
     if (frameCounter % 30 != 0 || frameCounter < 120) return;  // warm-up: ignore cache fills and first-frame allocations
-    if (profileToStderr)
-        std::fprintf (stderr, "[antimatter] frame %d avg %.2f ms quality %d\n", frameCounter, (double) paintMsAverage, quality);
-    if (pinnedQuality >= 0) { }
+    if (pinnedQuality >= 0) { }                                // ANTIMATR_VIS_QUALITY holds a level so it can be measured
     else if (paintMsAverage > 6.5f && quality < 2)
     {
         ++quality; framesSinceQualityChange = 0;
@@ -208,9 +206,10 @@ void AntiMatterVisualizer::updateQuality()
     {
         static const char* names[kLayers] = { "well", "farParticles", "backRibbons", "core", "frontRibbons",
                                               "nearParticles", "glass", "bezel", "plinth", "captions", "clip" };
+        const auto port = PortholeLayout::forBounds (0.0f, 0.0f, (float) getWidth(), (float) getHeight());
         std::fprintf (stderr, "[antimatter] paint %.2f ms avg, quality %d, %dx%d, ribbons %d, spans %d, extent %.2f\n",
                       (double) paintMsAverage, quality, getWidth(), getHeight(), numRibbons, numSpans,
-                      (double) (objectExtent / juce::jmax (1.0f, PortholeLayout::forBounds (0.0f, 0.0f, (float) getWidth(), (float) getHeight()).outerR)));
+                      (double) (objectExtent / juce::jmax (1.0f, port.outerR)));
         std::fprintf (stderr, "[antimatter] layers:");
         for (int i = 0; i < kLayers; ++i) std::fprintf (stderr, " %s=%.2f", names[i], layerMsAverage[(size_t) i]);
         std::fprintf (stderr, "\n");

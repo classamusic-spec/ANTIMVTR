@@ -319,44 +319,40 @@ void AntiMatterVisualizer::renderGlass (juce::Graphics& g, const Frame& f)
         g.fillEllipse (c.x - R, c.y - R, R * 2.0f, R * 2.0f);
     }
 
-    // ---- A tighter, brighter streak inside it.
+    // ---- A tighter, brighter streak inside it. Filled across the whole disc rather
+    //      than as a lens: a lens tapers to a point where the gradient is at full
+    //      strength, and those two bright tips read as a hard edge on the glass.
     {
-        const float ax = std::cos (-0.62f), ay = std::sin (-0.62f);
-        const float nx = -ay, ny = ax;
+        const float nx = -std::sin (-0.62f), ny = std::cos (-0.62f);
         const auto mid = juce::Point<float> (c.x - R * 0.46f, c.y - R * 0.46f);
-        const float half = R * 0.17f;
+        const float half = R * 0.20f;
         gradient.clearColours();
         gradient.isRadial = false;
         gradient.point1 = { mid.x - nx * half, mid.y - ny * half };
         gradient.point2 = { mid.x + nx * half, mid.y + ny * half };
         gradient.addColour (0.0, juce::Colours::transparentWhite);
-        gradient.addColour (0.5, juce::Colours::white.withAlpha (0.155f));
+        gradient.addColour (0.30, juce::Colours::white.withAlpha (0.040f));
+        gradient.addColour (0.5, juce::Colours::white.withAlpha (0.145f));
+        gradient.addColour (0.70, juce::Colours::white.withAlpha (0.040f));
         gradient.addColour (1.0, juce::Colours::transparentWhite);
         g.setGradientFill (gradient);
-        // A lens-shaped sweep rather than a full band: taper it toward the ends.
-        juce::Path sweep;
-        const auto a0 = juce::Point<float> (mid.x - ax * R * 0.92f, mid.y - ay * R * 0.92f);
-        const auto a1 = juce::Point<float> (mid.x + ax * R * 0.92f, mid.y + ay * R * 0.92f);
-        sweep.startNewSubPath (a0);
-        sweep.quadraticTo (mid.x + nx * half, mid.y + ny * half, a1.x, a1.y);
-        sweep.quadraticTo (mid.x - nx * half, mid.y - ny * half, a0.x, a0.y);
-        sweep.closeSubPath();
-        g.fillPath (sweep);
+        g.fillEllipse (c.x - R, c.y - R, R * 2.0f, R * 2.0f);
     }
 
     // ---- The crescent hugging the inside of the bezel at the top.
     {
         juce::Path crescent;
         const float cr = R * 0.952f;
-        crescent.addCentredArc (c.x, c.y, cr, cr, 0.0f, -kPi * 0.88f, -kPi * 0.10f, true);
+        crescent.addCentredArc (c.x, c.y, cr, cr, 0.0f, -kPi * 0.94f, -kPi * 0.06f, true);
         gradient.clearColours();
         gradient.isRadial = false;
         gradient.point1 = { c.x - R, c.y };
         gradient.point2 = { c.x + R, c.y };
-        gradient.addColour (0.0, juce::Colours::transparentWhite);
-        gradient.addColour (0.30, juce::Colours::white.withAlpha (0.40f));
-        gradient.addColour (0.56, juce::Colours::white.withAlpha (0.24f));
-        gradient.addColour (1.0, juce::Colours::transparentWhite);
+        gradient.addColour (0.0, juce::Colours::white.withAlpha (0.03f));
+        gradient.addColour (0.28, juce::Colours::white.withAlpha (0.42f));
+        gradient.addColour (0.58, juce::Colours::white.withAlpha (0.30f));
+        gradient.addColour (0.84, juce::Colours::white.withAlpha (0.13f));
+        gradient.addColour (1.0, juce::Colours::white.withAlpha (0.02f));
         g.setGradientFill (gradient);
         g.strokePath (crescent, juce::PathStrokeType (R * 0.058f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }

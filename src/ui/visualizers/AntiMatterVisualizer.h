@@ -4,38 +4,47 @@
 #include "dev/diagnostics/Diagnostics.h"
 #include "ValueNoise.h"
 #include "Iridescence.h"
-#include "ObjectField.h"
+#include "LiquidOrganism.h"
 #include "ParticleSystem.h"
+#include "Porthole.h"
 
 namespace am::ui
 {
 
 /**
-    THE ANTI-MATTER OBJECT — the product's visual signature.
+    THE CENTRE — a glass porthole with the ANTI-MATTER object alive behind it.
 
-    Procedurally rendered with JUCE Graphics (Phase 1 software path). Layers,
-    back to front:
+    This is the identity of the product (VISUAL_SPEC §5). Everything is drawn
+    procedurally from `getLocalBounds()`: no bitmaps, no assets, nothing loaded
+    from disk. Layers, back to front:
 
-      1. Environment: Space-tinted halo, octave dial, drifting plasma aura
-         (cached backdrop image, re-rendered every few frames)
-      2. Starfield (live twinkle) and far crystalline fragments (parallax)
-      3. Body: outer glow → dark liquid-glass volume → Fresnel edge glow →
-         nested refraction shells → energy filaments → void core with
-         gravitational-lens ring and Einstein arcs → specular highlight →
-         iridescent Fresnel rim (blue → violet → magenta → cyan → ivory)
-         → fracture cracks → surface sparkles
-      4. Tear: a second lobe with taffy strands between the two
-      5. Near fragments (with Decay motion streaks), energy sparks
-      6. Node ring: frequency → angle (log scale), energy → size/brightness,
-         cluster → colour; fundamental marker
-      7. Captions (INHALE/IDEA, EXHALE/EVOLVE, wordmark)
+      1. The blue arc spilling from beneath the plinth onto the panel.
+      2. The glass well: a deep near-black bowl with a faint Space-tinted haze.
+      3. THE OBJECT, clipped to the glass — a liquid-light organism:
+           · bubbles and sparkles on the far side of the volume,
+           · ribbon spans whose mean depth is behind the core, back to front,
+           · the dark irregular organic core with its violet rim,
+           · ribbon spans in front of the core, each casting a faint shadow,
+           · near sparkles and bubbles.
+         Ribbons are wide tapering strips of liquid light — a molten core with a
+         translucent bloom either side — that shift hue along their length and
+         advect through a slowly evolving 3D flow field (see LiquidOrganism).
+      4. The glass itself: a broad diagonal specular sweep, a crescent under the
+         top of the bezel, thickness darkening to the lower right, a chromatic
+         fringe at the extreme edge and slow drifting smudges.
+      5. The bezel: brushed gunmetal segmented into plates with seams and bolt
+         heads, an outer shadow onto the panel and an inner shadow onto the glass.
+      6. The two warm amber-white status lamps at nine and three o'clock.
+      7. The machined plinth with its chrome rim and engraved wordmark.
+      8. The flank captions (INHALE / IDEA, EXHALE / EVOLVE).
 
-    Everything reads VisualStateSnapshot only, eased with Mass-dependent
-    inertia. Paint time is measured every frame; when the running average
-    exceeds ~8 ms the quality level drops (fewer segments, shells,
-    filaments, particles, slower backdrop refresh) and recovers when there
-    is headroom. No per-frame heap allocation on our side: paths, outlines
-    and particles are preallocated and reused.
+    The hardware (bezel, plinth, glass highlights) is static geometry, so it is
+    rendered once into cached images and blitted; only the object, the lamp bloom
+    and the plinth glow are redrawn each frame. Paint time is measured every
+    frame and the quality level drops when it runs long.
+
+    Reads VisualStateSnapshot only, eased with Mass-dependent inertia. Never
+    blocks and never touches the audio thread.
 */
 class AntiMatterVisualizer : public juce::Component,
                              private juce::Timer
@@ -49,7 +58,7 @@ public:
     void visibilityChanged() override;
     void parentHierarchyChanged() override;
 
-    /** Frame rate control: 60 by default, 30 when the host is heavy. */
+    /** Frame rate control: 30 by default, which is what the object is budgeted for. */
     void setTargetFrameRate (int fps);
 
     /** Latest snapshot the visualizer is showing (eased values; for tests / tools). */
@@ -62,72 +71,125 @@ public:
     int qualityLevel() const noexcept { return quality; }
 
 private:
-    struct Frame;                      // per-paint derived geometry (see .cpp)
+    /** Everything derived once per paint from the eased state and the component bounds. */
+    struct Frame
+    {
+        juce::Rectangle<float> bounds;
+        PortholeLayout port;
+        juce::Point<float> centre;      ///< centre of the object (== centre of the porthole)
+        float R = 1.0f;                 ///< pixel radius of the implicit sphere
+        float unit = 1.0f;              ///< one reference pixel (outerR / 186)
+        float coreR = 0.3f;             ///< core radius, object units
+        float breathe = 1.0f;
+        juce::Colour space;
+
+        // this frame's budget (quality level capped by the porthole's size)
+        int  maxRibbons = 22, maxSamples = 44, maxSparkles = 130, maxBubbles = 18;
+        bool shadows = true, bloom = true, smudges = true;
+
+        // the object's rotation (yaw then a fixed pitch), precomputed
+        float cosYaw = 1.0f, sinYaw = 0.0f, cosPitch = 1.0f, sinPitch = 0.0f;
+
+        LiquidOrganism::Params p;
+        float pulse = 0.0f, energy = 0.0f, life = 0.0f, fracture = 0.0f, hue = 0.0f;
+        float surfaceRough = 0.0f, spaceActivity = 0.0f, freezeMix = 0.0f;
+    };
+
+    /** One ribbon sample after projection into the component. */
+    struct Projected
+    {
+        float x = 0.0f, y = 0.0f;       ///< pixels
+        float z = 0.0f;                 ///< rotated depth, −1 far .. +1 near
+        float scale = 1.0f;             ///< perspective scale
+        float nx = 0.0f, ny = 0.0f;     ///< screen-space normal of the ribbon
+        float w0 = 0.0f, w1 = 0.0f;     ///< half-width in pixels of each edge (SURFACE roughens them apart)
+    };
 
     void timerCallback() override;
     void integrate (float dt);
     void updateQuality();
+    void mark (int layer) noexcept;
 
-    void drawBackdrop (juce::Graphics& g, const Frame& f);
-    void renderBackdrop (juce::Graphics& g, const Frame& f);
-    void drawStars (juce::Graphics& g, const Frame& f);
-    void drawFragments (juce::Graphics& g, const Frame& f, bool nearLayer);
-    void drawSparks (juce::Graphics& g, const Frame& f);
-    void drawLobe (juce::Graphics& g, const Frame& f, int lobe);
-    void drawShells (juce::Graphics& g, const Frame& f, int lobe);
-    void drawFilaments (juce::Graphics& g, const Frame& f, int lobe);
-    void drawCore (juce::Graphics& g, const Frame& f, int lobe);
-    void drawRim (juce::Graphics& g, const Frame& f, int lobe);
-    void drawCracks (juce::Graphics& g, const Frame& f, int lobe);
-    void drawStrands (juce::Graphics& g, const Frame& f);
-    void drawNodes (juce::Graphics& g, const Frame& f);
-    void drawCaptions (juce::Graphics& g, juce::Rectangle<float> area);
+    // ---- the object
+    void buildOrganism (const Frame& f);
+    void drawWell (juce::Graphics& g, const Frame& f);
+    void renderWell (juce::Graphics& g, const Frame& f);
+    void drawSpanRange (juce::Graphics& g, const Frame& f, int from, int to);
+    void drawRibbonSpan (juce::Graphics& g, const Frame& f, const RibbonSpan& span);
+    void drawCore (juce::Graphics& g, const Frame& f);
+    void drawSparkles (juce::Graphics& g, const Frame& f, bool front);
+    void drawBubbles (juce::Graphics& g, const Frame& f, bool front);
+    void buildSpanPath (juce::Path& path, const RibbonSpan& span, float widthScale,
+                        float offsetX, float offsetY) const;
+    void computeBudget();
+
+    // ---- the hardware (Porthole.cpp)
+    void refreshHardware (const Frame& f, float deviceScale);
+    void renderBezel (juce::Graphics& g, const Frame& f);
+    void renderGlass (juce::Graphics& g, const Frame& f);
+    void renderPlinth (juce::Graphics& g, const Frame& f);
+    void drawPlinthGlow (juce::Graphics& g, const Frame& f);
+    void drawLamps (juce::Graphics& g, const Frame& f);
+    void drawSmudges (juce::Graphics& g, const Frame& f);
+    void drawCaptions (juce::Graphics& g, const Frame& f);
 
     Diagnostics& diag;
     VisualStateSnapshot latest;
-    VisualStateSnapshot smooth;        // eased values for inertia
+    VisualStateSnapshot smooth;         // eased values for inertia
 
     // Animation state
-    float time = 0.0f;
-    float rotation = 0.0f;             // structural rotation of the object
-    float hueDrift = 0.0f;             // iridescence cycling
-    float pulse = 0.0f;                // audio level, fast attack / Decay release
-    float energy = 0.0f;               // note envelope, eased
-    float life = 0.0f;                 // 0 idle → 1 playing
-    float pitchU = 0.35f;              // log-pitch 0..1
-    float fracture = 0.0f;             // eased fracture activity (0 when off)
-    int   fps = 60;
+    float time = 0.0f;                  // wall clock
+    float flowTime = 0.0f;              // flow-field clock — held still by Freeze
+    float rotation = 0.0f;              // yaw of the organism
+    float hueDrift = 0.0f;              // slow travel along the ribbon ramp
+    float pulse = 0.0f;                 // audio level, fast attack / Decay release
+    float energy = 0.0f;                // note envelope, eased
+    float life = 0.0f;                  // 0 idle → 1 playing
+    float fracture = 0.0f;              // eased fracture activity (0 when off)
+    float freezeMix = 0.0f;             // 0 flowing → 1 frozen
+    int   fps = 30;
     int   frameCounter = 0;
 
     // Adaptive quality / profiling
     int   quality = 0;
+    // Per-frame budget: the quality level capped by the porthole's size, computed
+    // once in integrate() so the painter draws exactly what was advanced.
+    int   capRibbons = 22, capSamples = 44, capSparkles = 130, capBubbles = 18;
+    bool  capShadows = true, capBloom = true, capSmudges = true;
+    int   sparklesAlive = 0, bubblesAlive = 0;
     float paintMsAverage = 0.0f;
     int   framesSinceQualityChange = 0;
-    int   recoveryWaitFrames = 240;    // doubles after every drop so a marginal machine does not oscillate
+    int   recoveryWaitFrames = 150;     // doubles after every drop so a marginal machine does not oscillate
     bool  profileToStderr = false;
-    static constexpr int kLayers = 17;
+    int   pinnedQuality = -1;           // ANTIMATR_VIS_QUALITY pins the level for measurement
+    static constexpr int kLayers = 11;
     std::array<double, kLayers> frameLayerMs {}, layerMsAverage {};
     juce::int64 lastTick = 0;
-    void mark (int layer) noexcept;    // accumulates time since the previous mark into a layer bucket
 
     // Procedural sources
     ValueNoise     noise;
     Iridescence    iridescence;
-    ObjectField    field;
+    LiquidOrganism organism;
     ParticleSystem particles;
 
-    // Preallocated geometry
-    static constexpr int kMaxShells = 4;
-    std::array<ObjectField::Outline, 2> lobes;
-    std::array<std::array<ObjectField::Outline, kMaxShells>, 2> shells;
-    juce::Path bodyPath, shellPath, quad, curve, glyph, ringPath;
+    // Preallocated geometry: one frame of ribbons, their projection and their spans.
+    std::array<std::array<RibbonSample, LiquidOrganism::kMaxSamples>, LiquidOrganism::kMaxRibbons> samples {};
+    std::array<std::array<Projected, LiquidOrganism::kMaxSamples>, LiquidOrganism::kMaxRibbons> screen {};
+    std::array<int, LiquidOrganism::kMaxRibbons> sampleLength {};
+    std::array<RibbonSpan, LiquidOrganism::kMaxSpans> spans {};
+    int numRibbons = 0, numSpans = 0, firstFrontSpan = 0;
 
-    // Cached backdrop (halo + aura + outer glow): rendered at half resolution
-    // every few frames, upscaled once into a full-resolution image, blitted each frame.
-    juce::Image backdropSmall, backdrop;
-    int   backdropAge = 1000;
-    float backdropScale = 1.0f;
-    void upscaleBackdrop() noexcept;
+    juce::Path ribbonPath, corePath, scratchPath, glassPath;
+    /** Furthest any part of the object reaches from the centre, in pixels, this frame. */
+    float objectExtent = 0.0f;
+    juce::ColourGradient gradient;      // reused so a per-segment fill never allocates
+
+    // Cached hardware: rendered at device resolution, redrawn only when the size changes.
+    juce::Image wellImage, bezelImage, glassImage, plinthImage;
+    juce::Rectangle<int> wellArea, bezelArea, glassArea, plinthArea;   // logical pixels
+    void blit (juce::Graphics& g, const juce::Image& image, juce::Rectangle<int> area) const;
+    float hardwareScale = 0.0f;
+    int   hardwareWidth = 0, hardwareHeight = 0, hardwareSpace = -1;
 };
 
 } // namespace am::ui

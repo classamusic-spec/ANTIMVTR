@@ -2,169 +2,201 @@
 
 #include <array>
 #include <cmath>
-#include <juce_gui_basics/juce_gui_basics.h>
 #include "core/Random.h"
+#include "LiquidOrganism.h"
 #include "ValueNoise.h"
 
 namespace am::ui
 {
 
 /**
-    Preallocated particle sets for the ANTI-MATTER OBJECT:
+    The two populations that float inside the sphere with the ANTI-MATTER object
+    (VISUAL_SPEC §5). Both live in object space — 1 unit is the sphere radius —
+    and are converted to pixels by the visualizer.
 
-      * Fragments — crystalline shards on inclined 3D orbits around the
-        object (parallax: depth drives size, speed, brightness and whether a
-        shard passes in front of or behind the body). Fracture activity
-        gives them outward bursts; Decay keeps the motion alive longer;
-        Magnet flattens the orbits into an aligned ring; Scatter jitters.
-      * Sparks — small energy motes drifting in a noise flow field around
-        the body; count follows Density and life.
-      * Stars — the static environmental starfield with slow twinkle.
+      Sparkles — fine bright motes scattered through the volume, twinkling as
+                 they drift in and out of the light. A Fracture hit throws them
+                 outward; the burst decays back over a couple of seconds.
+      Bubbles  — larger translucent spheres with a rim highlight and a specular
+                 dot, drifting slowly, scaled and dimmed by their depth.
 
-    All positions are in object units (1 = base radius R) and are converted
-    to pixels by the visualizer. No allocation after construction.
+    Everything is preallocated; nothing allocates after construction, and every
+    position stays inside a bounded box however long the instrument runs.
 */
 class ParticleSystem
 {
 public:
-    static constexpr int kMaxFragments = 64;
-    static constexpr int kMaxSparks    = 96;
-    static constexpr int kMaxStars     = 150;
-    static constexpr int kHistory      = 4;
+    static constexpr int kMaxSparkles = 130;
+    static constexpr int kMaxBubbles  = 18;
 
-    struct Fragment
+    struct Sparkle
     {
-        float angle = 0.0f, speed = 0.0f, orbit = 1.0f, inclination = 0.0f, node = 0.0f;
-        float size = 0.03f, spin = 0.0f, spinPhase = 0.0f, hue = 0.0f, seed = 0.0f;
-        int   sides = 4;
-        std::array<float, 6> vertexRadius {};
-        // dynamic state
-        float burst = 0.0f;          ///< extra radial offset from Fracture bursts
-        float burstVelocity = 0.0f;
-        float x = 0.0f, y = 0.0f, depth = 0.0f, scale = 1.0f;
-        std::array<float, kHistory> hx {}, hy {};
-        int historyHead = 0;
+        Vec3  home;                   ///< resting position in the ball
+        float phase = 0.0f, rate = 1.0f, size = 1.0f, hue = 0.0f, seed = 0.0f;
+        float burst = 0.0f, burstVel = 0.0f;
+        Vec3  p;                      ///< live position (object space)
+        float bright = 0.0f;
     };
 
-    struct Spark
+    struct Bubble
     {
-        float angle = 0.0f, radius = 1.2f, phase = 0.0f, speed = 0.0f, size = 1.0f, hue = 0.0f;
-        float x = 0.0f, y = 0.0f, brightness = 0.0f;
+        Vec3  home;
+        float radius = 0.05f, phase = 0.0f, rate = 0.4f, hue = 0.0f, seed = 0.0f;
+        Vec3  p;
+        float scale = 1.0f;
     };
-
-    struct Star { float x, y, size, twinkle; };
 
     struct Env
     {
-        float dt = 1.0f / 60.0f, time = 0.0f;
-        float decay = 0.5f, magnet = 0.0f, scatter = 0.0f, tear = 0.0f, gravity = 0.5f, density = 0.5f;
-        float fracture = 0.0f, life = 0.0f, pulse = 0.0f, tension = 0.5f, melt = 0.0f;
+        float dt = 1.0f / 30.0f;
+        float time = 0.0f, flowTime = 0.0f;
+        float density = 0.5f, decay = 0.5f, tension = 0.5f, melt = 0.0f, scatter = 0.0f;
+        float life = 0.0f, level = 0.0f, fracture = 0.0f, breathe = 1.0f;
     };
 
-    explicit ParticleSystem (uint32_t seed = 0xA11CEu)
+    explicit ParticleSystem (uint32_t seed = 0xA11CEu) noexcept { reseed (seed); }
+
+    void reseed (uint32_t seed) noexcept
     {
         Rng rng (seed);
-        const float twoPi = juce::MathConstants<float>::twoPi;
-        for (auto& f : fragments)
+        constexpr float twoPi = 6.28318531f;
+        for (auto& s : sparkles)
         {
-            f.angle = rng.nextFloat() * twoPi;
-            f.speed = (0.06f + 0.16f * rng.nextFloat()) * (rng.chance (0.5f) ? 1.0f : -1.0f);
-            f.orbit = 1.16f + 0.38f * rng.nextFloat() * rng.nextFloat() + 0.12f * rng.nextFloat();
-            f.inclination = (0.35f + 0.9f * rng.nextFloat()) * (rng.chance (0.5f) ? 1.0f : -1.0f);
-            f.node = rng.nextFloat() * twoPi;
-            f.size = 0.018f + 0.045f * rng.nextFloat() * rng.nextFloat();
-            f.spin = rng.nextBipolar() * 1.2f;
-            f.spinPhase = rng.nextFloat() * twoPi;
-            f.hue = rng.nextFloat();
-            f.seed = rng.nextFloat() * 100.0f;
-            f.sides = 3 + rng.nextInt (4);
-            for (auto& vr : f.vertexRadius) vr = 0.55f + 0.45f * rng.nextFloat();
-        }
-        for (auto& s : sparks)
-        {
-            s.angle = rng.nextFloat() * twoPi;
-            s.radius = 0.75f + 0.9f * rng.nextFloat();
+            s.home = inBall (rng, 0.20f, 1.22f);
             s.phase = rng.nextFloat() * twoPi;
-            s.speed = (0.15f + 0.35f * rng.nextFloat()) * (rng.chance (0.6f) ? 1.0f : -1.0f);
-            s.size = 0.6f + 1.4f * rng.nextFloat() * rng.nextFloat();
+            s.rate = 0.25f + 0.9f * rng.nextFloat();
+            s.size = 0.55f + 1.8f * rng.nextFloat() * rng.nextFloat();
             s.hue = rng.nextFloat();
+            s.seed = rng.nextFloat() * 80.0f;
+            s.burst = 0.0f;
+            s.burstVel = 0.0f;
+            s.p = s.home;
+            s.bright = 0.0f;
         }
-        for (auto& st : stars)
-            st = { rng.nextFloat(), rng.nextFloat(), 0.4f + 1.5f * rng.nextFloat() * rng.nextFloat(), rng.nextFloat() * twoPi };
+        for (auto& b : bubbles)
+        {
+            b.home = inBall (rng, 0.35f, 1.05f);
+            b.radius = 0.036f + 0.070f * rng.nextFloat() * rng.nextFloat();
+            b.phase = rng.nextFloat() * twoPi;
+            b.rate = 0.10f + 0.22f * rng.nextFloat();
+            b.hue = rng.nextFloat();
+            b.seed = rng.nextFloat() * 60.0f;
+            b.p = b.home;
+            b.scale = 1.0f;
+        }
     }
 
-    /** Advances every fragment (object units). Call once per frame. */
-    void updateFragments (const Env& e, const ValueNoise& noise, int activeCount) noexcept
+    /** How many sparkles are alive: DENSITY, playing state and Fracture all add. */
+    static int sparkleCount (const Env& raw, int cap) noexcept
     {
-        const float persistence = 0.35f + 0.65f * e.decay;
-        const float speedScale = (0.25f + 0.75f * persistence) * (0.55f + 0.45f * e.life) + 1.6f * e.fracture;
-        const float burstDrag = std::exp (-e.dt * (4.5f - 3.6f * e.decay));
-        const float twoPi = juce::MathConstants<float>::twoPi;
+        const Env e = sanitise (raw);
+        const int n = 26 + (int) (e.density * 56.0f * (0.45f + 0.55f * e.life)) + (int) (e.fracture * 40.0f);
+        const int top = cap < kMaxSparkles ? cap : kMaxSparkles;
+        return (int) liquid::clampf ((float) n, 4.0f, (float) (top > 4 ? top : 4));
+    }
 
-        for (int i = 0; i < activeCount && i < kMaxFragments; ++i)
+    /** Bubbles are always few — they are the large, slow population. */
+    static int bubbleCount (const Env& raw, int cap) noexcept
+    {
+        const Env e = sanitise (raw);
+        const int n = 4 + (int) (e.density * 10.0f);
+        const int top = cap < kMaxBubbles ? cap : kMaxBubbles;
+        return (int) liquid::clampf ((float) n, 2.0f, (float) (top > 2 ? top : 2));
+    }
+
+    /** Advances the sparkles. `count` comes from sparkleCount(). */
+    void updateSparkles (const Env& raw, const ValueNoise& noise, int count) noexcept
+    {
+        const Env e = sanitise (raw);
+        const float drag = std::exp (-e.dt * (2.2f - 1.6f * e.decay));
+        const float settle = 1.0f - std::exp (-e.dt * (0.9f - 0.55f * e.decay));
+        const float drift = (0.16f + 0.20f * e.density) * (1.0f - 0.45f * e.tension);
+
+        for (int i = 0; i < count && i < kMaxSparkles; ++i)
         {
-            auto& f = fragments[(size_t) i];
-            f.angle += f.speed * speedScale * e.dt;
-            if (f.angle > twoPi) f.angle -= twoPi; else if (f.angle < 0.0f) f.angle += twoPi;
+            auto& s = sparkles[(size_t) i];
 
-            // Fracture: impulsive outward bursts, persistence set by Decay.
             if (e.fracture > 0.02f)
             {
-                const float kick = juce::jmax (0.0f, noise.noise (f.seed, e.time * 2.5f) - 0.35f);
-                f.burstVelocity += kick * e.fracture * 6.0f * e.dt;
+                const float kick = e.fracture * 5.5f * liquid::clampf (noise.noise (s.seed, e.time * 2.3f) + 0.35f, 0.0f, 1.4f);
+                s.burstVel += kick * e.dt;
             }
-            f.burstVelocity *= burstDrag;
-            f.burst += f.burstVelocity * e.dt;
-            f.burst -= f.burst * juce::jmax (0.0f, 1.0f - 0.85f * e.decay) * e.dt * 1.5f;
-            f.burst = juce::jlimit (0.0f, 1.2f, f.burst);
+            s.burstVel *= drag;
+            s.burst += s.burstVel * e.dt;
+            s.burst -= s.burst * settle;
+            s.burst = liquid::clampf (s.burst, 0.0f, 1.6f);
 
-            // 3D orbit → screen with parallax. Magnet aligns orbits into a flat ring; Gravity pulls them in.
-            const float incl = f.inclination * (1.0f - 0.92f * e.magnet);
-            const float orbit = (f.orbit + 0.45f * e.tear + f.burst) * (1.15f - 0.3f * e.gravity);
-            const float px = std::cos (f.angle) * orbit;
-            const float py = std::sin (f.angle) * orbit;
-            const float yz = py * std::cos (incl);
-            f.depth = py * std::sin (incl) / juce::jmax (0.001f, orbit);      // -1 .. 1
-            const float jitter = e.scatter * 0.12f;
-            const float jx = jitter * noise.noise (f.seed + e.time * 3.0f, 1.7f);
-            const float jy = jitter * noise.noise (2.9f, f.seed + e.time * 3.0f);
-            const float cn = std::cos (f.node), sn = std::sin (f.node);
-            f.x = (px * cn - yz * sn) + jx;
-            f.y = (px * sn + yz * cn) * (1.0f + 0.1f * e.melt) + jy + 0.18f * e.melt;
-            f.scale = 1.0f + 0.4f * f.depth;
+            const Vec3 f = liquid::flow (noise, s.home, e.flowTime + s.phase * 0.2f, 1.6f);
+            Vec3 q = s.home + f * drift;
+            q.y += e.melt * 0.28f;
+            if (e.scatter > 0.001f)
+                q += Vec3 { noise.noise (s.seed + 3.0f, e.time * 2.6f),
+                            noise.noise (s.seed + 19.0f, e.time * 2.9f),
+                            noise.noise (s.seed + 47.0f, e.time * 3.3f) } * (e.scatter * 0.18f);
 
-            f.hx[(size_t) f.historyHead] = f.x;
-            f.hy[(size_t) f.historyHead] = f.y;
-            f.historyHead = (f.historyHead + 1) % kHistory;
+            q *= (1.0f + s.burst) * e.breathe;
+            s.p = { liquid::clampf (q.x, -5.0f, 5.0f), liquid::clampf (q.y, -5.0f, 5.0f), liquid::clampf (q.z, -5.0f, 5.0f) };
+
+            // Twinkle: a mote passing in and out of the light. This one runs off the
+            // wall clock, not the flow: the field can be frozen and the light still moves.
+            const float tw = 0.5f + 0.5f * std::sin (e.time * (1.4f + 3.4f * s.rate) + s.phase);
+            const float slow = 0.5f + 0.5f * noise.noise (s.seed * 0.7f, e.time * 0.35f);
+            s.bright = liquid::clampf ((0.18f + 0.82f * tw * slow) * (0.35f + 0.65f * e.life) + 0.5f * e.fracture, 0.0f, 1.0f);
         }
     }
 
-    /** Oldest recorded position of a fragment (for motion streaks). */
-    static juce::Point<float> oldest (const Fragment& f) noexcept
+    /** Advances the bubbles. */
+    void updateBubbles (const Env& raw, const ValueNoise& noise, int count) noexcept
     {
-        return { f.hx[(size_t) f.historyHead], f.hy[(size_t) f.historyHead] };
-    }
-
-    /** Advances sparks in a noise flow field around the object. */
-    void updateSparks (const Env& e, const ValueNoise& noise, int activeCount) noexcept
-    {
-        const float flow = 0.35f + 0.65f * e.life + e.fracture;
-        for (int i = 0; i < activeCount && i < kMaxSparks; ++i)
+        const Env e = sanitise (raw);
+        for (int i = 0; i < count && i < kMaxBubbles; ++i)
         {
-            auto& s = sparks[(size_t) i];
-            s.angle += s.speed * flow * e.dt * (1.0f - 0.5f * e.magnet);
-            const float n = noise.noise (std::cos (s.angle) * 1.5f + e.time * 0.2f, std::sin (s.angle) * 1.5f + s.phase);
-            const float r = s.radius + 0.18f * n + 0.05f * std::sin (e.time * 1.7f + s.phase) + 0.25f * e.tear;
-            const float stretch = 1.0f + 0.35f * (e.tension - 0.5f);
-            s.x = std::cos (s.angle) * r * stretch;
-            s.y = std::sin (s.angle) * r / stretch;
-            s.brightness = juce::jlimit (0.0f, 1.0f, 0.35f + 0.65f * noise.noise (s.phase * 7.0f, e.time * (1.5f + 3.0f * e.life)));
+            auto& b = bubbles[(size_t) i];
+            const Vec3 f = liquid::flow (noise, b.home, e.flowTime * 0.6f + b.phase * 0.15f, 1.1f);
+            Vec3 q = b.home + f * (0.20f * (1.0f - 0.4f * e.tension));
+            q.y += 0.06f * std::sin (e.time * b.rate + b.phase) - e.melt * 0.12f;
+            q *= e.breathe;
+            b.p = { liquid::clampf (q.x, -4.0f, 4.0f), liquid::clampf (q.y, -4.0f, 4.0f), liquid::clampf (q.z, -4.0f, 4.0f) };
+            b.scale = 1.0f + 0.35f * b.p.z;
         }
     }
 
-    std::array<Fragment, kMaxFragments> fragments;
-    std::array<Spark, kMaxSparks> sparks;
-    std::array<Star, kMaxStars> stars;
+    const std::array<Sparkle, kMaxSparkles>& sparkleArray() const noexcept { return sparkles; }
+    const std::array<Bubble, kMaxBubbles>& bubbleArray() const noexcept { return bubbles; }
+
+    static Env sanitise (const Env& e) noexcept
+    {
+        Env o;
+        o.dt       = liquid::clean (e.dt, 1.0f / 240.0f, 0.25f, 1.0f / 30.0f);
+        o.time     = liquid::clean (e.time, -1.0e6f, 1.0e6f, 0.0f);
+        o.flowTime = liquid::clean (e.flowTime, -1.0e6f, 1.0e6f, 0.0f);
+        o.density  = liquid::clean (e.density, 0.0f, 1.0f, 0.5f);
+        o.decay    = liquid::clean (e.decay, 0.0f, 1.0f, 0.5f);
+        o.tension  = liquid::clean (e.tension, 0.0f, 1.0f, 0.5f);
+        o.melt     = liquid::clean (e.melt, 0.0f, 1.0f, 0.0f);
+        o.scatter  = liquid::clean (e.scatter, 0.0f, 1.0f, 0.0f);
+        o.life     = liquid::clean (e.life, 0.0f, 1.0f, 0.0f);
+        o.level    = liquid::clean (e.level, 0.0f, 1.0f, 0.0f);
+        o.fracture = liquid::clean (e.fracture, 0.0f, 2.0f, 0.0f);
+        o.breathe  = liquid::clean (e.breathe, 0.4f, 2.0f, 1.0f);
+        return o;
+    }
+
+private:
+    static Vec3 inBall (Rng& rng, float rMin, float rMax) noexcept
+    {
+        for (int attempt = 0; attempt < 8; ++attempt)
+        {
+            const Vec3 v { rng.nextBipolar(), rng.nextBipolar(), rng.nextBipolar() };
+            const float l = v.length();
+            if (l > 0.05f && l <= 1.0f)
+                return normalised (v) * (rMin + (rMax - rMin) * l);
+        }
+        return { rMin, 0.0f, 0.0f };
+    }
+
+    std::array<Sparkle, kMaxSparkles> sparkles {};
+    std::array<Bubble, kMaxBubbles> bubbles {};
 };
 
 } // namespace am::ui

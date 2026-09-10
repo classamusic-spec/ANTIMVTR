@@ -140,6 +140,19 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
 
         ctx.numSamples = chunkSize;
 
+        // --- Polyphony headroom: one voice sits at -6 dB, sixteen at -12 dB, sixty-four at -15 dB,
+        //     eased over ~40 ms so notes joining a chord never step the level.
+        {
+            const int active = std::max (1, voices.activeVoiceCount());
+            const float target = 0.5f / std::pow ((float) active, 0.25f);
+            const float alpha = juce::jlimit (0.0f, 1.0f, (float) chunkSize / (float) (0.04 * sr));
+            polyphonyGain += (target - polyphonyGain) * alpha;
+            juce::FloatVectorOperations::multiply (mL, polyphonyGain, chunkSize);
+            juce::FloatVectorOperations::multiply (mR, polyphonyGain, chunkSize);
+            juce::FloatVectorOperations::multiply (sL, polyphonyGain, chunkSize);
+            juce::FloatVectorOperations::multiply (sR, polyphonyGain, chunkSize);
+        }
+
         // --- Diagnostics taps: source and post-matter
         diag.taps[(int) Stage::Source].push (sL, sR, chunkSize);
         diag.taps[(int) Stage::PostMatter].push (mL, mR, chunkSize);

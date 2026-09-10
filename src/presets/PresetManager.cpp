@@ -1,4 +1,5 @@
 #include "PresetManager.h"
+#include "dsp/fx/SpacePresets.h"
 
 namespace am
 {
@@ -18,6 +19,7 @@ PatchState PresetManager::initPatch()
     PatchState s;
     s.meta.name = "Init";
     s.meta.category = "INIT";
+    SpacePresets::apply (paramChoice (s.params, Param::spaceType), s.params);
     return s;
 }
 
@@ -73,6 +75,8 @@ PatchState PresetManager::buildFactory (int index) const
     {
         const auto& f = factory[(size_t) index];
         f.build (s);
+        // Every factory patch carries the curated rack of its Space type unless the builder set the rack itself.
+        SpacePresets::apply (paramChoice (s.params, Param::spaceType), s.params);
         s.meta.name = f.name;
         s.meta.category = f.category;
         s.meta.tags = f.tags;

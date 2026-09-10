@@ -23,7 +23,46 @@ AntiMatrProcessor::AntiMatrProcessor()
     abStates[0] = abStates[1] = PresetManager::initPatch();
     markPreset ("Init", { "basic" }, 0);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
+
+    // The default parameter values become the curated NEBULA rack, then follow the Space picker.
+    {
+        ParamValues v = currentParamValues();
+        SpacePresets::apply (paramChoice (v, Param::spaceType), v);
+        suppressSpaceRecall = true;
+        apvts.replaceState (StateManager::toParameterTree (v, kParametersType));
+        suppressSpaceRecall = false;
+        abStates[0] = abStates[1] = currentPatch();
+    }
+    apvts.addParameterListener (ParameterRegistry::get (Param::spaceType).id, this);
     startTimer (500);
+}
+
+void AntiMatrProcessor::parameterChanged (const juce::String&, float newValue)
+{
+    // May arrive on the audio thread (automation): defer the rack recall to the message thread.
+    if (suppressSpaceRecall) return;
+    pendingSpaceType.store ((int) std::lround (newValue), std::memory_order_relaxed);
+    triggerAsyncUpdate();
+}
+
+void AntiMatrProcessor::handleAsyncUpdate()
+{
+    const int type = pendingSpaceType.exchange (-1, std::memory_order_relaxed);
+    if (type >= 0) applySpacePreset (type);
+}
+
+void AntiMatrProcessor::applySpacePreset (int type)
+{
+    ParamValues before = currentParamValues();
+    ParamValues after = before;
+    SpacePresets::apply (type, after);
+    for (const auto& d : ParameterRegistry::all())
+    {
+        const size_t i = (size_t) paramIndex (d.param);
+        if (after[i] == before[i]) continue;
+        if (auto* p = apvts.getParameter (d.id))
+            p->setValueNotifyingHost (p->convertTo0to1 (after[i]));
+    }
 }
 
 void AntiMatrProcessor::setFractureTable (const FractureTable& table)
@@ -35,6 +74,8 @@ void AntiMatrProcessor::setFractureTable (const FractureTable& table)
 AntiMatrProcessor::~AntiMatrProcessor()
 {
     stopTimer();
+    cancelPendingUpdate();
+    apvts.removeParameterListener (ParameterRegistry::get (Param::spaceType).id, this);
 }
 
 //==============================================================================
@@ -200,7 +241,9 @@ void AntiMatrProcessor::loadPatch (const PatchState& patch, bool notifyPresetCha
     extraState = patch;
     fractureTable = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
+    suppressSpaceRecall = true;    // a patch carries its own rack values
     apvts.replaceState (StateManager::toParameterTree (patch.params, kParametersType));
+    suppressSpaceRecall = false;
     markPreset (patch.meta.name, patch.meta.tags, presetManager.findFactory (patch.meta.name));
     diagnostics().events.push (EngineEventType::PresetLoaded, Subsystem::State, -1, (uint32_t) std::max (0, currentPreset), 0.0f,
                                diagnostics().sampleClock.load());
@@ -230,7 +273,10 @@ void AntiMatrProcessor::loadRandomPreset()
 void AntiMatrProcessor::mutate (MutationStrength strength)
 {
     PatchState s = currentPatch();
+    const int typeBefore = paramChoice (s.params, Param::spaceType);
     MutationEngine::mutate (s.params, strength, mutationSeed++);
+    if (paramChoice (s.params, Param::spaceType) != typeBefore)
+        SpacePresets::apply (paramChoice (s.params, Param::spaceType), s.params);
     s.meta.name = presetName.endsWith ("*") ? presetName : presetName + " *";
     loadPatch (s);
 }
@@ -239,6 +285,7 @@ void AntiMatrProcessor::randomizePatch()
 {
     PatchState s = currentPatch();
     MutationEngine::randomize (s.params, randomSeed++);
+    SpacePresets::apply (paramChoice (s.params, Param::spaceType), s.params);
     s.meta.name = "Random " + juce::String (randomSeed - 1000);
     s.meta.tags = { "random" };
     loadPatch (s);

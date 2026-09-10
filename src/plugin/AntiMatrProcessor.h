@@ -7,6 +7,7 @@
 #include "presets/PresetManager.h"
 #include "state/MutationEngine.h"
 #include "dsp/fracture/Fragment.h"
+#include "dsp/fx/SpacePresets.h"
 
 namespace am
 {
@@ -18,7 +19,9 @@ namespace am
 */
 class AntiMatrProcessor final : public juce::AudioProcessor,
                                 public juce::ChangeBroadcaster,
-                                private juce::Timer
+                                private juce::Timer,
+                                private juce::AudioProcessorValueTreeState::Listener,
+                                private juce::AsyncUpdater
 {
 public:
     AntiMatrProcessor();
@@ -96,6 +99,9 @@ public:
 
 private:
     void timerCallback() override { synth.messageThreadMaintenance(); }
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+    void handleAsyncUpdate() override;
+    void applySpacePreset (int type);
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void snapshotParameters (ParamValues& out) const noexcept;
     void markPreset (const juce::String& name, const juce::StringArray& tags, int index);
@@ -121,6 +127,8 @@ private:
     int reportedLatency = 0;
     PatchState extraState;   ///< non-parameter sections kept for round-tripping
     FractureTable fractureTable = FractureTable::makeDefault();
+    std::atomic<int> pendingSpaceType { -1 };
+    bool suppressSpaceRecall = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AntiMatrProcessor)
 };

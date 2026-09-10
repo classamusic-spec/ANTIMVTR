@@ -68,6 +68,7 @@ public:
         auto params = ParameterRegistry::defaults();
         params[(size_t) paramIndex (Param::ampAttack)] = 0.001f;
         params[(size_t) paramIndex (Param::ampRelease)] = 0.05f;
+        params[(size_t) paramIndex (Param::spaceMix)] = 0.0f;     // these tests measure the voice envelope, not the Space tail
 
         beginTest ("Note produces sound and releases to silence at every sample rate and block size");
         {
@@ -82,7 +83,7 @@ public:
                     const juce::String tag = juce::String (sr) + "/" + juce::String (block);
                     expect (r.finite, "non-finite output at " + tag);
                     const float sustain = rmsOfRange (r.audio, (int) (0.2 * sr), (int) (0.45 * sr));
-                    expect (sustain > 0.1f, "too quiet during sustain at " + tag + " rms=" + juce::String (sustain));
+                    expect (sustain > 0.05f, "too quiet during sustain at " + tag + " rms=" + juce::String (sustain));
                     const float tail = rmsOfRange (r.audio, (int) (0.9 * sr), (int) sr);
                     expect (tail < 1.0e-4f, "did not release at " + tag + " rms=" + juce::String (tail));
                     expect (r.peak <= 1.0f, "peak above ceiling at " + tag);
@@ -113,7 +114,7 @@ public:
             TransportInfo t;
             engine.process (buf, midi, params, t);
             expect (rmsOfRange (buf, 0, 290) < 1.0e-6f, "audio before the note-on offset");
-            expect (rmsOfRange (buf, 320, 512) > 0.01f, "no audio after the note-on offset");
+            expect (rmsOfRange (buf, 320, 512) > 0.005f, "no audio after the note-on offset");
         }
 
         beginTest ("Polyphony: 16-note chord stays finite and limited; stealing beyond capacity");
@@ -127,7 +128,7 @@ public:
             });
             expect (r.finite);
             expect (r.peak <= 1.0f);
-            expect (rmsOfRange (r.audio, 4800, 9600) > 0.1f);
+            expect (rmsOfRange (r.audio, 4800, 9600) > 0.05f);
 
             // Flood: 200 note-ons into 16 voices must not crash and must steal.
             auto flood = params;
@@ -177,7 +178,7 @@ public:
                 if (pos == 0) m.addEvent (juce::MidiMessage::controllerEvent (1, 64, 127), 0);
                 if (pos == 128 * 250) m.addEvent (juce::MidiMessage::controllerEvent (1, 64, 0), 0);
             });
-            expect (rmsOfRange (r.audio, (int) (0.4 * 48000), (int) (0.6 * 48000)) > 0.1f, "pedal did not sustain");
+            expect (rmsOfRange (r.audio, (int) (0.4 * 48000), (int) (0.6 * 48000)) > 0.05f, "pedal did not sustain");
             expect (rmsOfRange (r.audio, (int) (0.95 * 48000), 48000) < 1.0e-4f, "pedal release did not stop the note");
         }
 
@@ -202,7 +203,7 @@ public:
             engine.control().resetTo (params);
             auto r = renderNote (engine, 48000.0, 8192, 1.0, 0.5, 60, params);
             expect (r.finite);
-            expect (rmsOfRange (r.audio, 9600, 19200) > 0.1f);
+            expect (rmsOfRange (r.audio, 9600, 19200) > 0.05f);
         }
 
         beginTest ("Master gain and dry modes");
@@ -222,7 +223,7 @@ public:
 
             loud.diagnostics().dev.dryMode.store ((int) DryMode::SourceOnly);
             auto r3 = renderNote (loud, 48000.0, 128, 0.5, 0.4, 60, params);
-            expect (r3.finite && rmsOfRange (r3.audio, 4800, 9600) > 0.1f);
+            expect (r3.finite && rmsOfRange (r3.audio, 4800, 9600) > 0.05f);
         }
 
         beginTest ("Diagnostics snapshots are published during processing");

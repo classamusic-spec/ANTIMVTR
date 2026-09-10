@@ -8,7 +8,7 @@ namespace
 {
     constexpr float kMaxDelaySeconds = 1.0f;   ///< longest per-fragment spectral delay
     constexpr float kMaxFeedback     = 0.96f;  ///< hard ceiling on any feedback coefficient
-    constexpr float kRingCeiling     = 6.0f;   ///< delay-line level cap (1.0 = full-scale sine)
+    constexpr float kRingCeiling     = 2.5f;   ///< delay-line level cap (1.0 = full-scale sine)
     constexpr float kHalfPi          = 1.57079632679489662f;
     constexpr float kTwoPif          = 6.28318530717958648f;
 
@@ -20,6 +20,24 @@ namespace
 
     inline float melOf (float hz) noexcept    { return 2595.0f * std::log10 (1.0f + hz / 700.0f); }
     inline float melToHz (float mel) noexcept { return 700.0f * (std::pow (10.0f, mel / 2595.0f) - 1.0f); }
+
+    /** Snaps a scattered transposition to a consonant interval.
+
+        Arbitrary fractional transpositions beat against the un-shifted fragments
+        and turn the effect into phasey mush; octaves, fifths and fourths stack
+        into something that still sounds like the instrument. */
+    inline float quantiseInterval (float semitones) noexcept
+    {
+        static constexpr float kIntervals[] = { -24.0f, -19.0f, -12.0f, -7.0f, -5.0f, 0.0f,
+                                                  5.0f,   7.0f,  12.0f, 19.0f,  24.0f };
+        float best = 0.0f, bestDistance = 1.0e9f;
+        for (float v : kIntervals)
+        {
+            const float d = std::abs (v - semitones);
+            if (d < bestDistance) { bestDistance = d; best = v; }
+        }
+        return best;
+    }
 }
 
 //==============================================================================
@@ -111,6 +129,7 @@ void FractureEngine::reset()
     writeFrame = 0;
     dryWrite = 0;
     onsetFast = onsetSlow = 0.0f;
+    wetTrim = 1.0f;
     framesSinceOnset = 1000;
     wasPlaying = false;
     blendSmooth.reset (0.0f);
@@ -271,15 +290,20 @@ void FractureEngine::updateFragments()
         const bool maskOn = ((st.mask >> (f & 31)) & 1u) != 0;
         const float seqGate = (st.active && maskOn) ? juce::jlimit (0.0f, 2.0f, st.gate * st.gain) : 0.0f;
 
-        float gate = 1.0f + (seqGate - 1.0f) * seqWeight;
+        // SPECTRAL is a static mode: the sequencer colours it but only half-gates it.
+        const float gateWeight = bp.mode == FractureMode::Spectral ? seqWeight * 0.5f : seqWeight;
+        float gate = 1.0f + (seqGate - 1.0f) * gateWeight;
         if (bp.mode == FractureMode::Rhythmic)  gate *= stepEnv;
         if (bp.mode == FractureMode::Transient) gate = transientEnv[i];
         if (! probPass[i]) gate = 0.0f;
 
-        const float pitch = juce::jlimit (-48.0f, 48.0f,
-                                          fr.pitch + bp.pitch + seqWeight * st.pitch
-                                          + fs * scatterPitch[i] * 12.0f
-                                          + evolveDepth * evolvePitch[i] * 12.0f);
+        // The table's own pitch and the global offset are exact user values; every
+        // scattered / sequenced / drifting contribution snaps to a consonant interval
+        // so nothing lands a fraction of a semitone away and beats.
+        const float scattered = quantiseInterval (fs * scatterPitch[i] * 24.0f)
+                              + quantiseInterval (seqWeight * st.pitch
+                                                  + evolveDepth * evolvePitch[i] * 24.0f);
+        const float pitch = juce::jlimit (-48.0f, 48.0f, fr.pitch + bp.pitch + scattered);
 
         const float dNorm = juce::jlimit (0.0f, 1.0f, fr.delay + fs * scatterDelay[i] * 0.6f
                                                       + evolveDepth * evolveDelay[i] * 0.4f);
@@ -309,6 +333,17 @@ void FractureEngine::updateFragments()
         fragFb[i]    += (fragFbTarget[i]    - fragFb[i])    * smooth;
         fragDelay[i] += juce::jlimit (-1.0f, 1.0f, fragDelayTarget[i] - fragDelay[i]);
     }
+
+    // Feedback makeup. A delay loop of gain g settles at 1/sqrt(1 - g²) times the
+    // input energy; trimming by the inverse keeps the wet level roughly constant as
+    // the feedback control is opened, instead of driving the master limiter.
+    float sumFb = 0.0f;
+    int voiced = 0;
+    for (int f = 0; f < frags; ++f)
+        if (fragGain[(size_t) f] > 1.0e-4f) { sumFb += fragFb[(size_t) f]; ++voiced; }
+
+    const float g = voiced > 0 ? juce::jlimit (0.0f, 0.95f, sumFb / (float) voiced) : 0.0f;
+    wetTrim += (std::sqrt (juce::jmax (0.05f, 1.0f - g * g)) - wetTrim) * smooth;
 }
 
 //==============================================================================
@@ -491,7 +526,7 @@ void FractureEngine::processFrame (float* specL, float* specR, int bins)
     for (int j = 0; j < bins; ++j)
     {
         const int i0 = 2 * j, i1 = i0 + 1;
-        const float t = tilt[(size_t) j];
+        const float t = tilt[(size_t) j] * wetTrim;
         const float gl = t * panGainL[(size_t) j];
         const float gr = t * panGainR[(size_t) j];
         specL[i0] = wl[i0] * gl; specL[i1] = wl[i1] * gl;

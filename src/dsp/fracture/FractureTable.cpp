@@ -43,11 +43,11 @@ FractureTable FractureTable::makeDefault()
         const float u = (float) f / (float) (kMaxFractureFragments - 1); // 0 … 1 low → high
         auto& fr = t.fragments[(size_t) f];
         fr.pitch       = kPitchCycle[f & 7];
-        fr.delay       = 0.06f + 0.55f * u * u;             // low bands stay tight, highs smear
+        fr.delay       = 0.10f + 0.50f * u * u;             // low bands stay tight, highs smear
         fr.pan         = ((f & 1) == 0 ? -1.0f : 1.0f) * (0.15f + 0.6f * u);
-        fr.decay       = 0.35f + 0.45f * u;
+        fr.decay       = 0.50f + 0.35f * u;
         fr.probability = 1.0f;
-        fr.feedback    = 0.15f + 0.5f * u;
+        fr.feedback    = 0.40f + 0.35f * u;                 // every band can ring
         fr.spread      = 0.25f + 0.75f * u;
         fr.gain        = 1.0f;
     }

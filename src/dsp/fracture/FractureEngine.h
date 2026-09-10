@@ -163,6 +163,7 @@ private:
     int   bandsBuiltFor = 0;
     uint32_t scatterSeed = 0xFFFFFFFFu;
     float tiltBuiltFor = -1.0f;
+    float wetTrim = 1.0f;              ///< feedback makeup: keeps the wet level steady as feedback rises
     float onsetFast = 0.0f, onsetSlow = 0.0f;
     int   framesSinceOnset = 1000;
     bool  wasPlaying = false;

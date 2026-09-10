@@ -65,6 +65,7 @@ void MatterEngine::reset()
     lastTopology = -1;
     lastQualityNodes = 0;
     lastEdgeScale = 0.0f;
+    lastCoupScale = 0.0f; lastCoupRMax = 0.0f; lastCoupJitter = -1.0f; lastCoupTopology = -1;
 }
 
 void MatterEngine::rebuildIfNeeded (const ShapeValues& v, int count) noexcept
@@ -85,6 +86,7 @@ void MatterEngine::rebuildIfNeeded (const ShapeValues& v, int count) noexcept
         lastQualityNodes = count;
         const int clusters = std::clamp (2 + (int) std::lround (v.morph.density * 6.0f), 2, MatterTopology::kMaxClusters);
         topology.build ((TopologyType) v.topologyType, v.seed, count, clusters, morpher.profile().bandBWeight);
+        ++topologyVersion;
         for (int i = 0; i < count; ++i)
         {
             nodes[(size_t) i].cluster = topology.clusterOf (i);
@@ -233,6 +235,14 @@ void MatterEngine::applyCoupling (const ShapeValues& v, float rMax) noexcept
         return;
     }
     const float jit = v.surface * 0.6f;
+    // The bank's coupling arrays are rebuilt only when something material changed.
+    const bool changed = ! bank.isCouplingActive()
+                      || std::abs (scale - lastCoupScale) > 0.003f * lastCoupScale
+                      || std::abs (rMax - lastCoupRMax) > 2.0e-7f
+                      || std::abs (jit - lastCoupJitter) > 0.002f
+                      || topologyVersion != lastCoupTopology;
+    if (! changed) return;
+    lastCoupScale = scale; lastCoupRMax = rMax; lastCoupJitter = jit; lastCoupTopology = topologyVersion;
     const int N = nodeCount;
     for (int i = 0; i < N; ++i)
     {

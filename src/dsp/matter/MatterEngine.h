@@ -113,6 +113,8 @@ private:
     int lastTopology = -1, lastQualityNodes = 0;
     float currentEnergy = 0.0f;
     float lastEdgeScale = 0.0f;
+    float lastCoupScale = 0.0f, lastCoupRMax = 0.0f, lastCoupJitter = -1.0f;
+    int   lastCoupTopology = -1, topologyVersion = 0;
     double sr = 48000.0;
     float lpState = 0.0f;
     bool gate = false, snapNext = true, everStarted = false;

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "core/Types.h"
+#include <juce_dsp/juce_dsp.h>
 #include <array>
+#include <cstring>
 
 namespace am
 {
@@ -259,6 +261,7 @@ public:
         const int numSub = (n + kSub - 1) / kSub;
         const float inv = 1.0f / (float) numSub;
         const int N = count;
+        updateActiveGroups();
 
         // Per-sub-block deltas toward the targets.
         for (int i = 0; i < N; ++i)
@@ -294,6 +297,44 @@ public:
     }
 
 private:
+    using V = juce::dsp::SIMDRegister<float>;
+    static_assert (V::SIMDNumElements == (size_t) kLanes, "ModalBank lanes must match the SIMD width");
+
+    /** Unaligned SIMD load (the coupling stencil reads at arbitrary offsets). */
+    static inline V loadU (const float* p) noexcept
+    {
+        alignas (16) float tmp[kLanes];
+        std::memcpy (tmp, p, sizeof (tmp));
+        return V::fromRawArray (tmp);
+    }
+
+    /**
+        Groups of kLanes nodes that need rendering: any node with a non-zero
+        input or output gain, or with a state that is still decaying. Silent,
+        inactive groups are zeroed and skipped (Density < 1 costs less).
+    */
+    void updateActiveGroups() noexcept
+    {
+        numGroups = 0;
+        float* __restrict x0 = xp.data() + kPad;
+        float* __restrict y0 = yp.data() + kPad;
+        for (int g = 0; g < count / kLanes; ++g)
+        {
+            const int j = g * kLanes;
+            float gain = 0.0f, energy = 0.0f;
+            for (int l = 0; l < kLanes; ++l)
+            {
+                gain += std::abs (glT[(size_t) (j + l)]) + std::abs (grT[(size_t) (j + l)]) + std::abs (gl[(size_t) (j + l)]) + std::abs (gr[(size_t) (j + l)])
+                      + std::abs (a[(size_t) (j + l)]) + std::abs (b[(size_t) (j + l)]);
+                energy += x0[j + l] * x0[j + l] + y0[j + l] * y0[j + l];
+            }
+            if (gain > 0.0f || energy > 1.0e-18f)
+                groups[(size_t) numGroups++] = (uint8_t) g;
+            else
+                for (int l = 0; l < kLanes; ++l) { x0[j + l] = 0.0f; y0[j + l] = 0.0f; }
+        }
+    }
+
     template <bool Coupled>
     void renderSamples (const float* __restrict exc, const float* __restrict strike,
                         float* __restrict outL, float* __restrict outR, int len) noexcept
@@ -310,43 +351,33 @@ private:
         const float* __restrict kA = kAp.data() + kPad;
         const float* __restrict kB = kBp.data() + kPad;
         const float* __restrict hk = hubK.data();
-        const int N = count;
         const int sA = strideA, sB = strideB;
+        const int ng = numGroups;
+        const uint8_t* __restrict gi = groups.data();
 
         for (int t = 0; t < len; ++t)
         {
-            const float u  = exc[t];
-            const float st = strike != nullptr ? strike[t] : 0.0f;
+            const V vu  = V::expand (exc[t]);
+            const V vst = V::expand (strike != nullptr ? strike[t] : 0.0f);
 
             if constexpr (Coupled)
             {
                 // Antisymmetric stencil on the previous states: node i receives
                 // k·x from the higher end of each edge and −k·x from the lower end.
-                const float xh = hubActive ? x0[hub] : 0.0f;
-                float hubAcc[kLanes] = {};
-                if (bandBActive)
+                const V xh = V::expand (hubActive ? x0[hub] : 0.0f);
+                V hubAcc = V::expand (0.0f);
+                for (int g = 0; g < ng; ++g)
                 {
-                    for (int i = 0; i < N; i += kLanes)
-                        for (int l = 0; l < kLanes; ++l)
-                        {
-                            const int j = i + l;
-                            ci[j] = kA[j] * x0[j + sA] - kA[j - sA] * x0[j - sA]
-                                  + kB[j] * x0[j + sB] - kB[j - sB] * x0[j - sB]
-                                  - hk[j] * xh;
-                            hubAcc[l] += hk[j] * x0[j];
-                        }
+                    const int j = (int) gi[g] * kLanes;
+                    V c1 = V::fromRawArray (kA + j) * loadU (x0 + j + sA) - loadU (kA + j - sA) * loadU (x0 + j - sA);
+                    if (bandBActive)
+                        c1 = c1 + V::fromRawArray (kB + j) * loadU (x0 + j + sB) - loadU (kB + j - sB) * loadU (x0 + j - sB);
+                    const V h = V::fromRawArray (hk + j);
+                    c1 = c1 - h * xh;
+                    hubAcc = hubAcc + h * V::fromRawArray (x0 + j);
+                    c1.copyToRawArray (ci + j);
                 }
-                else
-                {
-                    for (int i = 0; i < N; i += kLanes)
-                        for (int l = 0; l < kLanes; ++l)
-                        {
-                            const int j = i + l;
-                            ci[j] = kA[j] * x0[j + sA] - kA[j - sA] * x0[j - sA] - hk[j] * xh;
-                            hubAcc[l] += hk[j] * x0[j];
-                        }
-                }
-                if (hubActive) ci[hub] += hubAcc[0] + hubAcc[1] + hubAcc[2] + hubAcc[3];
+                if (hubActive) ci[hub] += hubAcc.sum();
                 for (int e = 0; e < numExtra; ++e)
                 {
                     const auto& ed = extra[(size_t) e];
@@ -355,28 +386,26 @@ private:
                 }
             }
 
-            float accL[kLanes] = {};
-            float accR[kLanes] = {};
-            for (int i = 0; i < N; i += kLanes)
+            V accL = V::expand (0.0f), accR = V::expand (0.0f);
+            for (int g = 0; g < ng; ++g)
             {
-                for (int l = 0; l < kLanes; ++l)
-                {
-                    const int j = i + l;
-                    // Coupling is applied to the state BEFORE the rotation: z' = D·R·(I + K)·z,
-                    // which is what the contraction bound in finalizeCoupling() covers.
-                    float xi = x0[j];
-                    if constexpr (Coupled) xi += ci[j];
-                    const float yi = y0[j];
-                    const float in = u * aa[j] + st * bb[j];
-                    const float xn = cc[j] * xi - ss[j] * yi + in;
-                    const float yn = ss[j] * xi + cc[j] * yi;
-                    x0[j] = xn; y0[j] = yn;
-                    accL[l] += xn * gL[j];
-                    accR[l] += xn * gR[j];
-                }
+                const int j = (int) gi[g] * kLanes;
+                // Coupling is applied to the state BEFORE the rotation: z' = D·R·(I + K)·z,
+                // which is what the contraction bound in finalizeCoupling() covers.
+                V xi = V::fromRawArray (x0 + j);
+                if constexpr (Coupled) xi = xi + V::fromRawArray (ci + j);
+                const V yi = V::fromRawArray (y0 + j);
+                const V vc = V::fromRawArray (cc + j), vs = V::fromRawArray (ss + j);
+                const V in = vu * V::fromRawArray (aa + j) + vst * V::fromRawArray (bb + j);
+                const V xn = vc * xi - vs * yi + in;
+                const V yn = vs * xi + vc * yi;
+                xn.copyToRawArray (x0 + j);
+                yn.copyToRawArray (y0 + j);
+                accL = accL + xn * V::fromRawArray (gL + j);
+                accR = accR + xn * V::fromRawArray (gR + j);
             }
-            outL[t] = (accL[0] + accL[1]) + (accL[2] + accL[3]);
-            outR[t] = (accR[0] + accR[1]) + (accR[2] + accR[3]);
+            outL[t] = accL.sum();
+            outR[t] = accR.sum();
         }
     }
 
@@ -394,6 +423,8 @@ private:
     alignas (32) std::array<float, kMaxMatterNodes> dc {}, ds {}, dgl {}, dgr {};
     alignas (32) std::array<float, kMaxMatterNodes> a {}, b {}, hubK {};
     std::array<ExtraEdge, kMaxExtraEdges> extra {};
+    std::array<uint8_t, kMaxMatterNodes / kLanes> groups {};
+    int numGroups = 0;
 
     int count = kLanes;
     int strideA = 0, strideB = 0, hub = -1, numExtra = 0;

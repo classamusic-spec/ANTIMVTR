@@ -58,7 +58,7 @@ namespace
             {
                 const float r = (float) (besselZero (m, k) / j01);
                 // A strike near the centre favours axisymmetric (m = 0) modes.
-                const float w = std::pow (r, -0.4f) / (1.0f + 0.4f * (float) m);
+                const float w = std::pow (r, -0.35f) / (1.0f + 0.25f * (float) m);
                 cand[n++] = { r, w };
             }
         commit (cand, n, out);
@@ -104,7 +104,7 @@ namespace
             const float g = (fk * (fk * fk - 1.0f) / std::sqrt (fk * fk + 1.0f)) / g2;   // shell mode family
             const float w = std::pow (fk - 1.0f, -0.3f);
             cand[n++] = { g, w };
-            cand[n++] = { g * 1.004f, 0.5f * w };                 // near-degenerate twin → slow shimmer
+            cand[n++] = { g * 1.004f, 0.3f * w };                 // near-degenerate twin → slow shimmer
             cand[n++] = { 1.93f * std::pow (g, 0.97f), 0.35f * w }; // second family
         }
         commit (cand, n, out);
@@ -255,7 +255,7 @@ namespace
             auto& m = t[(size_t) MaterialType::Organic];
             m.name = "ORGANIC"; m.ownStructure = FormAnchor::Inharmonic; m.structurePull = 0.6f;
             m.stretch = 0.0008f; m.ratioJitter = 0.05f;
-            m.t60Scale = 0.8f; m.dampingSlope = 0.7f;
+            m.t60Scale = 0.8f; m.dampingSlope = 0.6f;
             m.weightSlope = 0.1f; m.weightRipple = 0.4f;
             m.couplingScale = 0.7f; m.bandBWeight = 0.5f;
             m.nonlinearity = 0.4f; m.hardening = -1.0f;
@@ -277,8 +277,8 @@ namespace
         {
             auto& m = t[(size_t) MaterialType::Membrane];
             m.name = "MEMBRANE"; m.ownStructure = FormAnchor::Membrane; m.structurePull = 0.7f;
-            m.t60Scale = 0.6f; m.dampingSlope = 1.0f;
-            m.weightSlope = 0.05f; m.weightRipple = 0.15f;
+            m.t60Scale = 0.6f; m.dampingSlope = 0.85f;
+            m.weightSlope = 0.0f; m.weightRipple = 0.15f;
             m.couplingScale = 0.8f; m.bandBWeight = 0.4f;
             m.nonlinearity = 0.7f; m.hardening = -1.0f;
             m.stereoWidth = 0.8f; m.stereoPattern = StereoPattern::Alternate;

@@ -51,6 +51,7 @@ public:
     void mouseUp (const juce::MouseEvent&) override;
 
     juce::Rectangle<float> knobBounds() const;
+    float labelHeight() const;
 
 private:
     void showContextMenu();

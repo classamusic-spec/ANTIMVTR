@@ -362,7 +362,7 @@ SpacePanel::SpacePicker::SpacePicker() { setWantsKeyboardFocus (false); }
 juce::Rectangle<float> SpacePanel::SpacePicker::nameBounds() const
 {
     const auto b = getLocalBounds().toFloat();
-    if (artOnly) return b.withTrimmedTop (b.getHeight() * 0.68f).reduced (b.getWidth() * 0.18f, 6.0f);
+    if (artOnly) return juce::Rectangle<float> (juce::jmin (b.getWidth() - 20.0f, 220.0f), 34.0f).withCentre ({ b.getCentreX(), b.getBottom() - 30.0f });
     auto left = b.withWidth (b.getWidth() * 0.6f).reduced (10.0f, 0.0f);
     return left.withSizeKeepingCentre (left.getWidth(), juce::jlimit (26.0f, 40.0f, b.getHeight() * 0.42f));
 }

@@ -107,16 +107,49 @@ void AntiMatrLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar&, in
     g.fillRoundedRectangle (thumb.toFloat(), 3.0f);
 }
 
+namespace
+{
+    /** First line in the label face, the rest as secondary body copy. */
+    juce::TextLayout tooltipLayout (const juce::String& text, float maxWidth)
+    {
+        juce::AttributedString s;
+        const auto lines = juce::StringArray::fromLines (text);
+        for (int i = 0; i < lines.size(); ++i)
+        {
+            if (i == 0) s.append (lines[i].toUpperCase() + (lines.size() > 1 ? "\n" : ""), Theme::labelFont (10.5f), Theme::textPrimary);
+            else        s.append (lines[i] + (i + 1 < lines.size() ? "\n" : ""), Theme::bodyFont (11.5f), Theme::textSecondary);
+        }
+        s.setLineSpacing (2.0f);
+        juce::TextLayout layout;
+        layout.createLayout (s, maxWidth);
+        return layout;
+    }
+}
+
+juce::Rectangle<int> AntiMatrLookAndFeel::getTooltipBounds (const juce::String& tipText, juce::Point<int> screenPos, juce::Rectangle<int> parentArea)
+{
+    const auto layout = tooltipLayout (tipText, 320.0f);
+    const int w = juce::roundToInt (layout.getWidth()) + 24;
+    const int h = juce::roundToInt (layout.getHeight()) + 16;
+    return juce::Rectangle<int> (screenPos.x > parentArea.getCentreX() ? screenPos.x - (w + 12) : screenPos.x + 24,
+                                 screenPos.y > parentArea.getCentreY() ? screenPos.y - (h + 6) : screenPos.y + 6, w, h)
+               .constrainedWithin (parentArea);
+}
+
 void AntiMatrLookAndFeel::drawTooltip (juce::Graphics& g, const juce::String& text, int width, int height)
 {
-    auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height);
-    g.setColour (Theme::panelTop);
-    g.fillRoundedRectangle (b, 4.0f);
-    g.setColour (Theme::border);
-    g.drawRoundedRectangle (b.reduced (0.5f), 4.0f, 1.0f);
-    g.setColour (Theme::textPrimary);
-    g.setFont (Theme::font (12.0f));
-    g.drawFittedText (text, b.reduced (6, 2).toNearestInt(), juce::Justification::centredLeft, 3);
+    auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
+    g.setColour (juce::Colours::black.withAlpha (0.35f));
+    g.fillRoundedRectangle (b.translated (0.0f, 1.5f), 6.0f);
+    juce::ColourGradient fill (Theme::panelTop.brighter (0.06f), b.getX(), b.getY(), Theme::panel, b.getX(), b.getBottom(), false);
+    g.setGradientFill (fill);
+    g.fillRoundedRectangle (b, 6.0f);
+    g.setColour (Theme::border.withAlpha (0.14f));
+    g.drawRoundedRectangle (b, 6.0f, 1.0f);
+    // accent bar
+    juce::Path bar; bar.startNewSubPath (b.getX() + 5.0f, b.getY() + 7.0f); bar.lineTo (b.getX() + 5.0f, b.getBottom() - 7.0f);
+    draw::glowPath (g, bar, Theme::cyan, 1.5f, 6.0f, 0.6f);
+    tooltipLayout (text, b.getWidth() - 24.0f).draw (g, b.reduced (14.0f, 8.0f).withTrimmedLeft (2.0f));
 }
 
 void AntiMatrLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button, const juce::Colour&, bool highlighted, bool down)

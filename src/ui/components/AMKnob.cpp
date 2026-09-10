@@ -34,13 +34,20 @@ void AMKnob::valueChanged()
     ring.setBase (proportion());
 }
 
+float AMKnob::labelHeight() const
+{
+    return labelUpper.isNotEmpty() ? juce::jlimit (10.0f, 22.0f, (float) getHeight() * 0.19f) : 0.0f;
+}
+
 juce::Rectangle<float> AMKnob::knobBounds() const
 {
     auto b = getLocalBounds().toFloat();
-    const float labelH = labelUpper.isNotEmpty() ? juce::jlimit (10.0f, 22.0f, b.getHeight() * 0.19f) : 0.0f;
-    auto area = b.withTrimmedBottom (labelH + 2.0f);
-    const float d = juce::jmin (area.getWidth(), area.getHeight()) * 0.92f;
-    return area.withSizeKeepingCentre (d, d);
+    const float labelH = labelHeight();
+    const float cap = hero ? 150.0f : 100.0f;
+    const float d = juce::jmin (b.getWidth(), b.getHeight() - labelH - 2.0f, cap) * 0.92f;
+    const float groupH = d + (labelH > 0.0f ? labelH + 2.0f : 0.0f);
+    const float top = b.getY() + juce::jmax (0.0f, (b.getHeight() - groupH) * 0.5f);
+    return { b.getCentreX() - d * 0.5f, top, d, d };
 }
 
 void AMKnob::resized()
@@ -121,13 +128,15 @@ void AMKnob::paint (juce::Graphics& g)
     // Label / value (cross-fades with hover)
     if (labelUpper.isNotEmpty())
     {
-        const auto labelArea = getLocalBounds().toFloat().withTop (kb.getBottom() + 2.0f);
-        const float h = juce::jlimit (8.5f, hero ? 15.0f : 13.5f, labelArea.getHeight() * 0.7f);
+        const auto full = getLocalBounds().toFloat();
+        const auto labelArea = juce::Rectangle<float> (full.getX(), kb.getBottom() + 2.0f, full.getWidth(), labelHeight());
+        const float h = juce::jlimit (8.5f, hero ? 15.0f : 13.0f, labelArea.getHeight() * 0.7f);
         if (lit > 0.02f)
             draw::trackedText (g, getTextFromValue (getValue()), labelArea, juce::Justification::centred, Theme::valueFont (h + 1.0f),
                                accent.brighter (0.25f).withAlpha (lit));
         if (lit < 0.98f)
-            draw::trackedText (g, labelUpper, labelArea, juce::Justification::centred, Theme::labelFont (h), Theme::textSecondary.withAlpha (1.0f - lit));
+            draw::trackedText (g, labelUpper, labelArea, juce::Justification::centred,
+                               draw::fitFont (Theme::labelFont (h), labelUpper, labelArea.getWidth() - 2.0f), Theme::textSecondary.withAlpha (1.0f - lit));
     }
 }
 

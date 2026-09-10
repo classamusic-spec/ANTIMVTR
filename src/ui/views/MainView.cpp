@@ -1,4 +1,5 @@
 #include "MainView.h"
+#include "Pages.h"
 
 namespace am::ui
 {
@@ -43,7 +44,27 @@ GroupPage::GroupPage (AntiMatrProcessor& p, const juce::String& title, const juc
                       std::vector<ParamGroup> groups, juce::Colour accentColour)
     : accent (accentColour)
 {
-    juce::ignoreUnused (title, subtitle);
+    juce::ignoreUnused (title);
+    if (! groups.empty())
+    {
+        switch (groups.front())
+        {
+            case ParamGroup::Source:   page = std::make_unique<SourcePage> (p); break;
+            case ParamGroup::Shape:    page = std::make_unique<ShapePage> (p); break;
+            case ParamGroup::Evolve:   page = std::make_unique<EvolvePage> (p); break;
+            case ParamGroup::Fracture: page = std::make_unique<FracturePage> (p); break;
+            case ParamGroup::Space:    page = std::make_unique<SpacePage> (p); break;
+            case ParamGroup::Mod:      page = std::make_unique<ModPage> (p); break;
+            default: break;
+        }
+    }
+    if (page != nullptr)
+    {
+        addAndMakeVisible (*page);
+        return;
+    }
+
+    // Generic fallback: every parameter of the given groups as bound knobs in a grid.
     for (auto g : groups)
     {
         Section s;
@@ -63,6 +84,8 @@ GroupPage::GroupPage (AntiMatrProcessor& p, const juce::String& title, const juc
 
 void GroupPage::resized()
 {
+    if (page != nullptr) { page->setBounds (getLocalBounds()); return; }
+
     viewport.setBounds (getLocalBounds());
     const int width = getWidth() - 16;
     const int pad = juce::jmax (8, getWidth() / 70);

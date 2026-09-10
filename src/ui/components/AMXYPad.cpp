@@ -13,7 +13,9 @@ juce::Rectangle<float> AMXYPad::field() const
 {
     auto b = getLocalBounds().toFloat();
     const float labelH = juce::jlimit (12.0f, 18.0f, b.getHeight() * 0.1f);
-    return b.withTrimmedBottom (labelH).withTrimmedLeft (labelH);
+    auto inner = b.withTrimmedBottom (labelH).withTrimmedLeft (labelH);
+    const float s = juce::jmin (inner.getWidth(), inner.getHeight());
+    return inner.withSizeKeepingCentre (s, s);
 }
 
 void AMXYPad::setPosition (float x, float y, juce::NotificationType notify)
@@ -123,12 +125,13 @@ void AMXYPad::paint (juce::Graphics& g)
 
     // axis labels + readouts
     const float h = juce::jlimit (8.0f, 10.5f, b.getHeight() * 0.05f);
-    auto bottom = b.withTop (f.getBottom()).withLeft (f.getX());
+    const float labelH = juce::jlimit (12.0f, 18.0f, b.getHeight() * 0.1f);
+    auto bottom = juce::Rectangle<float> (f.getX(), f.getBottom(), f.getWidth(), labelH);
     draw::trackedText (g, xLabel, bottom, juce::Justification::centredLeft, Theme::labelFont (h), Theme::textSecondary);
     draw::trackedText (g, formatX ? formatX (px) : juce::String (px, 2), bottom, juce::Justification::centredRight, Theme::valueFont (h + 1.0f), Theme::textValue);
     {
         juce::Graphics::ScopedSaveState save (g);
-        auto left = b.withRight (f.getX()).withBottom (f.getBottom());
+        auto left = juce::Rectangle<float> (f.getX() - labelH, f.getY(), labelH, f.getHeight());
         g.addTransform (juce::AffineTransform::rotation (-juce::MathConstants<float>::halfPi, left.getCentreX(), left.getCentreY()));
         auto rotated = juce::Rectangle<float> (left.getHeight(), left.getWidth()).withCentre (left.getCentre());
         draw::trackedText (g, yLabel, rotated, juce::Justification::centredLeft, Theme::labelFont (h), Theme::textSecondary);

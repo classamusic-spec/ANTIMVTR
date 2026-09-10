@@ -201,4 +201,13 @@ inline float trackedTextWidth (const juce::Font& font, const juce::String& text)
     return juce::GlyphArrangement::getStringWidth (font, text) - font.getExtraKerningFactor() * font.getHeight();
 }
 
+/** Shrinks a font (down to minHeight) so the text fits the given width. */
+inline juce::Font fitFont (const juce::Font& font, const juce::String& text, float maxWidth, float minHeight = 7.0f)
+{
+    const float w = juce::GlyphArrangement::getStringWidth (font, text);
+    if (w <= maxWidth || w <= 0.0f) return font;
+    const float scale = juce::jmax (minHeight / font.getHeight(), maxWidth / w);
+    return scale < 0.999f ? font.withHeight (font.getHeight() * scale) : font;
+}
+
 } // namespace am::ui::draw

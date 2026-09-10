@@ -3,7 +3,17 @@
 namespace am::ui
 {
 
-AMToggle::AMToggle (const juce::String& l, juce::Colour a) : label (l.toUpperCase()), accent (a)
+namespace
+{
+    constexpr float kLabelGap = 3.0f;
+
+    float controlLabelHeight (const juce::Rectangle<float>& b, bool hasLabel)
+    {
+        return hasLabel ? juce::jlimit (10.0f, 15.0f, b.getHeight() * 0.28f) : 0.0f;
+    }
+}
+
+AMToggle::AMToggle (const juce::String& l, juce::Colour a) : label (l.trim().toUpperCase()), accent (a)
 {
     setWantsKeyboardFocus (false);
 }
@@ -21,13 +31,14 @@ void AMToggle::mouseDown (const juce::MouseEvent&) { setToggleState (! state); }
 
 void AMToggle::paint (juce::Graphics& g)
 {
-    auto b = getLocalBounds().toFloat();
+    const auto b = getLocalBounds().toFloat();
     const bool hasLabel = label.isNotEmpty() && b.getHeight() > 30.0f;
-    const float labelH = hasLabel ? juce::jlimit (10.0f, 16.0f, b.getHeight() * 0.32f) : 0.0f;
-    auto labelArea = b.removeFromBottom (labelH);
-    const float pillH = juce::jlimit (14.0f, 24.0f, b.getHeight() * 0.7f);
+    const float labelH = controlLabelHeight (b, hasLabel);
+    const float pillH = juce::jlimit (14.0f, 24.0f, b.getHeight() * 0.5f);
     const float pillW = juce::jmin (b.getWidth() - 4.0f, pillH * 2.1f);
-    auto pill = b.withSizeKeepingCentre (pillW, pillH);
+    const float groupH = pillH + (hasLabel ? labelH + kLabelGap : 0.0f);
+    const float top = b.getY() + (b.getHeight() - groupH) * 0.5f;
+    auto pill = juce::Rectangle<float> (b.getCentreX() - pillW * 0.5f, top, pillW, pillH);
     const float corner = pillH * 0.5f;
     const float on = lit.value;
 
@@ -47,15 +58,16 @@ void AMToggle::paint (juce::Graphics& g)
 
     if (hasLabel)
     {
+        auto labelArea = juce::Rectangle<float> (b.getX(), pill.getBottom() + kLabelGap, b.getWidth(), labelH);
         const float h = juce::jlimit (8.0f, 11.5f, labelH * 0.68f);
-        draw::trackedText (g, label, labelArea, juce::Justification::centred, Theme::labelFont (h),
+        draw::trackedText (g, label, labelArea, juce::Justification::centred, draw::fitFont (Theme::labelFont (h), label, b.getWidth() - 2.0f),
                            Theme::textSecondary.interpolatedWith (Theme::textPrimary, 0.5f * on + 0.3f * hover.value));
     }
 }
 
 //==============================================================================
 AMChoice::AMChoice (const juce::String& l, juce::StringArray c, juce::Colour a)
-    : label (l.toUpperCase()), choices (std::move (c)), accent (a)
+    : label (l.trim().toUpperCase()), choices (std::move (c)), accent (a)
 {
     setWantsKeyboardFocus (false);
 }
@@ -72,11 +84,14 @@ void AMChoice::setSelected (int index, juce::NotificationType notify)
 
 juce::Rectangle<float> AMChoice::pillBounds() const
 {
-    auto b = getLocalBounds().toFloat();
+    const auto b = getLocalBounds().toFloat();
     const bool hasLabel = showLabel && label.isNotEmpty() && b.getHeight() > 30.0f;
-    if (hasLabel) b.removeFromTop (juce::jlimit (10.0f, 16.0f, b.getHeight() * 0.3f));
-    const float pillH = juce::jlimit (18.0f, 30.0f, b.getHeight() * 0.72f);
-    return b.withSizeKeepingCentre (b.getWidth() - 2.0f, pillH);
+    const float labelH = controlLabelHeight (b, hasLabel);
+    const float pillH = juce::jlimit (18.0f, 28.0f, b.getHeight() * 0.5f);
+    const float pillW = juce::jmin (b.getWidth() - 2.0f, juce::jmax (110.0f, pillH * 7.0f));
+    const float groupH = pillH + (hasLabel ? labelH + kLabelGap : 0.0f);
+    const float top = b.getY() + (b.getHeight() - groupH) * 0.5f + (hasLabel ? labelH + kLabelGap : 0.0f);
+    return { b.getCentreX() - pillW * 0.5f, top, pillW, pillH };
 }
 
 void AMChoice::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
@@ -103,15 +118,16 @@ void AMChoice::mouseDown (const juce::MouseEvent& e)
 
 void AMChoice::paint (juce::Graphics& g)
 {
-    auto b = getLocalBounds().toFloat();
+    const auto b = getLocalBounds().toFloat();
+    const auto pill = pillBounds();
     const bool hasLabel = showLabel && label.isNotEmpty() && b.getHeight() > 30.0f;
     if (hasLabel)
     {
-        auto labelArea = b.removeFromTop (juce::jlimit (10.0f, 16.0f, b.getHeight() * 0.3f));
-        const float h = juce::jlimit (8.0f, 11.0f, labelArea.getHeight() * 0.68f);
-        draw::trackedText (g, label, labelArea, juce::Justification::centred, Theme::labelFont (h), Theme::textSecondary);
+        const float labelH = controlLabelHeight (b, true);
+        auto labelArea = juce::Rectangle<float> (b.getX(), pill.getY() - kLabelGap - labelH, b.getWidth(), labelH);
+        const float h = juce::jlimit (8.0f, 11.0f, labelH * 0.68f);
+        draw::trackedText (g, label, labelArea, juce::Justification::centred, draw::fitFont (Theme::labelFont (h), label, b.getWidth() - 2.0f), Theme::textSecondary);
     }
-    const auto pill = pillBounds();
     const float corner = pill.getHeight() * 0.5f;
     const float lit = hover.value;
 
@@ -128,7 +144,8 @@ void AMChoice::paint (juce::Graphics& g)
 
     const float h = juce::jlimit (8.5f, 12.0f, pill.getHeight() * 0.42f);
     const juce::String text = choices.isEmpty() ? juce::String() : choices[selected];
-    draw::trackedText (g, text, pill.reduced (zone, 0.0f), juce::Justification::centred, Theme::labelFont (h), Theme::textPrimary);
+    const auto textArea = pill.reduced (zone, 0.0f);
+    draw::trackedText (g, text, textArea, juce::Justification::centred, draw::fitFont (Theme::labelFont (h), text, textArea.getWidth()), Theme::textPrimary);
 }
 
 } // namespace am::ui

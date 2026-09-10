@@ -267,8 +267,8 @@ void PresetBrowser::paint (juce::Graphics& g)
     const auto h = headerArea.toFloat();
     const float titleH = juce::jlimit (14.0f, 22.0f, h.getHeight() * 0.42f);
     draw::trackedText (g, "BROWSER", h.withHeight (titleH * 1.4f), juce::Justification::centredLeft, Theme::titleFont (titleH), Theme::textPrimary);
-    const juce::String caption = "FACTORY LIBRARY   \xC2\xB7   " + juce::String (visibleCards.size()) + " OF " + juce::String (cards.size()) + " PRESETS";
-    draw::trackedText (g, juce::String::fromUTF8 (caption.toRawUTF8()), h.withTop (h.getY() + titleH * 1.4f), juce::Justification::topLeft, Theme::captionFont (juce::jlimit (7.5f, 10.0f, titleH * 0.5f)), Theme::textSecondary);
+    const juce::String caption = juce::String (juce::CharPointer_UTF8 ("FACTORY LIBRARY   \xC2\xB7   ")) + juce::String (visibleCards.size()) + " OF " + juce::String (cards.size()) + " PRESETS";
+    draw::trackedText (g, caption, h.withTop (h.getY() + titleH * 1.4f), juce::Justification::topLeft, Theme::captionFont (juce::jlimit (7.5f, 10.0f, titleH * 0.5f)), Theme::textSecondary);
     juce::Path line; line.startNewSubPath (h.getX(), h.getBottom() + 4.0f); line.lineTo (h.getX() + 84.0f, h.getBottom() + 4.0f);
     draw::glowPath (g, line, Theme::blue, 1.2f, 7.0f, 0.6f);
     g.setColour (Theme::borderSoft);

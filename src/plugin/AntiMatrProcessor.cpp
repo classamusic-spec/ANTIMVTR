@@ -24,11 +24,8 @@ AntiMatrProcessor::AntiMatrProcessor()
     abStates[0] = abStates[1] = PresetManager::initPatch();
     markPreset ("Init", { "basic" }, 0);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
-<<<<<<< HEAD
     synth.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (modRoutings));
-=======
     selectBuiltInSample (0);
->>>>>>> agent/sources
 
     // The default parameter values become the curated NEBULA rack, then follow the Space picker.
     {
@@ -77,7 +74,6 @@ void AntiMatrProcessor::setFractureTable (const FractureTable& table)
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
 }
 
-<<<<<<< HEAD
 void AntiMatrProcessor::setModRoutings (const ModRoutingTable& routings)
 {
     modRoutings = routings;
@@ -85,7 +81,6 @@ void AntiMatrProcessor::setModRoutings (const ModRoutingTable& routings)
     sendChangeMessage();
 }
 
-=======
 //==============================================================================
 // SAMPLE source (message thread). The engine owns the audio-thread side through
 // its RealtimeHandoff; here we only keep the reference the UI and the patch need.
@@ -213,7 +208,6 @@ bool AntiMatrProcessor::analyzeSampleToMatter()
     return true;
 }
 
->>>>>>> agent/sources
 AntiMatrProcessor::~AntiMatrProcessor()
 {
     stopTimer();
@@ -366,11 +360,8 @@ PatchState AntiMatrProcessor::currentPatch() const
     PatchState s = extraState;
     s.params = currentParamValues();
     s.fracture = fractureTable.toVar();
-<<<<<<< HEAD
     s.mod = modRoutings.toVar();
-=======
     s.sample = sampleReferenceVar();
->>>>>>> agent/sources
     s.meta.name = presetName;
     s.meta.tags = presetTags;
     s.meta.pluginVersion = ANTIMATR_VERSION_STRING;
@@ -389,12 +380,9 @@ void AntiMatrProcessor::loadPatch (const PatchState& patch, bool notifyPresetCha
     extraState = patch;
     fractureTable = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
-<<<<<<< HEAD
     modRoutings = patch.mod.isVoid() ? ModRoutingTable() : ModRoutingTable::fromVar (patch.mod);
     synth.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (modRoutings));
-=======
     applySampleReference (patch.sample);
->>>>>>> agent/sources
     suppressSpaceRecall = true;    // a patch carries its own rack values
     apvts.replaceState (StateManager::toParameterTree (patch.params, kParametersType));
     suppressSpaceRecall = false;

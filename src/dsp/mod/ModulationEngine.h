@@ -82,6 +82,9 @@ public:
     /** Value of a source for this voice, natural polarity (0 for global sources). */
     float value (ModSource s) const noexcept;
 
+    /** The values this voice last rendered with. Only meaningful when per-voice routings exist. */
+    const ParamValues& parameters() const noexcept { return voiceParams; }
+
     /** Contribution this voice applied to `plan->polyTargets[slot]` (natural units). */
     float deltaAt (int slot) const noexcept { return slot >= 0 && slot < numDeltas ? deltas[(size_t) slot] : 0.0f; }
     int   numContributions() const noexcept { return numDeltas; }
@@ -113,8 +116,24 @@ private:
 class ModulationEngine
 {
 public:
-    /** Samples between control updates while modulation is active (≈1.3 ms at 48 kHz). */
-    static constexpr int kControlBlock = 64;
+    /**
+        Samples between control updates while modulation is active, by quality tier.
+
+        Modulation is applied once per control slice, so the slice length sets how
+        finely an LFO can move a parameter: coarser slices step audibly on pitch,
+        finer slices cost one more pass over every voice. NORMAL runs at 375 Hz
+        (2.7 ms at 48 kHz), HIGH and ULTRA at 750 Hz, ECO at 187 Hz.
+    */
+    static constexpr int controlBlockForQuality (Quality q) noexcept
+    {
+        switch (q)
+        {
+            case Quality::Eco:   return 256;
+            case Quality::High:  return 64;
+            case Quality::Ultra: return 64;
+            default:             return 128;
+        }
+    }
 
     ModulationEngine();
 
@@ -122,6 +141,9 @@ public:
     // Audio thread
     void prepare (double sampleRate, int maxBlockSize);
     void reset();
+
+    /** Control-rate tier. Set from `master.quality` once per block. */
+    void setQuality (Quality q) noexcept { quality = q; }
 
     /** Picks up a newly published routing table. Call once per host block. */
     void beginBlock (const ParamValues& params) noexcept;
@@ -135,7 +157,7 @@ public:
     /** How many samples the engine wants per control slice (the whole block when idle). */
     int controlBlockSize (int blockSize) const noexcept
     {
-        return plan.isEmpty() ? blockSize : std::min (blockSize, kControlBlock);
+        return plan.isEmpty() ? blockSize : std::min (blockSize, controlBlockForQuality (quality));
     }
 
     const ModPlan& modPlan() const noexcept { return plan; }
@@ -166,6 +188,7 @@ private:
     std::array<float, kNumParams> monoMod {}, modMin {}, modMax {};
     std::array<uint8_t, kNumParams> targeted {};
 
+    Quality quality = Quality::Normal;
     uint8_t retrigMask = 0xFF;             ///< lfoN.retrig bits the plan was compiled for
     bool    haveTable = false;
     double  sr = 48000.0;

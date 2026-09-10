@@ -52,6 +52,14 @@ namespace
         return t * t * (3.0f - 2.0f * t);
     }
 
+    /** Envelope shape exponent: curve 0 -> 0.25 (snappy), 0.5 -> 1 (linear), 1 -> 4 (soft). */
+    inline float curveExponent (float curve) noexcept
+    {
+        const float c = clamp01 (curve);
+        if (std::abs (c - 0.5f) < 1.0e-4f) return 1.0f;
+        return std::pow (4.0f, (c - 0.5f) * 2.0f);
+    }
+
     //--------------------------------------------------------------------------
     // Parameter lookup per slot. The slot index is 0-based.
 
@@ -309,16 +317,14 @@ void ModEnvelope::advance (const Settings& s, int numSamples, double sampleRate)
     }
 
     // curve: 0 = snappy (fast attack / fast initial decay), 0.5 = linear, 1 = soft.
-    const float rise = std::pow (4.0f, (clamp01 (s.curve) - 0.5f) * 2.0f);
-    const float fall = 1.0f / rise;
+    // Only the stage in progress pays for a pow(); sustain and idle pay for nothing.
     const float t = clamp01 (stagePos);
-
     switch (st)
     {
-        case Stage::Attack:  level = std::pow (t, rise); break;
-        case Stage::Decay:   level = s.sustain + (1.0f - s.sustain) * std::pow (1.0f - t, fall); break;
+        case Stage::Attack:  level = std::pow (t, curveExponent (s.curve)); break;
+        case Stage::Decay:   level = s.sustain + (1.0f - s.sustain) * std::pow (1.0f - t, 1.0f / curveExponent (s.curve)); break;
         case Stage::Sustain: level = s.sustain; break;
-        case Stage::Release: level = releaseFrom * std::pow (1.0f - t, fall); break;
+        case Stage::Release: level = releaseFrom * std::pow (1.0f - t, 1.0f / curveExponent (s.curve)); break;
         case Stage::Idle:
         default:             level = 0.0f; break;
     }
@@ -351,7 +357,10 @@ void ChaosGenerator::reset() noexcept
     state = current = 0.0f;
     previous = target = 0.0f;
     logistic = 0.35f + 0.3f * rng.nextFloat();
-    lx = 0.1; ly = 0.0; lz = 20.0;
+    // The attractor's starting point comes from the seed too, so two seeds trace different orbits.
+    lx = 0.1 + 4.0 * (double) rng.nextBipolar();
+    ly = 4.0 * (double) rng.nextBipolar();
+    lz = 20.0 + 6.0 * (double) rng.nextBipolar();
     phase = 0.0;
 }
 

@@ -126,7 +126,7 @@ void ModulationEngine::prepare (double sampleRate, int maxBlockSize)
     for (int i = 0; i < kNumLFOs; ++i) lfos[(size_t) i].prepare (sr, hashSeed (0xA11CE000u, (uint32_t) i));
     for (int i = 0; i < kNumChaos; ++i) chaos[(size_t) i].prepare ((uint32_t) (i * 17));
     // The displayed modulation range relaxes back over roughly 1.5 s.
-    envelopeDecay = (float) juce::jlimit (0.001, 0.5, (double) kControlBlock / (sr * 1.5));
+    envelopeDecay = (float) juce::jlimit (0.001, 0.5, (double) controlBlockForQuality (Quality::Normal) / (sr * 1.5));
     reset();
 }
 
@@ -262,7 +262,7 @@ void ModulationEngine::fillSnapshot (ModulationSnapshot& s, const VoiceModulator
     s.numRoutings     = routings.size();
     s.numEnabled      = routings.numEnabled();
     s.numPolyRoutings = plan.numPoly;
-    s.controlBlock    = plan.isEmpty() ? 0 : kControlBlock;
+    s.controlBlock    = plan.isEmpty() ? 0 : controlBlockForQuality (quality);
     s.focusVoice      = focus != nullptr ? focusVoice : -1;
     s.sampleTime      = sampleTime;
 

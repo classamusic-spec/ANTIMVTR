@@ -7,6 +7,7 @@
 #include "presets/PresetManager.h"
 #include "state/MutationEngine.h"
 #include "dsp/fracture/Fragment.h"
+#include "state/ModRouting.h"
 #include "dsp/fx/SpacePresets.h"
 
 namespace am
@@ -92,6 +93,10 @@ public:
     const FractureTable& getFractureTable() const noexcept { return fractureTable; }
     void setFractureTable (const FractureTable& table);
 
+    /** Modulation matrix (message thread). Setting it publishes to the engine. */
+    const ModRoutingTable& getModRoutings() const noexcept { return modRoutings; }
+    void setModRoutings (const ModRoutingTable& routings);
+
     static constexpr int kDefaultWidth  = 1600;
     static constexpr int kDefaultHeight = 1000;
     int lastEditorWidth  = kDefaultWidth;
@@ -127,6 +132,7 @@ private:
     int reportedLatency = 0;
     PatchState extraState;   ///< non-parameter sections kept for round-tripping
     FractureTable fractureTable = FractureTable::makeDefault();
+    ModRoutingTable modRoutings;
     std::atomic<int> pendingSpaceType { -1 };
     bool suppressSpaceRecall = false;
 

@@ -57,6 +57,7 @@ void SynthEngine::applyGlobalSettings (const ParamValues& params)
         currentQuality = q;
         diag.events.push (EngineEventType::QualityChanged, Subsystem::Matter, -1, (uint32_t) q, 0.0f, sampleTime);
     }
+    modulation.setQuality (currentQuality);   // MODULATION: quality picks the control rate
 }
 
 void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi,

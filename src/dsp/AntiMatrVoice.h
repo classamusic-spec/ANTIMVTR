@@ -60,6 +60,7 @@ public:
 
     const MatterEngine& matter() const noexcept { return matterEngine; }
     MatterEngine& matter() noexcept { return matterEngine; }
+    const EvolveEngine& evolve() const noexcept { return evolveEngine; }
 
 private:
     void updateFrequency (const RenderContext& ctx);

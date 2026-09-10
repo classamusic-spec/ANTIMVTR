@@ -223,6 +223,7 @@ PresetValidationResult PresetValidator::validateOne (PresetManager& presets, int
     diag.profiler.reset();
     diag.dev.dryMode.store ((int) DryMode::FullSynth);
     diag.dev.bypassEvolve.store (false);
+    diag.dev.evolveBypassMask.store (0u);
     diag.dev.bypassFracture.store (false);
     diag.dev.bypassSpace.store (false);
     diag.dev.profiling.store (true);

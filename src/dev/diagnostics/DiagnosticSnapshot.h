@@ -33,6 +33,49 @@ struct EdgeDiag
 
 constexpr int kMaxMatterEdges = 512;
 
+//==============================================================================
+// EVOLVE diagnostics — filled by EvolveEngine::fillDiagnostics for the focus voice.
+
+/** The eight Evolve operators in parameter order. Bit (1 << op) of DevControls::evolveBypassMask bypasses one. */
+enum class EvolveOperator : uint8_t { Bend = 0, Melt, Tear, Magnet, Gravity, Scatter, Freeze, Crush, Count };
+constexpr int kNumEvolveOperators = (int) EvolveOperator::Count;
+
+inline constexpr uint32_t evolveBypassBit (EvolveOperator op) noexcept { return 1u << (uint32_t) op; }
+
+inline const char* evolveOperatorName (EvolveOperator op) noexcept
+{
+    switch (op)
+    {
+        case EvolveOperator::Bend:    return "Bend";
+        case EvolveOperator::Melt:    return "Melt";
+        case EvolveOperator::Tear:    return "Tear";
+        case EvolveOperator::Magnet:  return "Magnet";
+        case EvolveOperator::Gravity: return "Gravity";
+        case EvolveOperator::Scatter: return "Scatter";
+        case EvolveOperator::Freeze:  return "Freeze";
+        case EvolveOperator::Crush:   return "Crush";
+        default:                      return "Unknown";
+    }
+}
+
+/** What Evolve did to the focus voice's nodes in the last block. Trivially copyable. */
+struct EvolveDiag
+{
+    float    amount[kNumEvolveOperators] {};  ///< applied amount per operator after bypass (Gravity: signed pull -1..1, Freeze: 0/1)
+    int      activeNodes   = 0;               ///< active nodes the operators considered
+    int      nodesMoved    = 0;               ///< nodes whose frequency, weight, damping or pan changed
+    float    meanAbsCents  = 0.0f;            ///< mean |frequency shift| in cents over the active nodes
+    float    maxAbsCents   = 0.0f;
+    int      magnetLocked  = 0;               ///< active nodes within 5 cents of the magnet grid after the pull
+    int      tearPairs     = 0;               ///< detuned twin pairs Tear created
+    int      crushDropped  = 0;               ///< nodes Crush silenced
+    uint8_t  freeze        = 0;
+    uint8_t  bypassMask    = 0;               ///< the bypass mask honoured this block
+    float    motionPhase   = 0.0f;            ///< 0..1
+    float    motionRateHz  = 0.0f;
+    float    fundamentalHz = 0.0f;            ///< the material fundamental the grids are relative to
+};
+
 struct StageLevels
 {
     float rms  = 0.0f;
@@ -75,6 +118,9 @@ struct DiagnosticSnapshot
     int      numEdges = 0;
     EdgeDiag edges[kMaxMatterEdges] {};
     float    fundamentalHz = 0.0f;    ///< frequency the focus voice is playing (after bend/glide)
+
+    // Evolve (focus voice)
+    EvolveDiag evolve;
 
     // Fracture
     int   fractureFFTSize = 0;
@@ -123,6 +169,7 @@ struct DevControls
 {
     std::atomic<int>  dryMode        { (int) DryMode::FullSynth };
     std::atomic<bool> bypassEvolve   { false };
+    std::atomic<uint32_t> evolveBypassMask { 0 };   ///< bit (1 << EvolveOperator) bypasses one operator; 0 = nothing bypassed
     std::atomic<bool> bypassFracture { false };
     std::atomic<bool> bypassSpace    { false };
     std::atomic<int>  focusVoice     { -1 };   ///< -1 = most recently started voice

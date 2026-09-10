@@ -470,15 +470,21 @@ void WavetableGenerator::build (WavetableCache& cache)
         const int half = kWaveBlepZ * kOversample;
         std::vector<float> step ((size_t) (2 * half + 1), 0.0f);
 
+        // Blackman-Harris (-92 dB sidelobes) and a cutoff just below Nyquist:
+        // the transition band then fits under Nyquist instead of folding back,
+        // which is what sets the noise floor of a BLEP-corrected sync reset.
+        constexpr double kCutoff = 0.92;
         double acc = 0.0;
         for (int i = -half; i <= half; ++i)
         {
             const double t = (double) i / (double) kOversample;
-            const double x = kPi * t;
-            const double sinc = std::abs (x) < 1.0e-9 ? 1.0 : std::sin (x) / x;
-            const double w = 0.42 - 0.5 * std::cos (kTwoPi * (double) (i + half) / (double) (2 * half))
-                                  + 0.08 * std::cos (2.0 * kTwoPi * (double) (i + half) / (double) (2 * half));
-            acc += sinc * w / (double) kOversample;
+            const double x = kPi * kCutoff * t;
+            const double sinc = std::abs (x) < 1.0e-12 ? 1.0 : std::sin (x) / x;
+            const double u = (double) (i + half) / (double) (2 * half);
+            const double w = 0.35875 - 0.48829 * std::cos (kTwoPi * u)
+                                     + 0.14128 * std::cos (2.0 * kTwoPi * u)
+                                     - 0.01168 * std::cos (3.0 * kTwoPi * u);
+            acc += kCutoff * sinc * w / (double) kOversample;
             step[(size_t) (i + half)] = (float) acc;
         }
         const float endValue = step.back();

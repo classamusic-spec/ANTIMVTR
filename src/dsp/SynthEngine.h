@@ -5,6 +5,7 @@
 #include "fx/SpaceEngine.h"
 #include "fx/MasterSection.h"
 #include "mod/ControlGraph.h"
+#include "source/SampleData.h"
 #include "dev/diagnostics/Diagnostics.h"
 
 namespace am
@@ -48,6 +49,16 @@ public:
     /** Message-thread maintenance (garbage collection of handed-off data). Called periodically by the processor. */
     void messageThreadMaintenance();
 
+    // ---- SAMPLE source data (message thread publishes, audio thread reads for the block)
+    /** Message thread: hands a new sample to every voice. The old one is freed here, never on the audio thread. */
+    void publishSample (SampleRef sample)
+    {
+        samplePublished = true;
+        sampleHandoff.publish (std::make_unique<SampleRef> (std::move (sample)));
+    }
+    /** True once any sample has been published (the engine publishes a built-in in prepare()). */
+    bool hasSample() const noexcept { return samplePublished; }
+
     FractureEngine& fractureEngine() noexcept { return fracture; }
     SpaceEngine&    spaceEngine() noexcept    { return space; }
     MasterSection&  masterSection() noexcept  { return master; }
@@ -60,6 +71,9 @@ private:
     void renderSegment (float* outL, float* outR, int numSamples, const RenderContext& ctx);
     void publishSnapshots (const float* outL, const float* outR, int numSamples, const RenderContext& ctx);
     void applyGlobalSettings (const ParamValues& params);
+
+    SampleHandoff sampleHandoff;
+    bool          samplePublished = false;
 
     ControlGraph  controlGraph;
     VoiceManager  voices;

@@ -18,6 +18,12 @@ void SynthEngine::prepare (double sampleRate, int maxBlockSize)
     diag.profiler.prepare (sampleRate, maxBlock);
     diag.clearTaps();
 
+    // SAMPLE works out of the box: publish a built-in the first time we prepare.
+    if (! samplePublished)
+    {
+        publishSample (BuiltInSamples::create (0));   // built-ins are generated at 48 kHz
+    }
+
     prepared = true;
     diag.events.push (EngineEventType::EnginePrepared, Subsystem::Unknown, -1, (uint32_t) maxBlock, (float) sampleRate, sampleTime);
 }
@@ -36,6 +42,7 @@ void SynthEngine::messageThreadMaintenance()
 {
     fracture.messageThreadMaintenance();
     space.messageThreadMaintenance();
+    sampleHandoff.collectGarbage();
 }
 
 void SynthEngine::applyGlobalSettings (const ParamValues& params)
@@ -81,6 +88,8 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
     ctx.dryMode     = (DryMode) juce::jlimit (0, (int) DryMode::Count - 1, diag.dev.dryMode.load (std::memory_order_relaxed));
     ctx.quality     = currentQuality;
     ctx.diagnostics = &diag;
+    if (const SampleRef* published = sampleHandoff.acquire())
+        ctx.sample = published->get();
 
     // The host block may exceed our internal maximum: process in chunks.
     int chunkStart = 0;

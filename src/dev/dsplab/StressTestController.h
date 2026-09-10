@@ -61,7 +61,7 @@ private:
 
     juce::ComboBox testBox;
     juce::TextButton startButton { "START" }, stopButton { "STOP" };
-    LabPanel panel { juce::CharPointer_UTF8 ("Stress tests  (\xc2\xa784)") };
+    LabPanel panel { juce::CharPointer_UTF8 ("Stress tests  (\xc2\xa7" "84)") };
     KeyValueTable runInfo, measured;
 
     double startTimeMs = 0.0;

@@ -58,7 +58,7 @@ private:
     juce::ComboBox parameterBox;
     juce::Slider seconds, steps, noteSlider;
     juce::TextButton startButton { "START SWEEP" }, stopButton { "STOP" };
-    LabPanel controls { juce::CharPointer_UTF8 ("Sweep  (\xc2\xa785)") };
+    LabPanel controls { juce::CharPointer_UTF8 ("Sweep  (\xc2\xa7" "85)") };
     juce::Label secondsLabel, stepsLabel, noteLabel;
 
     LabPanel tablePanel { "Sweep measurements" };

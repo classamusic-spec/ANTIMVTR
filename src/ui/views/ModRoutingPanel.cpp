@@ -128,15 +128,17 @@ public:
             g.setColour (tint.withAlpha (0.85f * alpha));
             g.fillRoundedRectangle (bar.withWidth (juce::jmax (1.5f, bar.getWidth())).removeFromBottom (juce::jmax (1.5f, track.getHeight() * 0.22f)), 1.0f);
 
-            // Live contribution: how far the source is pushing the destination right now.
+            // Live contribution: a slim amber lane inside the bar, so what the source is doing
+            // right now is visible without hiding the destination's colour.
             const float live = value * activity;
             if (std::abs (live) > 0.004f)
             {
                 const float lx = centre + live * half;
-                const auto now = juce::Rectangle<float> (juce::jmin (centre, lx), track.getY() + 1.0f,
-                                                         std::abs (lx - centre), track.getHeight() - 2.0f);
-                g.setColour (Theme::amber.withAlpha (0.55f * alpha));
-                g.fillRoundedRectangle (now, corner - 1.0f);
+                const float laneH = juce::jmax (2.0f, track.getHeight() * 0.4f);
+                const auto now = juce::Rectangle<float> (juce::jmin (centre, lx), track.getCentreY() - laneH * 0.5f,
+                                                         std::abs (lx - centre), laneH);
+                g.setColour (Theme::amber.withAlpha (0.85f * alpha));
+                g.fillRoundedRectangle (now, laneH * 0.5f);
             }
         }
 

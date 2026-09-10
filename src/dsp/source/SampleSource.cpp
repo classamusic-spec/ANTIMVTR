@@ -11,6 +11,12 @@ namespace
     constexpr double kMinRate = 1.0 / 256.0;   ///< slowest read (a 8 octave transposition down)
     constexpr double kMaxRate = 32.0;          ///< fastest read; also bounds the anti-alias tap count
     constexpr double kGrainOverlap = 3.0;      ///< average number of grains sounding at once
+
+    // Level calibration (ARCHITECTURE.md: a source renders at about -15 dBFS peak for one note).
+    // A full scale sample played at LEVEL 1 was landing at -7.6 dBFS peak, roughly 8 dB above WAVE
+    // and 5 dB above IMPACT, so selecting SAMPLE jumped the level. This trim puts a normalised
+    // sample between the two, and LEVEL keeps its full 0 … 1 range on top of it.
+    constexpr float kOutputTrim = 0.5f;        ///< -6 dB
 }
 
 //==============================================================================
@@ -303,7 +309,7 @@ void SampleSource::renderGranular (float* l, float* r, int n)
 //==============================================================================
 void SampleSource::finalise (float* l, float* r, int n, const RenderContext& ctx)
 {
-    const float g = p.level;
+    const float g = p.level * kOutputTrim;
     float peak = 0.0f;
     int bad = 0;
 

@@ -33,6 +33,12 @@ namespace
     {
         return juce::jlimit (1.0e-5f, 1.0f, 1.0f - std::exp (-1.0f / juce::jmax (1.0f, seconds * (float) sr)));
     }
+
+    // BANDWIDTH level match (see updateFilters).
+    constexpr float kPowerWindowSec = 0.060f;   ///< both power followers share this window, so their ratio never pumps
+    constexpr float kPowerFloor     = 1.0e-10f; ///< below this the gesture is silent: hold the last gain
+    constexpr float kBandGainMin    = 0.06f;    ///< the match is bounded to -24 … +24 dB
+    constexpr float kBandGainMax    = 16.0f;
 }
 
 //==============================================================================
@@ -55,6 +61,7 @@ void GestureSource::prepare (double sampleRate, int maxBlockSize)
 
     attackCoeff  = timeCoeff (0.006f, sr);   // 6 ms in
     releaseCoeff = timeCoeff (0.030f, sr);   // 30 ms out
+    powerFollow  = timeCoeff (kPowerWindowSec, sr);
 
     formant1.set (760.0f, 3.2f);
     formant2.set (1850.0f, 4.5f);
@@ -81,6 +88,7 @@ void GestureSource::reset()
     sputter = 1.0f;
     comb.fill (0.0f);
     combWrite = 0; combDelay = 1; combDepth = 0.0f;
+    bandGain = 1.0f; rawPower = bandPower = 0.0f;
     pink.reset(); tilt.reset(); band.reset(); formant1.reset(); formant2.reset(); tone.reset();
     pulseLp.reset(); breathLp.reset(); pulseDc.reset(); dcL.reset(); dcR.reset();
     lastEnergy = 0.0f;
@@ -153,19 +161,27 @@ void GestureSource::updateFilters()
 
     // Per-mode output trim: every gesture leaves this source at a comparable
     // level so switching mode changes character, not loudness.
-    static constexpr float kTrim[(int) Mode::Count] = { 1.30f, 5.2f, 0.24f, 0.95f, 0.95f, 28.0f };
+    // Measured so every mode leaves this source at -24 … -27 dBFS RMS for one note at
+    // velocity 100 (BANDWIDTH 0.5) — mode to mode the loudness matches — while the peaks of the
+    // spiky modes (SCRAPE grains, ELECTRICAL sparks — 20 dB of crest) stay under the output
+    // soft limiter's knee. The previous trims drove that limiter by up to 7 dB at LEVEL 1,
+    // which flattened exactly the transients those gestures are made of.
+    static constexpr float kTrim[(int) Mode::Count] = { 0.62f, 5.45f, 0.61f, 1.62f, 1.22f, 4.77f };
     modeTrim = kTrim[(size_t) juce::jlimit (0, (int) Mode::Count - 1, (int) p.mode)];
-    tonalBand = p.mode == Mode::Bow || p.mode == Mode::Electrical;
 
-    // ---- bandwidth: resonant band-pass around the note, narrow to wide. The
-    //      band is normalised to unit peak gain (not unit noise gain) so a
-    //      pitched gesture keeps its level as the band tightens, and the raw
-    //      signal is blended back in as the band opens.
+    // ---- bandwidth: resonant band-pass around the note, narrow to wide. A fixed
+    //      normalisation cannot hold the level here: every mode feeds the filter a
+    //      differently coloured signal, so the same band gain boosted one mode and
+    //      buried another (measured: 8–11 dB across the control). The blend of band
+    //      and raw signal is instead matched to the power the gesture actually has,
+    //      so BANDWIDTH changes focus and not loudness, whatever it is fed.
     const float q = expMap (1.0f - p.bandwidth, 0.45f, 8.0f);
     band.set (f0, q);
-    bandGain = tonalBand ? 1.0f / juce::jmax (0.5f, q) : band.bandpassNoiseGain();
     // Wide keeps the whole spectrum, narrow focuses everything into the band.
     dryMix = std::pow (p.bandwidth, 1.3f) * 0.85f;
+    if (rawPower > kPowerFloor && bandPower > kPowerFloor)
+        bandGain = juce::jlimit (kBandGainMin, kBandGainMax, std::sqrt (rawPower / bandPower));
+    // else: silence or a gesture that has only just started — hold the last gain rather than jump.
 
     // ---- position: contact point comb tuned to the note. 0.5 is neutral.
     const float period = (float) sr / juce::jmax (20.0f, f0);
@@ -385,6 +401,7 @@ void GestureSource::finalise (float* l, float* r, int n, const RenderContext& ct
         formant1.reset(); formant2.reset(); pulseLp.reset(); pulseDc.reset(); breathLp.reset();
         comb.fill (0.0f);
         bowLp = 0.0f;
+        bandGain = 1.0f; rawPower = bandPower = 0.0f;
         for (auto& g : grains) g.active = false;
         if (ctx.diagnostics != nullptr)
             ctx.diagnostics->safety.note (SafetyEvent::NaN, Subsystem::Source, -1, bad);
@@ -423,8 +440,14 @@ void GestureSource::render (float* l, float* r, int n, const RenderContext& ctx,
 
         x = applyComb (x * modeTrim);
 
-        const float shaped = band.bandpass (x) * bandGain;
-        x = shaped * (1.0f - dryMix) + x * dryMix;
+        const float raw = x;
+        const float mixed = band.bandpass (x) * (1.0f - dryMix) + raw * dryMix;
+        // Power followers for the band normalisation. Both use the same window, so the
+        // ratio is steady even when the gesture itself is bursty and no gain pumping
+        // can appear; they are read once per control update, never per sample.
+        rawPower  += powerFollow * (raw * raw - rawPower);
+        bandPower += powerFollow * (mixed * mixed - bandPower);
+        x = mixed * bandGain;
 
         const float target = gate ? 1.0f : 0.0f;
         env += (gate ? attackCoeff : releaseCoeff) * (target - env);

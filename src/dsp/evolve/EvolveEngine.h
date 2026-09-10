@@ -39,7 +39,10 @@ namespace am
                MINOR, CHROMATIC, SCALE = major pentatonic, CUSTOM = the
                material's ratios rounded to integers, i.e. a harmonic series).
       GRAVITY  0.5 neutral; below it weight, excitation and ring time lift
-               toward the top partials, above it everything sinks.
+               toward the top partials, above it everything sinks. The side
+               it pushes away from also loses ring time, and the weights are
+               compensated back towards the drive the node set had before, so
+               the control tilts the spectrum instead of changing the level.
       SCATTER  seeded per-node offsets of frequency, weight and pan
                (scatterSeed + noteId), animated by SPEED/MOTION.
       FREEZE   captures the node state, floors the damping so the object rings

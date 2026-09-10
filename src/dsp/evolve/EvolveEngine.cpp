@@ -31,6 +31,9 @@ namespace
     constexpr float kGravitySinkCut   = 3.0f;    ///< the top loses 18 dB when everything sinks
     constexpr float kGravityLiftBoost = 1.33f;   ///< the top gains 8 dB when everything lifts
     constexpr float kGravityLiftCut   = 1.33f;   ///< the fundamental loses 8 dB when everything lifts
+    constexpr float kGravityDampTilt  = 1.4f;    ///< the side gravity pushes away from decays up to 2.6x faster
+    constexpr float kGravityDampFloor = 0.1f;    ///< … the favoured side still loses a little ring time
+    constexpr float kGravityNormLimit = 8.0f;    ///< the level compensation never moves more than 18 dB
     constexpr float kScatterOctaves   = 0.25f;   ///< ±3 semitones for the partials at SCATTER 1
     constexpr float kScatterRootOct   = 0.025f;  ///< ±30 cents for the fundamental at SCATTER 1 (quadratic law)
     constexpr float kScatterJitterOct = 0.08f;   ///< animated jitter at MOTION 1 · SCATTER 1
@@ -440,27 +443,53 @@ void EvolveEngine::apply (MatterEngine& matter, const RenderContext& ctx, const 
         }
 
         // ---- GRAVITY: spectral weight pull. Sink (> 0.5) or lift (< 0.5).
+        //      The operator tilts the spectrum; it is not a volume control, so the drive of the
+        //      node set is measured before and after and the weights are compensated back towards
+        //      it. The compensation is bounded so it can never invert the pull on the fundamental
+        //      (louder while lifting, quieter while sinking): gravity always reads as a direction.
         if (a.gravity != 0.0f)
         {
             const float g = a.gravity;
+            const float u = -g;
+            double before = 0.0, after = 0.0;
+            float rootFactor = 1.0f;               ///< what the pull did to the fundamental's weight
             for (int i = 0; i < N; ++i)
             {
                 if (! considered[(size_t) i]) continue;
                 const float h = height[(size_t) i];
+                const double d0 = (double) weight[(size_t) i] * (double) excitation[(size_t) i];
+                const float wBefore = weight[(size_t) i];
                 if (g > 0.0f)
                 {
                     weight[(size_t) i]     *= pow2 (g * (kGravitySinkBoost * (1.0f - h) - kGravitySinkCut * h));
                     excitation[(size_t) i] *= pow2 (g * (0.3f * (1.0f - h) - 1.5f * h));
-                    damping[(size_t) i]    *= pow2 (g * 2.0f * h);
+                    // Sinking shortens the top and leaves the bottom ringing.
+                    damping[(size_t) i]    *= pow2 (g * (kGravityDampTilt * h + kGravityDampFloor * (1.0f - h)));
                 }
                 else
                 {
-                    const float u = -g;
                     weight[(size_t) i]     *= pow2 (u * (kGravityLiftBoost * h - kGravityLiftCut * (1.0f - h)));
                     excitation[(size_t) i] *= pow2 (u * (0.6f * h - 1.0f * (1.0f - h)));
-                    damping[(size_t) i]    *= pow2 (u * (0.6f * (1.0f - h) + 0.5f * h));
+                    // Lifting is the mirror image: the bottom dies away and the top keeps singing.
+                    damping[(size_t) i]    *= pow2 (u * (kGravityDampTilt * (1.0f - h) + kGravityDampFloor * h));
                 }
+                const double d1 = (double) weight[(size_t) i] * (double) excitation[(size_t) i];
+                before += d0 * d0;
+                after  += d1 * d1;
+                if (i == 0 && wBefore > 0.0f) rootFactor = weight[0] / wBefore;
             }
+
+            float norm = 1.0f;
+            if (after > 1.0e-20 && before > 1.0e-20)
+                norm = std::clamp ((float) std::sqrt (before / after), 1.0f / kGravityNormLimit, kGravityNormLimit);
+            // Never lift the fundamental above its baseline while the object sinks toward it, and
+            // never push it below while everything is rising away from it.
+            if (rootFactor > 1.0e-6f)
+                norm = g > 0.0f ? std::max (norm, 1.0f / rootFactor)
+                                : std::min (norm, 0.98f / rootFactor);
+            if (std::isfinite (norm) && norm != 1.0f)
+                for (int i = 0; i < N; ++i)
+                    if (considered[(size_t) i]) weight[(size_t) i] *= norm;
         }
 
         // ---- MAGNET: attraction toward a musical grid relative to the fundamental.

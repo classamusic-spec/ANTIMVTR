@@ -109,9 +109,9 @@ public:
                     float mix01, float sizeScale, float toneTilt, float feedbackMacro,
                     float shimmerAmount, float shimmerSemitones) noexcept
     {
-        const float signature[7] { size01, decay01, damp01, sizeScale, toneTilt, feedbackMacro, shimmerAmount };
+        const float signature[8] { size01, decay01, damp01, sizeScale, toneTilt, feedbackMacro, shimmerAmount, shimmerSemitones };
         bool unchanged = ! first;
-        for (int i = 0; i < 7 && unchanged; ++i)
+        for (int i = 0; i < 8 && unchanged; ++i)
             unchanged = std::abs (signature[i] - cached[i]) < 1.0e-5f;
 
         // These three are cheap, so they always follow the parameter.
@@ -120,7 +120,7 @@ public:
         mix.setTarget (clampf (mix01, 0.0f, 1.0f));
 
         if (unchanged) return;                 // nothing that needs new coefficients moved
-        for (int i = 0; i < 7; ++i) cached[i] = signature[i];
+        for (int i = 0; i < 8; ++i) cached[i] = signature[i];
 
         const float room = clampf ((0.30f + 1.55f * clampf (size01, 0.0f, 1.0f)) * sizeScale, 0.12f, 2.6f);
         rt60 = rt60Seconds (decay01, feedbackMacro);
@@ -258,7 +258,7 @@ private:
     PitchShifter shifter;
     OnePoleTPT shimmerHigh, shimmerLow;
     float shimmerState = 0.0f;
-    float cached[7] { -99.0f, -99.0f, -99.0f, -99.0f, -99.0f, -99.0f, -99.0f };
+    float cached[8] { -99.0f, -99.0f, -99.0f, -99.0f, -99.0f, -99.0f, -99.0f, -99.0f };
     float modDepth = 0.0f, diffusionScale = 1.0f, rt60 = 2.0f;
     bool clamped = false, first = true;
 };

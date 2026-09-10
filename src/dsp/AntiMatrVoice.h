@@ -75,6 +75,15 @@ private:
     float lastEnergy = 0.0f;
     double sr = 48000.0;
 
+    // Physical-model lifetime: the amplitude envelope shapes the EXCITATION; Matter rings out after
+    // the envelope ends (per Decay) until its energy is gone or the ring-out cap expires.
+    int    ringOutSamples = 0;
+    int    ringOutCap = 0;
+    bool   killing = false;
+    float  killGain = 1.0f;
+    float  killStep = 0.0f;
+    static constexpr float kMatterOutputTrim = 4.0f;   ///< +12 dB: Matter's calibrated node gain sits ~12 dB under the source
+
     // pitch handling
     double glideLog = 0.0;          // current log2 frequency during glide
     double glideTargetLog = 0.0;

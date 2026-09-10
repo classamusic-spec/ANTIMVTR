@@ -69,6 +69,7 @@ public:
         params[(size_t) paramIndex (Param::ampAttack)] = 0.001f;
         params[(size_t) paramIndex (Param::ampRelease)] = 0.05f;
         params[(size_t) paramIndex (Param::spaceMix)] = 0.0f;     // these tests measure the voice envelope, not the Space tail
+        params[(size_t) paramIndex (Param::shapeMix)] = 0.0f;     // ...nor Matter's ring-out (covered by MatterTests)
 
         beginTest ("Note produces sound and releases to silence at every sample rate and block size");
         {

@@ -24,6 +24,10 @@ void AntiMatrVoice::reset()
     active = false;
     gliding = false;
     lastEnergy = 0.0f;
+    ringOutSamples = 0;
+    ringOutCap = (int) (sr * 30.0);   // never ring longer than 30 s after the envelope ends
+    killing = false;
+    killGain = 1.0f;
 }
 
 void AntiMatrVoice::start (const StartInfo& info, const ParamValues& params)
@@ -64,6 +68,10 @@ void AntiMatrVoice::start (const StartInfo& info, const ParamValues& params)
         gliding = false;
     }
 
+    killing = false;
+    killGain = 1.0f;
+    ringOutSamples = 0;
+
     if (! wasActive)
     {
         sourceEngine.noteOn (note, params);
@@ -96,6 +104,12 @@ void AntiMatrVoice::kill()
 {
     note.gate = false;
     ampEnv.kill();
+    if (! killing)
+    {
+        killing = true;
+        killGain = 1.0f;
+        killStep = 1.0f / (float) std::max (1.0, sr * 0.003);   // 3 ms fade of the whole voice, Matter included
+    }
 }
 
 void AntiMatrVoice::updateFrequency (const RenderContext& ctx)
@@ -127,10 +141,11 @@ void AntiMatrVoice::render (float* outL, float* outR, float* srcL, float* srcR, 
     float* mL = matL.data();
     float* mR = matR.data();
 
-    // 1. Source
+    // 1. Source, shaped by the amplitude envelope (the envelope gates the ENERGY, not the material)
     {
         PerformanceProfiler::Scoped timer (diag->profiler, Subsystem::Source);
         sourceEngine.render (sL, sR, n, ctx, note);
+        ampEnv.applyTo (sL, sR, n);
     }
 
     if (srcL != nullptr) juce::FloatVectorOperations::add (srcL, sL, n);
@@ -154,27 +169,42 @@ void AntiMatrVoice::render (float* outL, float* outR, float* srcL, float* srcR, 
         matterEngine.process (sL, sR, mL, mR, n, ctx, note);
     }
 
-    // 4. Mix source / matter, apply velocity + envelope, accumulate.
+    // 4. Mix source / matter, apply velocity and the kill fade, accumulate.
+    //    The amplitude envelope was applied to the excitation, so Matter's response carries it naturally.
     const float dryGain = (1.0f - mix) * velocityGain;
-    const float wetGain = mix * velocityGain;
+    const float wetGain = mix * velocityGain * kMatterOutputTrim;
     for (int i = 0; i < n; ++i)
     {
-        const float env = ampEnv.next();
-        const float a = (sL[i] * dryGain + (mix > 0.0f ? mL[i] * wetGain : 0.0f)) * env;
-        const float b = (sR[i] * dryGain + (mix > 0.0f ? mR[i] * wetGain : 0.0f)) * env;
+        float a = sL[i] * dryGain + (mix > 0.0f ? mL[i] * wetGain : 0.0f);
+        float b = sR[i] * dryGain + (mix > 0.0f ? mR[i] * wetGain : 0.0f);
+        if (killing)
+        {
+            killGain = std::max (0.0f, killGain - killStep);
+            a *= killGain; b *= killGain;
+        }
         outL[i] += a;
         outR[i] += b;
     }
 
-    lastEnergy = ampEnv.getLevel() * std::max (matterEngine.energy(), sourceEngine.energy());
+    lastEnergy = std::max (ampEnv.getLevel() * sourceEngine.energy(), matterEngine.energy() * kMatterOutputTrim);
 
-    // 5. Voice lifetime: ends when the amplitude envelope is finished.
-    if (! ampEnv.isActive())
+    // 5. Voice lifetime: the envelope has ended AND Matter has rung out (or the cap / kill fade expired).
+    if (killing && killGain <= 0.0f)
     {
         active = false;
+        matterEngine.reset();
+    }
+    else if (! ampEnv.isActive())
+    {
+        ringOutSamples += n;
+        const bool ringing = mix > 0.0f && matterEngine.isActive() && ringOutSamples < ringOutCap;
+        if (! ringing)
+            active = false;
+    }
+
+    if (! active)
         diag->events.push (EngineEventType::VoiceEnded, Subsystem::VoiceMix, -1, (uint32_t) note.midiNote, 0.0f,
                            diag->sampleClock.load (std::memory_order_relaxed));
-    }
 }
 
 } // namespace am

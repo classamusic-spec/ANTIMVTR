@@ -42,9 +42,9 @@ inline void fastSinCos (float w, float& sn, float& cs) noexcept
 
     Coefficients (c, s) and output gains are ramped in kSub-sample steps
     toward per-block targets. Coupling is an antisymmetric stencil on the x
-    states (two strided bands, an optional hub and a few explicit edges),
-    scaled so the coupled system is provably contractive (see
-    finalizeCoupling). The per-sample loops are lane-structured (kLanes)
+    states (two strided bands, an optional hub and a few explicit edges)
+    applied to the state before the rotation, z' = D·R·(I + K)·z, and scaled
+    so the coupled system is provably contractive (see finalizeCoupling). The per-sample loops are lane-structured (kLanes)
     so they vectorise without fast-math.
 */
 class ModalBank
@@ -362,9 +362,12 @@ private:
                 for (int l = 0; l < kLanes; ++l)
                 {
                     const int j = i + l;
-                    const float xi = x0[j], yi = y0[j];
-                    float in = u * aa[j] + st * bb[j];
-                    if constexpr (Coupled) in += ci[j];
+                    // Coupling is applied to the state BEFORE the rotation: z' = D·R·(I + K)·z,
+                    // which is what the contraction bound in finalizeCoupling() covers.
+                    float xi = x0[j];
+                    if constexpr (Coupled) xi += ci[j];
+                    const float yi = y0[j];
+                    const float in = u * aa[j] + st * bb[j];
                     const float xn = cc[j] * xi - ss[j] * yi + in;
                     const float yn = ss[j] * xi + cc[j] * yi;
                     x0[j] = xn; y0[j] = yn;

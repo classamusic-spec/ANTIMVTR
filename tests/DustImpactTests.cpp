@@ -712,6 +712,42 @@ private:
             expect (rmsOf (after) < 1.0e-4, "strikes kept firing after note-off: " + juce::String (rmsOf (after)));
         }
 
+        beginTest ("IMPACT: a roll with long tails keeps firing instead of filling the pool");
+        {
+            // 40 Hz repeats with 1.5 s tails need far more strikes than the pool
+            // holds. Stealing the quietest slot (and carrying its last sample into
+            // a short decaying residue) must keep the roll going at a steady rate.
+            Harness h;
+            h.set (Param::impactMode, 5.0f);        // DAMPED SINE: the longest tails
+            h.set (Param::impactLength, 1.0f);
+            h.set (Param::impactRandom, 0.0f);
+            h.set (Param::impactRate, 1.0f);        // 40 Hz
+
+            ImpactSource src;
+            const auto buf = renderSource (src, h, 2.0, 3.0);
+
+            auto onsetsIn = [&buf, &h] (double from, double to)
+            {
+                const int a = (int) (from * h.sr), b = (int) (to * h.sr);
+                juce::AudioBuffer<float> slice (2, b - a);
+                for (int ch = 0; ch < 2; ++ch)
+                    for (int i = a; i < b; ++i) slice.setSample (ch, i - a, buf.getSample (ch, i));
+                return countOnsets (slice, h.sr, 0.3f, 0.012);
+            };
+
+            const int early = onsetsIn (0.05, 0.55);
+            const int late = onsetsIn (1.45, 1.95);
+            expect (early >= 15, "the roll never got going: " + juce::String (early));
+            expect (late >= early / 2, "the roll died once the strike pool filled: "
+                                       + juce::String (early) + " -> " + juce::String (late));
+
+            // Stealing a slot must not tear the waveform.
+            float maxJump = 0.0f;
+            for (int i = 1; i < buf.getNumSamples(); ++i)
+                maxJump = juce::jmax (maxJump, std::abs (buf.getSample (0, i) - buf.getSample (0, i - 1)));
+            expect (maxJump < 0.25f, "strike stealing produced a step of " + juce::String (maxJump));
+        }
+
         beginTest ("IMPACT: rate 0 fires exactly one strike and then reports inactive");
         {
             Harness h;

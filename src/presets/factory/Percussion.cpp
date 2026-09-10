@@ -416,6 +416,305 @@ manager.addFactory ({ "Rattle Cage", "PERCUSSION", { "granular", "wooden", "dirt
     sharedMacros (r, Param::fractureDecay, Param::chaos1Depth);
     r.commit (s);
 }});
+
+//--------------------------------------------------------- metal, tine to gong
+
+manager.addFactory ({ "Chrome Tine", "PERCUSSION", { "plucked", "bright", "metallic", "high", "dry" }, [] (PatchState& s)
+{
+    // One tooth of a music box. A STAR topology hangs every partial off a single
+    // hub, so the tine is all attack and one clean pitch, and then it is over.
+    impact (s, 2 /* PLUCK */, 0.68f, 0.72f, 0.10f, 0.88f, 0.30f, 0.06f, 0.0f, 0.85f);
+    amp (s, 0.0008f, 0.34f, 0.0f, 0.26f, 0.22f);
+    set (s, Param::masterGain, -2.0f);
+    shape (s, 0.20f, 0.44f, 0.20f, 0.72f, 0.42f, 0.16f);
+    material (s, MaterialType::Crystal, MaterialType::Metal, 0.42f);
+    topology (s, 5 /* STAR */, 0.24f, 0.28f, 509);
+    matter (s, 1.0f, 0.66f, 0.66f, 0.34f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.18f, 0.38f, 0.05f, 0.0f, 0.35f, 0.10f);
+    set (s, Param::evolveMagnetTarget, 6 /* CUSTOM (harmonic) */);
+    space (s, SpacePresets::Chamber, 0.20f, 0.22f, 0.66f, 0.14f);
+
+    env (s, 1, 0.0008f, 0.12f, 0.0f, 0.10f, 0.20f);
+    macros (s, 0.12f, 0.48f, 0.24f, 0.42f);
+
+    Routings r;
+    r.uni (ModSource::Env1,      Param::shapeExcite,      0.200f)
+     .uni (ModSource::Velocity,  Param::impactHardness,   0.400f)
+     .uni (ModSource::Velocity,  Param::impactBrightness, 0.300f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.280f)
+     .bi  (ModSource::NoteRandom, Param::shapePitch,      0.060f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.280f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.360f)
+     .uni (ModSource::Macro2,    Param::shapeTension,     0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.340f)
+     .uni (ModSource::Macro4,    Param::evolveMagnet,     0.260f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Brass Thumb", "PERCUSSION", { "plucked", "metallic", "dirty", "resonant", "close" }, [] (PatchState& s)
+{
+    // A thumb piano bolted to a plate that buzzes back. SURFACE carries the
+    // rattle and a short SPECTRAL Fracture smears each note into the plate.
+    impact (s, 2 /* PLUCK */, 0.46f, 0.54f, 0.14f, 0.90f, 0.40f, 0.16f, 0.0f, 0.85f);
+    amp (s, 0.001f, 0.55f, 0.04f, 0.40f, 0.28f);
+    shape (s, 0.42f, 0.48f, 0.34f, 0.60f, 0.44f, 0.62f);
+    material (s, MaterialType::Metal, MaterialType::Wood, 0.38f);
+    topology (s, 1 /* RING */, 0.62f, 0.44f, 521);
+    matter (s, 1.0f, 0.62f, 0.60f, 0.56f);
+    evolve (s, 0.0f, 0.0f, 0.12f, 0.0f, 0.46f, 0.18f, 0.0f, 0.48f, 0.24f);
+    set (s, Param::evolveScatterSeed, 523);
+    fracture (s, 0 /* SPECTRAL */, 0.36f, 0.32f, 0.50f, 0.35f, 0.24f, 0.18f, 0.40f, 0.58f, 0.18f,
+              1 /* 16 */, 6 /* 1/4T */, 8, 0.0f, 0 /* FORWARD */, 0.90f, 0.25f, 541,
+              FractureShape { 16, 0.02f, 0.20f, 0.12f, 0.40f, 0.35f, 0.60f, 0.25f, 0.85f,
+                              1.0f, 1.0f, 0.50f, 0.9f, kFifthTerrace, "XLXHXXLH", nullptr });
+    space (s, SpacePresets::Chamber, 0.24f, 0.28f, 0.58f, 0.22f);
+
+    env (s, 1, 0.001f, 0.20f, 0.0f, 0.18f, 0.25f);
+    macros (s, 0.28f, 0.44f, 0.26f, 0.52f);
+
+    Routings r;
+    r.uni (ModSource::Env1,      Param::shapeSurface,     0.240f)
+     .uni (ModSource::Velocity,  Param::impactHardness,   0.380f)
+     .uni (ModSource::Velocity,  Param::shapeSurface,     0.260f)
+     .bi  (ModSource::KeyTrack,  Param::shapeCoupling,   -0.220f)
+     .bi  (ModSource::NoteRandom, Param::fracturePitch,   0.080f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.320f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro2,    Param::fractureTone,     0.260f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::shapeSurface,     0.340f)
+     .uni (ModSource::Macro4,    Param::fractureAmount,   0.260f);
+    sharedMacros (r, Param::fractureDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Anvil Tooth", "PERCUSSION", { "struck", "harsh", "metallic", "dirty", "dry" }, [] (PatchState& s)
+{
+    // Hammer on a small anvil, recorded a foot away. CRUSH quantises the modes
+    // to a coarse grid so the object sounds cast rather than tuned.
+    impact (s, 4 /* METAL STRIKE */, 0.80f, 0.66f, 0.16f, 0.88f, 0.28f, 0.12f, 0.0f, 0.75f);
+    amp (s, 0.0008f, 0.40f, 0.0f, 0.30f, 0.22f);
+    set (s, Param::masterGain, -2.0f);
+    shape (s, 0.34f, 0.60f, 0.30f, 0.70f, 0.34f, 0.50f);
+    material (s, MaterialType::Metal, MaterialType::Wood, 0.28f);
+    topology (s, 0 /* CHAIN */, 0.38f, 0.34f, 557);
+    matter (s, 1.0f, 0.68f, 0.70f, 0.30f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.42f, 0.10f, 0.44f, 0.30f, 0.14f);
+    space (s, SpacePresets::Machine, 0.22f, 0.20f, 0.62f, 0.18f);
+
+    env (s, 1, 0.0008f, 0.10f, 0.0f, 0.10f, 0.20f);
+    macros (s, 0.14f, 0.46f, 0.20f, 0.55f);
+
+    Routings r;
+    r.uni (ModSource::Env1,      Param::evolveCrush,      0.220f)
+     .uni (ModSource::Velocity,  Param::impactHardness,   0.420f)
+     .uni (ModSource::Velocity,  Param::evolveCrush,     -0.240f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.240f)
+     .bi  (ModSource::NoteRandom, Param::impactRandom,    0.090f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.340f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::evolveCrush,      0.340f)
+     .uni (ModSource::Macro4,    Param::spaceDistDrive,   0.280f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Steel Tongue", "PERCUSSION", { "struck", "warm", "metallic", "resonant", "melodic" }, [] (PatchState& s)
+{
+    // A tongue drum: round, hollow steel with a long hum under the note. MAGNET
+    // on the OCTAVE grid keeps the hum consonant with whatever you play.
+    impact (s, 5 /* DAMPED SINE */, 0.34f, 0.40f, 0.42f, 0.90f, 0.55f, 0.08f, 0.0f, 0.85f);
+    amp (s, 0.002f, 1.00f, 0.0f, 0.85f, 0.35f);
+    set (s, Param::masterGain, -2.0f);
+    shape (s, 0.28f, 0.40f, 0.54f, 0.48f, 0.62f, 0.22f);
+    material (s, MaterialType::Metal, MaterialType::Membrane, 0.46f);
+    topology (s, 1 /* RING */, 0.48f, 0.36f, 569);
+    matter (s, 1.0f, 0.52f, 0.56f, 0.52f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.42f, 0.48f, 0.06f, 0.0f, 0.22f, 0.14f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    space (s, SpacePresets::Dream, 0.30f, 0.46f, 0.52f, 0.30f);
+
+    env (s, 1, 0.002f, 0.60f, 0.0f, 0.45f, 0.35f);
+    lfo (s, 1, 0.22f, 0 /* SINE */, 1.0f, true, 0.8f);
+    macros (s, 0.20f, 0.36f, 0.34f, 0.48f);
+
+    Routings r;
+    r.uni (ModSource::Env1,      Param::shapeExcite,      0.180f)
+     .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.060f)
+     .uni (ModSource::Velocity,  Param::impactHardness,   0.340f)
+     .uni (ModSource::Velocity,  Param::shapeStrike,      0.240f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.260f)
+     .bi  (ModSource::NoteRandom, Param::shapeCoupling,   0.070f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,      0.220f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::evolveMagnet,     0.320f)
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.260f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Bell Foundry", "PERCUSSION", { "struck", "metallic", "cold", "huge", "resonant" }, [] (PatchState& s)
+{
+    // A cast bell with the hum note sitting an octave under the strike tone.
+    // CLUSTERS keep the partial groups apart; the tail is nearly a minute long.
+    impact (s, 4 /* METAL STRIKE */, 0.58f, 0.50f, 0.56f, 0.92f, 0.45f, 0.10f, 0.0f, 0.72f);
+    amp (s, 0.002f, 1.60f, 0.0f, 1.60f, 0.45f);
+    set (s, Param::masterGain, -2.5f);
+    shape (s, 0.44f, 0.56f, 0.58f, 0.56f, 0.80f, 0.24f);
+    material (s, MaterialType::Metal, MaterialType::Crystal, 0.44f);
+    topology (s, 2 /* CLUSTERS */, 0.44f, 0.40f, 587);
+    matter (s, 1.0f, 0.54f, 0.58f, 0.66f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.36f, 0.54f, 0.10f, 0.0f, 0.14f, 0.20f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    space (s, SpacePresets::Void, 0.38f, 0.78f, 0.44f, 0.36f);
+
+    env (s, 1, 0.002f, 1.20f, 0.0f, 1.00f, 0.55f);
+    lfo (s, 1, 0.13f, 1 /* TRIANGLE */, 1.0f, true, 1.2f);
+    macros (s, 0.26f, 0.38f, 0.45f, 0.45f);
+
+    Routings r;
+    r.uni (ModSource::Env1,      Param::evolveMagnet,     0.220f)
+     .bi  (ModSource::LFO1,      Param::shapeTension,     0.045f)
+     .uni (ModSource::Velocity,  Param::impactHardness,   0.360f)
+     .uni (ModSource::Velocity,  Param::impactBrightness, 0.260f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.300f)
+     .bi  (ModSource::NoteRandom, Param::shapeDistribution, 0.100f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.340f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro2,    Param::spaceTone,        0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
+     .uni (ModSource::Macro3,    Param::spaceSize,        0.200f)
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.300f)
+     .uni (ModSource::Macro4,    Param::shapeDensity,     0.240f);
+    sharedMacros (r, Param::ampDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Gong Weather", "PERCUSSION", { "struck", "metallic", "evolving", "huge", "dark" }, [] (PatchState& s)
+{
+    // A gong does not decay, it blooms: a slow repeat at about one hit a second
+    // keeps feeding the plate while MELT widens it, so the sound is still
+    // arriving four seconds after the stroke.
+    impact (s, 4 /* METAL STRIKE */, 0.40f, 0.30f, 0.70f, 0.95f, 0.60f, 0.30f, 0.16f, 0.62f);
+    amp (s, 0.004f, 2.20f, 0.30f, 2.00f, 0.55f);
+    set (s, Param::masterGain, -3.0f);
+    shape (s, 0.62f, 0.66f, 0.66f, 0.46f, 0.76f, 0.44f);
+    material (s, MaterialType::Metal, MaterialType::Void, 0.46f);
+    topology (s, 4 /* RANDOM */, 0.58f, 0.54f, 599);
+    matter (s, 1.0f, 0.50f, 0.52f, 0.82f);
+    evolve (s, 0.0f, 0.36f, 0.0f, 0.0f, 0.44f, 0.30f, 0.0f, 0.16f, 0.46f);
+    set (s, Param::evolveScatterSeed, 601);
+    fracture (s, 0 /* SPECTRAL */, 0.34f, 0.30f, 0.70f, 0.30f, 0.30f, 0.45f, 0.60f, 0.42f, 0.30f,
+              2 /* 32 */, 2 /* 1/4 */, 8, 0.0f, 2 /* PINGPONG */, 0.80f, 0.35f, 607,
+              FractureShape { 32, 0.10f, 0.55f, 0.20f, 0.50f, 0.45f, 0.72f, 0.30f, 0.95f,
+                              1.0f, 0.9f, 0.70f, 0.85f, kOctaveTerrace, "XLXHXLXH", nullptr });
+    space (s, SpacePresets::Void, 0.44f, 0.88f, 0.36f, 0.44f);
+
+    env (s, 2, 0.60f, 3.00f, 0.40f, 2.50f, 0.70f);
+    lfo (s, 1, 0.09f, 5 /* SMOOTH RANDOM */, 1.0f, true, 1.5f);
+    macros (s, 0.45f, 0.30f, 0.50f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env2,      Param::evolveMelt,       0.280f)
+     .uni (ModSource::Env2,      Param::shapeDensity,     0.220f)
+     .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.090f)
+     .uni (ModSource::Velocity,  Param::impactHardness,   0.320f)
+     .uni (ModSource::Velocity,  Param::impactRate,       0.180f)
+     .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.240f)
+     .bi  (ModSource::NoteRandom, Param::impactRandom,    0.120f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.420f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro2,    Param::spaceTone,        0.260f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::evolveMelt,       0.320f)
+     .uni (ModSource::Macro4,    Param::fractureAmount,   0.240f);
+    sharedMacros (r, Param::fractureDecay, Param::evolveSpeed);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Hissing Dome", "PERCUSSION", { "struck", "metallic", "air", "wide", "noisy" }, [] (PatchState& s)
+{
+    // A cymbal roll you can hold down. The repeat runs at about ten strokes a
+    // second and velocity drives it, so playing softer thins the wash out into
+    // separate strokes instead of just turning it down.
+    impact (s, 3 /* NOISE STRIKE */, 0.44f, 0.86f, 0.24f, 0.90f, 0.50f, 0.42f, 0.62f, 0.55f);
+    amp (s, 0.020f, 0.80f, 0.55f, 0.90f, 0.45f);
+    shape (s, 0.72f, 0.62f, 0.24f, 0.66f, 0.60f, 0.40f);
+    material (s, MaterialType::Metal, MaterialType::Void, 0.34f);
+    topology (s, 4 /* RANDOM */, 0.52f, 0.66f, 613);
+    matter (s, 0.90f, 0.66f, 0.44f, 0.92f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.34f, 0.34f, 0.0f, 0.55f, 0.36f);
+    set (s, Param::evolveScatterSeed, 617);
+    fracture (s, 0 /* SPECTRAL */, 0.40f, 0.36f, 0.75f, 0.30f, 0.34f, 0.40f, 0.55f, 0.70f, 0.22f,
+              2 /* 32 */, 4 /* 1/16 */, 8, 0.0f, 3 /* RANDOM */, 0.85f, 0.40f, 619,
+              FractureShape { 32, 0.04f, 0.35f, 0.20f, 0.50f, 0.40f, 0.68f, 0.40f, 1.0f,
+                              1.0f, 1.0f, 0.80f, 0.9f, nullptr, "XHXHXXHH", nullptr });
+    space (s, SpacePresets::Shimmer, 0.36f, 0.60f, 0.70f, 0.34f);
+
+    env (s, 1, 0.030f, 0.60f, 0.35f, 0.50f, 0.45f);
+    chaos (s, 1, 4 /* TARGETS */, 6.50f, 0.45f, 0.50f, 0.5f, 641);
+    macros (s, 0.42f, 0.55f, 0.40f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env1,      Param::impactRate,       0.200f)
+     .bi  (ModSource::Chaos1,    Param::impactBrightness, 0.140f)
+     .uni (ModSource::Velocity,  Param::impactRate,       0.300f)
+     .uni (ModSource::Velocity,  Param::impactBrightness, 0.240f)
+     .bi  (ModSource::KeyTrack,  Param::impactHardness,   0.200f)
+     .bi  (ModSource::NoteRandom, Param::evolveScatter,   0.100f)
+     .uni (ModSource::Macro1,    Param::impactRate,       0.350f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro2,    Param::fractureTone,     0.260f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
+     .uni (ModSource::Macro4,    Param::shapeDensity,     0.300f)
+     .uni (ModSource::Macro4,    Param::fractureAmount,   0.260f);
+    sharedMacros (r, Param::fractureDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Wire Hammer", "PERCUSSION", { "struck", "bright", "rhythmic", "resonant", "melodic" }, [] (PatchState& s)
+{
+    // A hammered dulcimer. Two hard beaters on a course of wires: the repeat
+    // sits at tremolo speed and a 1/16 Fracture grid throws the tremolo around
+    // the stereo field the way a real pair of hammers never quite lines up.
+    impact (s, 2 /* PLUCK */, 0.56f, 0.66f, 0.08f, 0.92f, 0.32f, 0.22f, 0.44f, 0.72f);
+    amp (s, 0.001f, 0.70f, 0.32f, 0.55f, 0.30f);
+    set (s, Param::masterGain, -2.0f);
+    shape (s, 0.34f, 0.10f, 0.32f, 0.68f, 0.56f, 0.20f);
+    material (s, MaterialType::String, MaterialType::Wood, 0.34f);
+    topology (s, 0 /* CHAIN */, 0.30f, 0.40f, 643);
+    matter (s, 1.0f, 0.60f, 0.58f, 0.48f);
+    evolve (s, 0.0f, 0.0f, 0.14f, 0.0f, 0.46f, 0.16f, 0.0f, 0.50f, 0.22f);
+    set (s, Param::evolveScatterSeed, 647);
+    fracture (s, 1 /* RHYTHMIC */, 0.40f, 0.38f, 0.62f, 0.58f, 0.26f, 0.22f, 0.42f, 0.62f, 0.20f,
+              1 /* 16 */, 4 /* 1/16 */, 8, 0.22f, 2 /* PINGPONG */, 0.85f, 0.30f, 653,
+              FractureShape { 16, 0.02f, 0.24f, 0.10f, 0.38f, 0.35f, 0.62f, 0.35f, 0.90f,
+                              1.0f, 1.0f, 0.70f, 0.9f, kFifthTerrace, "XoXHXoXL", nullptr });
+    space (s, SpacePresets::Chamber, 0.28f, 0.36f, 0.60f, 0.24f);
+
+    env (s, 1, 0.001f, 0.24f, 0.0f, 0.20f, 0.25f);
+    macros (s, 0.35f, 0.48f, 0.30f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env1,      Param::fractureAmount,   0.200f)
+     .uni (ModSource::Velocity,  Param::impactRate,       0.280f)
+     .uni (ModSource::Velocity,  Param::impactHardness,   0.360f)
+     .uni (ModSource::Velocity,  Param::shapeStrike,      0.200f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.260f)
+     .bi  (ModSource::NoteRandom, Param::impactRandom,    0.100f)
+     .uni (ModSource::Macro1,    Param::impactRate,       0.380f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.320f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::fractureSwing,    0.300f)
+     .uni (ModSource::Macro4,    Param::evolveTear,       0.240f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
+    r.commit (s);
+}});
 }
 
 } // namespace am::FactoryContent

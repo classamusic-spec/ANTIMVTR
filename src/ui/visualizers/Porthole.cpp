@@ -311,9 +311,9 @@ void AntiMatterVisualizer::renderGlass (juce::Graphics& g, const Frame& f)
         gradient.point1 = { mid.x - nx * half, mid.y - ny * half };
         gradient.point2 = { mid.x + nx * half, mid.y + ny * half };
         gradient.addColour (0.0, juce::Colours::transparentWhite);
-        gradient.addColour (0.34, juce::Colours::white.withAlpha (0.035f));
-        gradient.addColour (0.52, juce::Colours::white.withAlpha (0.085f));
-        gradient.addColour (0.70, juce::Colours::white.withAlpha (0.028f));
+        gradient.addColour (0.32, juce::Colours::white.withAlpha (0.055f));
+        gradient.addColour (0.52, juce::Colours::white.withAlpha (0.135f));
+        gradient.addColour (0.72, juce::Colours::white.withAlpha (0.045f));
         gradient.addColour (1.0, juce::Colours::transparentWhite);
         g.setGradientFill (gradient);
         g.fillEllipse (c.x - R, c.y - R, R * 2.0f, R * 2.0f);
@@ -330,7 +330,7 @@ void AntiMatterVisualizer::renderGlass (juce::Graphics& g, const Frame& f)
         gradient.point1 = { mid.x - nx * half, mid.y - ny * half };
         gradient.point2 = { mid.x + nx * half, mid.y + ny * half };
         gradient.addColour (0.0, juce::Colours::transparentWhite);
-        gradient.addColour (0.5, juce::Colours::white.withAlpha (0.075f));
+        gradient.addColour (0.5, juce::Colours::white.withAlpha (0.155f));
         gradient.addColour (1.0, juce::Colours::transparentWhite);
         g.setGradientFill (gradient);
         // A lens-shaped sweep rather than a full band: taper it toward the ends.
@@ -347,18 +347,18 @@ void AntiMatterVisualizer::renderGlass (juce::Graphics& g, const Frame& f)
     // ---- The crescent hugging the inside of the bezel at the top.
     {
         juce::Path crescent;
-        const float cr = R * 0.955f;
-        crescent.addCentredArc (c.x, c.y, cr, cr, 0.0f, -kPi * 0.86f, -kPi * 0.12f, true);
+        const float cr = R * 0.952f;
+        crescent.addCentredArc (c.x, c.y, cr, cr, 0.0f, -kPi * 0.88f, -kPi * 0.10f, true);
         gradient.clearColours();
         gradient.isRadial = false;
         gradient.point1 = { c.x - R, c.y };
         gradient.point2 = { c.x + R, c.y };
         gradient.addColour (0.0, juce::Colours::transparentWhite);
-        gradient.addColour (0.30, juce::Colours::white.withAlpha (0.26f));
-        gradient.addColour (0.56, juce::Colours::white.withAlpha (0.16f));
+        gradient.addColour (0.30, juce::Colours::white.withAlpha (0.40f));
+        gradient.addColour (0.56, juce::Colours::white.withAlpha (0.24f));
         gradient.addColour (1.0, juce::Colours::transparentWhite);
         g.setGradientFill (gradient);
-        g.strokePath (crescent, juce::PathStrokeType (R * 0.045f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.strokePath (crescent, juce::PathStrokeType (R * 0.058f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 
     // ---- Thickness: the glass darkens where you look through more of it, at the lower right.
@@ -483,7 +483,7 @@ void AntiMatterVisualizer::drawPlinthGlow (juce::Graphics& g, const Frame& f)
     const juce::Point<float> p { L.centreX, L.plinthTop + L.plinthHeight * 0.58f };
     const float rx = L.plinthHalfWidth * 1.18f;
     const float ry = juce::jmax (4.0f, L.plinthHeight * 0.92f);
-    const float a = 0.22f + 0.30f * f.pulse + 0.12f * f.life + 0.06f * f.energy;
+    const float a = 0.30f + 0.34f * f.pulse + 0.14f * f.life + 0.08f * f.energy;
     const auto col = Theme::blue.interpolatedWith (Theme::cyan, 0.22f + 0.25f * f.pulse);
 
     juce::Graphics::ScopedSaveState state (g);
@@ -612,8 +612,8 @@ void AntiMatterVisualizer::renderPlinth (juce::Graphics& g, const Frame& f)
         gradient.isRadial = false;
         gradient.point1 = { cx, inset.getY() };
         gradient.point2 = { cx, inset.getBottom() };
-        gradient.addColour (0.0, juce::Colour (0xff101219));
-        gradient.addColour (1.0, juce::Colour (0xff262a33));
+        gradient.addColour (0.0, juce::Colour (0xff191d25));
+        gradient.addColour (1.0, juce::Colour (0xff343945));
         g.setGradientFill (gradient);
         g.fillRoundedRectangle (inset, corner);
 
@@ -632,17 +632,19 @@ void AntiMatterVisualizer::renderPlinth (juce::Graphics& g, const Frame& f)
 
         auto title = draw::fitFont (Theme::displayFont (titleH, 0.20f), "ANTI-MATR", titleRow.getWidth(), 7.0f);
         draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, lift), juce::Justification::centred, title,
-                           kChrome.withAlpha (0.55f));
-        draw::trackedText (g, "ANTI-MATR", titleRow, juce::Justification::centred, title, juce::Colour (0xff05060a).withAlpha (0.92f));
+                           kChrome.brighter (0.35f).withAlpha (0.85f));
+        draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, -lift * 0.35f), juce::Justification::centred, title,
+                           juce::Colour (0xff000103).withAlpha (0.55f));
+        draw::trackedText (g, "ANTI-MATR", titleRow, juce::Justification::centred, title, juce::Colour (0xff05060a));
 
         if (textArea.getHeight() > subH * 1.0f)
         {
             auto subRow = textArea.removeFromTop (juce::jmin (textArea.getHeight(), subH * 1.7f));
             auto sub = draw::fitFont (Theme::captionFont (subH), "SOUND BEYOND MATTER", subRow.getWidth(), 5.0f);
-            draw::trackedText (g, "SOUND BEYOND MATTER", subRow.translated (0.0f, lift * 0.7f), juce::Justification::centred, sub,
-                               kChrome.withAlpha (0.38f));
+            draw::trackedText (g, "SOUND BEYOND MATTER", subRow.translated (0.0f, lift * 0.75f), juce::Justification::centred, sub,
+                               kChrome.brighter (0.2f).withAlpha (0.62f));
             draw::trackedText (g, "SOUND BEYOND MATTER", subRow, juce::Justification::centred, sub,
-                               juce::Colour (0xff06070c).withAlpha (0.88f));
+                               juce::Colour (0xff06070c));
         }
     }
 

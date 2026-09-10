@@ -249,7 +249,7 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
 
     // Size and brightness follow level; the object breathes so it never looks asleep.
     f.breathe = 1.0f + 0.018f * std::sin (time * 0.7f) + 0.055f * f.pulse + 0.025f * f.energy * f.life;
-    f.R = f.port.glassR * (0.700f + 0.030f * smooth.mass + 0.030f * f.pulse);
+    f.R = f.port.glassR * (0.775f + 0.030f * smooth.mass + 0.030f * f.pulse);
 
     f.p.time = time;
     f.p.flowTime = flowTime;
@@ -389,8 +389,11 @@ void AntiMatterVisualizer::buildOrganism (const Frame& f)
                 if (la > 1.0e-4f && lb > 1.0e-4f)
                     turn = std::acos (juce::jlimit (-1.0f, 1.0f, (ax * bx + ay * by) / (la * lb)));
             }
-            const float curveLimit = 0.85f * step / juce::jmax (0.09f, turn);
-            const float base = juce::jmin (row[(size_t) i].width * f.R * out[(size_t) i].scale, curveLimit);
+            const float curveLimit = 1.05f * step / juce::jmax (0.09f, turn);
+            // Depth thins the ribbon: the far side of the sphere is not just dimmer,
+            // it is narrower, and that is half of what makes the mass read as solid.
+            const float depthWidth = 0.52f + 0.48f * sat (0.5f + 0.5f * out[(size_t) i].z);
+            const float base = juce::jmin (row[(size_t) i].width * f.R * out[(size_t) i].scale * depthWidth, curveLimit);
             if (f.surfaceRough > 0.02f)
             {
                 const float s0 = noise.noise ((float) i * 0.9f + (float) r * 17.0f, time * 1.1f);
@@ -408,7 +411,7 @@ void AntiMatterVisualizer::buildOrganism (const Frame& f)
             // approaches the rim, so the organism dissolves into the dark instead of
             // being cut off — and nothing the object draws can ever reach the bezel.
             const float dist = std::hypot (out[(size_t) i].x - f.centre.x, out[(size_t) i].y - f.centre.y);
-            const float fade = 1.0f - liquid::smoothstep (f.port.glassR * 0.70f, f.port.glassR * 0.955f, dist);
+            const float fade = 1.0f - liquid::smoothstep (f.port.glassR * 0.62f, f.port.glassR * 0.925f, dist);
             out[(size_t) i].w0 *= fade;
             out[(size_t) i].w1 *= fade;
             row[(size_t) i].bright *= 0.10f + 0.90f * fade;
@@ -519,12 +522,17 @@ void AntiMatterVisualizer::drawRibbonSpan (juce::Graphics& g, const Frame& f, co
     const int a = span.first, b = span.first + span.count - 1;
     const int mid = (a + b) / 2;
 
-    // Depth: this is what makes the mass read as solid rather than printed on the glass.
-    const float depth = juce::jlimit (-1.0f, 1.0f, span.meanZ / 1.15f);
-    const bool  back = depth < 0.0f;
-    const float dim = back ? (0.16f + 0.40f * (1.0f + depth)) : (0.86f + 0.14f * depth);
-    const float widthMul = back ? (0.52f + 0.32f * (1.0f + depth)) : (1.00f + 0.26f * depth);
-    const float soften = back ? (1.0f - 0.85f * depth) : 1.0f;      // far ribbons bloom wider and lose their core
+    // Depth, per end of the span rather than per span: a ribbon that arcs from the
+    // back of the sphere to the front has to darken and pale along its own length,
+    // or the whole mass shades flat however carefully the runs are sorted.
+    auto depthOf = [&] (int i) { return juce::jlimit (-1.0f, 1.0f, sc[(size_t) i].z / 1.15f); };
+    const float dA = depthOf (a), dM = depthOf (mid), dB = depthOf (b);
+    const float meanDepth = juce::jlimit (-1.0f, 1.0f, span.meanZ / 1.15f);
+    const bool  back = meanDepth < 0.0f;
+
+    // 0.14 at the far side of the sphere, 1.0 at the glass.
+    auto dim = [] (float d) { const float t = 0.5f + 0.5f * d; return 0.14f + 0.86f * t * t; };
+    const float dimA = dim (dA), dimM = dim (dM), dimB = dim (dB);
 
     const auto pa = juce::Point<float> (sc[(size_t) a].x, sc[(size_t) a].y);
     const auto pb = juce::Point<float> (sc[(size_t) b].x, sc[(size_t) b].y);
@@ -535,12 +543,13 @@ void AntiMatterVisualizer::drawRibbonSpan (juce::Graphics& g, const Frame& f, co
     const float hueB = organism.ribbonHue (span.ribbon, sm[(size_t) b].u, f.hue);
     const float brA = sm[(size_t) a].bright, brM = sm[(size_t) mid].bright, brB = sm[(size_t) b].bright;
 
-    auto lay = [&] (float wScale, float aA, float aM, float aB, float whiten)
+    // A ribbon at the back loses its colour into the cold volume; one in front keeps it.
+    auto lay = [&] (float wScale, float base, float whiten)
     {
         buildSpanPath (ribbonPath, span, wScale, 0.0f, 0.0f);
         if (degenerate)
         {
-            g.setColour (alpha (iridescence.depthShade (hueM, depth, whiten), aM * brM));
+            g.setColour (alpha (iridescence.depthShade (hueM, dM, whiten * (0.35f + 0.65f * dimM)), base * 1.25f * dimM * brM));
             g.fillPath (ribbonPath);
             return;
         }
@@ -548,41 +557,40 @@ void AntiMatterVisualizer::drawRibbonSpan (juce::Graphics& g, const Frame& f, co
         gradient.isRadial = false;
         gradient.point1 = pa;
         gradient.point2 = pb;
-        gradient.addColour (0.0, alpha (iridescence.depthShade (hueA, depth, whiten), aA * brA));
-        gradient.addColour (0.5, alpha (iridescence.depthShade (hueM, depth, whiten), aM * brM));
-        gradient.addColour (1.0, alpha (iridescence.depthShade (hueB, depth, whiten), aB * brB));
+        gradient.addColour (0.0, alpha (iridescence.depthShade (hueA, dA, whiten * (0.35f + 0.65f * dimA)), base * dimA * brA));
+        gradient.addColour (0.5, alpha (iridescence.depthShade (hueM, dM, whiten * (0.35f + 0.65f * dimM)), base * 1.25f * dimM * brM));
+        gradient.addColour (1.0, alpha (iridescence.depthShade (hueB, dB, whiten * (0.35f + 0.65f * dimB)), base * dimB * brB));
         g.setGradientFill (gradient);
         g.fillPath (ribbonPath);
     };
 
     // A ribbon in front casts a faint shadow onto whatever is behind it.
-    if (f.shadows && depth > 0.35f)
+    if (f.shadows && meanDepth > 0.30f)
     {
-        const float d = f.unit * (2.2f + 3.4f * depth);
-        buildSpanPath (ribbonPath, span, widthMul * 1.15f, d, d * 0.85f);
-        g.setColour (alpha (juce::Colour (0xff02030a), 0.16f + 0.16f * depth));
+        const float d = f.unit * (2.4f + 4.0f * meanDepth);
+        buildSpanPath (ribbonPath, span, 1.30f, d, d * 0.85f);
+        g.setColour (alpha (juce::Colour (0xff02030a), 0.18f + 0.20f * meanDepth));
         g.fillPath (ribbonPath);
     }
 
-    // Nested strips of falling width: a translucent bloom that fades smoothly across
-    // the ribbon, then the tight molten core. A single wide fill would show a hard
-    // silhouette where the bloom should be dissolving into the liquid.
+    // Nested strips of falling width and rising alpha: a translucent bloom that
+    // dissolves smoothly on both sides of a molten core. A single wide fill would
+    // show a hard silhouette exactly where the light should be fading away, and a
+    // single narrow one is a neon stroke.
     struct Strip { float width, alpha, whiten; };
-    static constexpr Strip kFront[4] = {
-        { 2.30f, 0.085f, 0.00f }, { 1.45f, 0.180f, 0.00f }, { 0.84f, 0.360f, 0.12f }, { 0.23f, 0.950f, 0.62f },
+    static constexpr Strip kFront[5] = {
+        { 2.55f, 0.050f, 0.00f }, { 1.72f, 0.086f, 0.00f }, { 1.15f, 0.195f, 0.02f },
+        { 0.66f, 0.460f, 0.12f }, { 0.17f, 1.000f, 0.55f },
     };
-    static constexpr Strip kBack[3] = {
-        { 2.45f, 0.068f, 0.00f }, { 1.50f, 0.120f, 0.00f }, { 0.72f, 0.290f, 0.08f },
+    static constexpr Strip kBack[4] = {
+        { 2.70f, 0.042f, 0.00f }, { 1.75f, 0.068f, 0.00f }, { 1.12f, 0.150f, 0.00f }, { 0.52f, 0.350f, 0.08f },
     };
     const Strip* strips = back ? kBack : kFront;
-    const int count = back ? 3 : 4;
+    const int count = back ? 4 : 5;
     const int first = f.bloom ? 0 : 1;              // reduced quality drops the widest, softest layer
 
     for (int k = first; k < count; ++k)
-    {
-        const float w = strips[k].width * widthMul * (back ? soften * 0.55f + 0.62f : 1.0f);
-        lay (w, strips[k].alpha * dim, strips[k].alpha * 1.30f * dim, strips[k].alpha * dim, strips[k].whiten);
-    }
+        lay (strips[k].width, strips[k].alpha, strips[k].whiten);
 }
 
 void AntiMatterVisualizer::drawSpanRange (juce::Graphics& g, const Frame& f, int from, int to)
@@ -599,13 +607,13 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f)
     if (cr < 1.0f) return;
 
     // The volume darkening around the mass: ribbons behind it sink into this.
-    const float hr = cr * 1.55f;
+    const float hr = cr * 1.62f;
     gradient.clearColours();
     gradient.isRadial = true;
     gradient.point1 = c;
     gradient.point2 = { c.x + hr, c.y };
-    gradient.addColour (0.0, alpha (juce::Colour (0xff01010a), 0.90f));
-    gradient.addColour (0.58, alpha (juce::Colour (0xff02020c), 0.62f));
+    gradient.addColour (0.0, alpha (juce::Colour (0xff01010a), 0.95f));
+    gradient.addColour (0.62, alpha (juce::Colour (0xff02020c), 0.72f));
     gradient.addColour (1.0, alpha (juce::Colour (0xff03031a), 0.0f));
     g.setGradientFill (gradient);
     g.fillEllipse (c.x - hr, c.y - hr, hr * 2.0f, hr * 2.0f);
@@ -626,23 +634,35 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f)
     gradient.isRadial = true;
     gradient.point1 = { c.x - cr * 0.35f, c.y - cr * 0.40f };
     gradient.point2 = { c.x - cr * 0.35f + cr * 1.7f, c.y - cr * 0.40f };
-    gradient.addColour (0.0, juce::Colour (0xff0b0a1c));
-    gradient.addColour (0.55, juce::Colour (0xff040411));
-    gradient.addColour (1.0, juce::Colour (0xff010106));
+    gradient.addColour (0.0, juce::Colour (0xff17142e));
+    gradient.addColour (0.42, juce::Colour (0xff090820));
+    gradient.addColour (0.78, juce::Colour (0xff03030d));
+    gradient.addColour (1.0, juce::Colour (0xff010105));
     g.setGradientFill (gradient);
     g.fillPath (corePath);
 
-    // The faint violet rim where the light wraps around the mass.
-    const float rimW = juce::jmax (1.0f, f.unit * 1.6f);
+    // The faint violet rim where the light wraps around the mass: a soft halo just
+    // outside the silhouette, then a fine bright line on it.
+    const float rimW = juce::jmax (1.0f, f.unit * 1.7f);
+    gradient.clearColours();
+    gradient.isRadial = false;
+    gradient.point1 = { c.x - cr, c.y - cr };
+    gradient.point2 = { c.x + cr, c.y + cr };
+    gradient.addColour (0.0, alpha (Theme::violet, 0.05f + 0.05f * f.pulse));
+    gradient.addColour (0.42, alpha (Theme::violet, 0.13f + 0.10f * f.pulse));
+    gradient.addColour (1.0, alpha (Theme::magenta, 0.18f + 0.10f * f.pulse));
+    g.setGradientFill (gradient);
+    g.strokePath (corePath, juce::PathStrokeType (rimW * 4.2f));
+
     gradient.clearColours();
     gradient.isRadial = false;
     gradient.point1 = { c.x - cr, c.y - cr };
     gradient.point2 = { c.x + cr, c.y + cr };
     gradient.addColour (0.0, alpha (Theme::violet, 0.10f + 0.10f * f.pulse));
-    gradient.addColour (0.42, alpha (Theme::violet, 0.30f + 0.24f * f.pulse));
-    gradient.addColour (1.0, alpha (Theme::magenta, 0.44f + 0.22f * f.pulse));
+    gradient.addColour (0.42, alpha (Theme::violet, 0.26f + 0.22f * f.pulse));
+    gradient.addColour (1.0, alpha (Theme::magenta, 0.36f + 0.24f * f.pulse));
     g.setGradientFill (gradient);
-    g.strokePath (corePath, juce::PathStrokeType (rimW));
+    g.strokePath (corePath, juce::PathStrokeType (rimW * 1.05f));
 
     // MASS opens the core: an aperture of light widens inside the mass.
     const float open = juce::jlimit (0.0f, 1.0f, (smooth.mass - 0.42f) * 1.9f);
@@ -683,13 +703,13 @@ void AntiMatterVisualizer::drawSparkles (juce::Graphics& g, const Frame& f, bool
         const float depthMix = sat (0.5f + 0.5f * z2);
         if (p.getDistanceFrom (c) > f.port.glassR * 0.985f) continue;
         const float d = juce::jmax (0.8f, s.size * f.unit * 2.0f * scale * (0.85f + 0.4f * f.pulse));
-        const float a = s.bright * (0.32f + 0.68f * depthMix) * (0.62f + 0.38f * f.life);
+        const float a = s.bright * (0.34f + 0.66f * depthMix) * (0.70f + 0.30f * f.life);
         if (a < 0.02f) continue;
 
-        if (front && s.bright > 0.72f && d > 1.4f)
+        if (front && s.bright > 0.62f && d > 1.3f)
         {
             const float hr = d * 2.6f;
-            g.setColour (alpha (iridescence.at (s.hue + f.hue), 0.10f * a));
+            g.setColour (alpha (iridescence.at (s.hue + f.hue), 0.14f * a));
             g.fillEllipse (p.x - hr, p.y - hr, hr * 2.0f, hr * 2.0f);
         }
         g.setColour (alpha (iridescence.lit (s.hue + f.hue, 0.55f + 0.35f * depthMix), a));
@@ -716,33 +736,35 @@ void AntiMatterVisualizer::drawBubbles (juce::Graphics& g, const Frame& f, bool 
         const juce::Point<float> p (c.x + x1 * f.R * scale, c.y + y2 * f.R * scale);
         const float depthMix = sat (0.5f + 0.5f * z2);
         // Nearer bubbles are larger and softer; far ones are small and faint.
-        const float r = bb.radius * f.R * scale * (0.8f + 0.6f * depthMix) * (1.0f + 0.15f * f.pulse);
+        const float r = bb.radius * f.R * scale * (0.55f + 0.70f * depthMix) * (1.0f + 0.15f * f.pulse);
         if (r < 1.2f || p.getDistanceFrom (c) + r > f.port.glassR * 0.995f) continue;
-        const float a = (0.26f + 0.50f * depthMix) * (0.62f + 0.38f * f.life);
+        const float a = (0.18f + 0.36f * depthMix) * (0.62f + 0.38f * f.life);
         const auto col = iridescence.at (bb.hue + f.hue * 0.6f);
 
-        // Body: hollow, brightest where the wall is edge-on.
+        // Body: hollow, brightest where the wall is edge-on. Softer the nearer it is.
+        const float wall = juce::jlimit (0.55f, 0.90f, 0.86f - 0.30f * depthMix);
         gradient.clearColours();
         gradient.isRadial = true;
         gradient.point1 = p;
         gradient.point2 = { p.x + r, p.y };
-        gradient.addColour (0.0, alpha (col, 0.04f * a));
-        gradient.addColour (0.66, alpha (col, 0.16f * a));
-        gradient.addColour (0.95, alpha (col, 0.66f * a));
+        gradient.addColour (0.0, alpha (col, 0.05f * a));
+        gradient.addColour ((double) wall, alpha (col, 0.22f * a));
+        gradient.addColour (0.96, alpha (col, 0.85f * a));
         gradient.addColour (1.0, alpha (col, 0.0f));
         g.setGradientFill (gradient);
         g.fillEllipse (p.x - r, p.y - r, r * 2.0f, r * 2.0f);
 
         // Rim highlight where the light wraps the lower right.
         scratchPath.clear();
-        scratchPath.addCentredArc (p.x, p.y, r * 0.94f, r * 0.94f, 0.0f, 0.35f, 2.6f, true);
-        g.setColour (alpha (Theme::ivory, 0.30f * a));
-        g.strokePath (scratchPath, juce::PathStrokeType (juce::jmax (0.7f, r * 0.10f)));
+        scratchPath.addCentredArc (p.x, p.y, r * 0.90f, r * 0.90f, 0.0f, 0.45f, 2.55f, true);
+        g.setColour (alpha (Theme::ivory, 0.42f * a));
+        g.strokePath (scratchPath, juce::PathStrokeType (juce::jmax (0.8f, r * 0.13f),
+                                                        juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
         // Specular dot from the key light, top-left.
-        const float sd = juce::jmax (1.0f, r * 0.24f);
-        g.setColour (alpha (Theme::ivory, (0.55f + 0.35f * depthMix) * a * 1.6f));
-        g.fillEllipse (p.x - r * 0.42f - sd * 0.5f, p.y - r * 0.46f - sd * 0.5f, sd, sd);
+        const float sd = juce::jmax (1.2f, r * 0.30f);
+        g.setColour (alpha (Theme::ivory, juce::jlimit (0.0f, 1.0f, (0.65f + 0.35f * depthMix) * a * 2.1f)));
+        g.fillEllipse (p.x - r * 0.44f - sd * 0.5f, p.y - r * 0.46f - sd * 0.5f, sd, sd);
     }
 }
 

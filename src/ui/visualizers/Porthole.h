@@ -47,23 +47,24 @@ struct PortholeLayout
         w = liquid::clampf (w, 1.0f, 20000.0f);
         h = liquid::clampf (h, 1.0f, 20000.0f);
 
-        // The caption band and the plinth claim fixed fractions of the height; the
-        // porthole takes whatever is left, capped so it never touches the sides.
+        // The caption band and the plinth claim fixed fractions of the height and the
+        // porthole takes the rest, so the whole ring stays visible: the plinth's top
+        // ellipse only cuts the last inch of it, the way a stand holds a sphere.
         l.captionBand = h * 0.085f;
-        const float plinthBand = h * 0.155f;
-        const float available = h - l.captionBand - plinthBand * 0.62f;
+        const float plinthBand = h * 0.132f;
+        const float available = h - l.captionBand - plinthBand - h * 0.012f;
         const float diameter = liquid::clampf (w * 0.80f < available ? w * 0.80f : available, 8.0f, 20000.0f);
 
         l.outerR = diameter * 0.5f;
         l.centreX = x + w * 0.5f;
         l.centreY = y + l.captionBand + l.outerR;
-        l.bezelWidth = l.outerR * 0.093f;
+        l.bezelWidth = l.outerR * 0.150f;
         l.glassR = l.outerR - l.bezelWidth;
-        l.unit = l.outerR / 186.0f;
+        l.unit = l.outerR / 170.0f;
 
-        l.plinthTop = l.centreY + l.outerR * 0.90f;
+        l.plinthTop = l.centreY + l.outerR * 0.995f;
         l.plinthHalfWidth = liquid::clampf (l.outerR * 1.06f, 4.0f, w * 0.48f);
-        l.plinthHeight = liquid::clampf (y + h - l.plinthTop, 4.0f, plinthBand * 1.4f);
+        l.plinthHeight = liquid::clampf (y + h - l.plinthTop, 4.0f, plinthBand * 1.30f);
         return l;
     }
 

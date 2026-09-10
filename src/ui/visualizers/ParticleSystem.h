@@ -65,7 +65,7 @@ public:
             s.home = inBall (rng, 0.20f, 1.22f);
             s.phase = rng.nextFloat() * twoPi;
             s.rate = 0.25f + 0.9f * rng.nextFloat();
-            s.size = 0.5f + 1.5f * rng.nextFloat() * rng.nextFloat();
+            s.size = 0.55f + 1.8f * rng.nextFloat() * rng.nextFloat();
             s.hue = rng.nextFloat();
             s.seed = rng.nextFloat() * 80.0f;
             s.burst = 0.0f;
@@ -76,7 +76,7 @@ public:
         for (auto& b : bubbles)
         {
             b.home = inBall (rng, 0.35f, 1.05f);
-            b.radius = 0.030f + 0.052f * rng.nextFloat() * rng.nextFloat();
+            b.radius = 0.036f + 0.070f * rng.nextFloat() * rng.nextFloat();
             b.phase = rng.nextFloat() * twoPi;
             b.rate = 0.10f + 0.22f * rng.nextFloat();
             b.hue = rng.nextFloat();
@@ -99,7 +99,7 @@ public:
     static int bubbleCount (const Env& raw, int cap) noexcept
     {
         const Env e = sanitise (raw);
-        const int n = 4 + (int) (e.density * 11.0f);
+        const int n = 4 + (int) (e.density * 10.0f);
         const int top = cap < kMaxBubbles ? cap : kMaxBubbles;
         return (int) liquid::clampf ((float) n, 2.0f, (float) (top > 2 ? top : 2));
     }

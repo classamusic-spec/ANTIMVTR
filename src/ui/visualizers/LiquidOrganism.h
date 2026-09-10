@@ -228,9 +228,12 @@ public:
             r.drift = (0.055f + 0.10f * rng.nextFloat()) * (rng.chance (0.5f) ? 1.0f : -1.0f);
             r.span = 1.75f + 2.45f * rng.nextFloat();               // radians of arc travelled
             r.radius = 0.58f + 0.46f * rng.nextFloat();
-            r.hue = (float) i / (float) kMaxRibbons + 0.10f * rng.nextFloat();
+            // Golden-ratio spread: any prefix of the ribbons still covers the whole
+            // ramp, so the mass stays iridescent at every DENSITY setting.
+            r.hue = (float) i * 0.61803399f + 0.06f * rng.nextFloat();
+            r.hue -= std::floor (r.hue);
             r.hueSpan = 0.20f + 0.26f * rng.nextFloat();
-            r.width = 0.072f + 0.062f * rng.nextFloat();
+            r.width = 0.094f + 0.078f * rng.nextFloat();
             r.wobbleFreq = 3.0f + 5.0f * rng.nextFloat();
             r.wobblePhase = rng.nextFloat() * twoPi;
             r.seed = rng.nextFloat() * 90.0f;
@@ -253,7 +256,7 @@ public:
     {
         const float d = liquid::clean (p.density, 0.0f, 1.0f, 0.5f);
         const float life = liquid::clean (p.life, 0.0f, 1.0f, 0.0f);
-        const int n = 10 + (int) (d * 13.0f) + (int) (life * 2.0f);
+        const int n = 11 + (int) (d * 14.0f) + (int) (life * 2.0f);
         return n < 4 ? 4 : (n > kMaxRibbons ? kMaxRibbons : n);
     }
 
@@ -262,7 +265,7 @@ public:
     {
         const float d = liquid::clean (p.density, 0.0f, 1.0f, 0.5f);
         const float crush = liquid::clean (p.crush, 0.0f, 1.0f, 0.0f);
-        int n = 30 + (int) (d * 14.0f);
+        int n = 28 + (int) (d * 13.0f);
         if (crush > 0.05f) n = (int) (n * (1.0f - 0.55f * crush));
         return n < 8 ? 8 : (n > kMaxSamples ? kMaxSamples : n);
     }
@@ -404,8 +407,11 @@ public:
         {
             const float s = out[i].u;
 
-            // Taper: nothing at the ends, full in the middle (never a constant-width stroke).
-            const float taper = std::pow (liquid::clampf (std::sin (3.14159265f * s), 0.0f, 1.0f), 0.62f);
+            // Taper: nothing at the ends, swelling through the middle. The second term
+            // is the swell itself — without it the profile is a flat-topped strip and
+            // the ribbon reads as a stroked polyline, which is exactly what it is not.
+            const float arch = liquid::clampf (std::sin (3.14159265f * s), 0.0f, 1.0f);
+            const float taper = std::pow (arch, 0.80f) * (0.66f + 0.52f * arch * arch);
 
             // Incompressibility: stretched here → thin; slowed here → bulge.
             const int i0 = i > 0 ? i - 1 : 0, i1 = i < n - 1 ? i + 1 : n - 1;
@@ -419,8 +425,10 @@ public:
             out[i].width = liquid::clampf (widthBase * taper * std::pow (stretch, 0.7f) * wobble, 0.0f, 0.70f);
 
             // Brightness along the length: a moving hot spot, plus the note envelope.
-            const float travel = 0.5f + 0.5f * std::sin (s * 6.2831853f * 0.9f - p.time * (0.7f + 1.4f * p.life) + r.seed);
-            out[i].bright = liquid::clampf (0.42f + 0.34f * travel + 0.30f * p.energy + 0.22f * p.level, 0.0f, 1.35f);
+            const float travel = 0.5f + 0.5f * std::sin (s * 6.2831853f * 1.15f - p.time * (0.7f + 1.4f * p.life) + r.seed);
+            const float slow = 0.5f + 0.5f * std::sin (s * 6.2831853f * 0.37f + p.time * 0.21f + r.wobblePhase);
+            out[i].bright = liquid::clampf (0.34f + 0.50f * travel * (0.40f + 0.60f * slow)
+                                            + 0.26f * p.energy + 0.20f * p.level, 0.0f, 1.35f);
         }
 
         return n;

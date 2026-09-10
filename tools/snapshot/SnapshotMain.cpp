@@ -3,6 +3,7 @@
 
     Usage (run under xvfb-run on headless Linux):
       AntiMatrSnapshot --out shot.png [--width 1600 --height 1000] [--wait 800] [--set id=value ...] [--labtab N]
+                       [--sample path|builtin:N] [--analyze]
                        [--page 0..7] [--note 60] [--preset "Void Bloom"]
                        [--mod "lfo1>shape.decay:0.5" ...]
 
@@ -121,6 +122,16 @@ public:
             }
             if (! routings.isEmpty()) processor->setModRoutings (routings);
         }
+        // Sample selection and ANALYZE -> MATTER, so the SOURCE page can be reviewed with real state.
+        if (hasOption (args, "--sample"))
+        {
+            const auto spec = optionValue (args, "--sample");
+            if (spec.startsWithIgnoreCase ("builtin:")) processor->selectBuiltInSample (spec.fromFirstOccurrenceOf (":", false, false).getIntValue());
+            else if (! processor->loadSampleFile (juce::File::getCurrentWorkingDirectory().getChildFile (spec)))
+                std::cerr << "Could not load sample: " << spec << std::endl;
+        }
+        if (hasOption (args, "--analyze") && ! processor->analyzeSampleToMatter())
+            std::cerr << "Nothing to analyze" << std::endl;
 
         processor->prepareToPlay (48000.0, 512);
         if (note > 0) processor->keyboardState().noteOn (1, note, 0.8f);

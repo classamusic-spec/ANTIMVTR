@@ -7,7 +7,11 @@ namespace am
 {
 
 struct Diagnostics;
+<<<<<<< HEAD
 struct ModPlan;
+=======
+struct SampleData;
+>>>>>>> agent/sources
 
 /**
     Everything a DSP module needs to render one block. Passed by const
@@ -22,7 +26,11 @@ struct RenderContext
     DryMode           dryMode    = DryMode::FullSynth;
     Quality           quality    = Quality::Normal;
     Diagnostics*      diagnostics = nullptr;  ///< may be null in tests
+<<<<<<< HEAD
     const ModPlan*    modPlan     = nullptr;  ///< compiled per-voice modulation routings (ModulationEngine)
+=======
+    const SampleData* sample      = nullptr;  ///< SAMPLE source data for this block (owned by SynthEngine, never freed here)
+>>>>>>> agent/sources
 
     inline float param (Param p) const noexcept  { return (*params)[(size_t) paramIndex (p)]; }
     inline int   choice (Param p) const noexcept { return (int) std::lround (param (p)); }

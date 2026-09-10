@@ -9,6 +9,7 @@
 #include "dsp/fracture/Fragment.h"
 #include "state/ModRouting.h"
 #include "dsp/fx/SpacePresets.h"
+#include "dsp/source/SampleAnalyzer.h"
 
 namespace am
 {
@@ -100,6 +101,35 @@ public:
     /** Modulation matrix (message thread). Setting it publishes to the engine. */
     const ModRoutingTable& getModRoutings() const noexcept { return modRoutings; }
     void setModRoutings (const ModRoutingTable& routings);
+    // ---- SAMPLE source (message thread only) --------------------------------
+    /** What the SAMPLE source is currently playing. */
+    struct SampleInfo
+    {
+        juce::String name;
+        juce::String path;              ///< empty for a built-in
+        int      builtInIndex = -1;
+        double   sampleRate = 0.0;
+        int      numFrames = 0;
+        int      numChannels = 0;
+        uint32_t version = 0;           ///< bumped on every change (UI change detection)
+        juce::String warning;           ///< set when a patch referenced a file we could not load
+
+        bool isBuiltIn() const noexcept { return builtInIndex >= 0; }
+        bool isEmpty() const noexcept { return numFrames <= 0; }
+        double lengthSeconds() const noexcept { return sampleRate > 0.0 ? (double) numFrames / sampleRate : 0.0; }
+    };
+
+    /** Loads and publishes an audio file. Returns false (and keeps the current sample) if it cannot be read. */
+    bool loadSampleFile (const juce::File& file);
+    /** Generates and publishes one of the built-in samples. */
+    void selectBuiltInSample (int index);
+    SampleInfo currentSampleInfo() const;
+    /** The data itself, for the waveform display. Shared with the audio thread; never modify it. */
+    SampleRef currentSample() const noexcept { return sampleRef; }
+
+    /** ANALYZE -> MATTER: turns the current sample into a partial table and matching Shape values. */
+    bool analyzeSampleToMatter();
+    const PartialTable& lastAnalysis() const noexcept { return analysis; }
 
     static constexpr int kDefaultWidth  = 1600;
     static constexpr int kDefaultHeight = 1000;
@@ -139,6 +169,15 @@ private:
     PatchState extraState;   ///< non-parameter sections kept for round-tripping
     FractureTable fractureTable = FractureTable::makeDefault();
     ModRoutingTable modRoutings;
+
+    // SAMPLE: the message thread keeps a reference to whatever the engine plays.
+    void publishSample (SampleRef sample, const juce::String& warning = {});
+    juce::var sampleReferenceVar() const;
+    void applySampleReference (const juce::var& reference);
+    SampleRef sampleRef;
+    PartialTable analysis;
+    juce::String sampleWarning;
+    uint32_t sampleVersion = 0;
     std::atomic<int> pendingSpaceType { -1 };
     bool suppressSpaceRecall = false;
 

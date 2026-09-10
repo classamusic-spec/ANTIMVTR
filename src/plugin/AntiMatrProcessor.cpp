@@ -24,7 +24,11 @@ AntiMatrProcessor::AntiMatrProcessor()
     abStates[0] = abStates[1] = PresetManager::initPatch();
     markPreset ("Init", { "basic" }, 0);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
+<<<<<<< HEAD
     synth.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (modRoutings));
+=======
+    selectBuiltInSample (0);
+>>>>>>> agent/sources
 
     // The default parameter values become the curated NEBULA rack, then follow the Space picker.
     {
@@ -73,6 +77,7 @@ void AntiMatrProcessor::setFractureTable (const FractureTable& table)
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
 }
 
+<<<<<<< HEAD
 void AntiMatrProcessor::setModRoutings (const ModRoutingTable& routings)
 {
     modRoutings = routings;
@@ -80,6 +85,135 @@ void AntiMatrProcessor::setModRoutings (const ModRoutingTable& routings)
     sendChangeMessage();
 }
 
+=======
+//==============================================================================
+// SAMPLE source (message thread). The engine owns the audio-thread side through
+// its RealtimeHandoff; here we only keep the reference the UI and the patch need.
+
+void AntiMatrProcessor::publishSample (SampleRef sample, const juce::String& warning)
+{
+    if (sample == nullptr) return;
+    sampleRef = std::move (sample);
+    sampleWarning = warning;
+    ++sampleVersion;
+    synth.publishSample (sampleRef);
+    sendChangeMessage();
+}
+
+void AntiMatrProcessor::selectBuiltInSample (int index)
+{
+    publishSample (BuiltInSamples::create (juce::jlimit (0, BuiltInSamples::count() - 1, index)));
+}
+
+bool AntiMatrProcessor::loadSampleFile (const juce::File& file)
+{
+    juce::String error;
+    if (auto loaded = am::loadSampleFile (file, &error))
+    {
+        publishSample (std::move (loaded));
+        return true;
+    }
+
+    sampleWarning = error;
+    sendChangeMessage();
+    return false;
+}
+
+AntiMatrProcessor::SampleInfo AntiMatrProcessor::currentSampleInfo() const
+{
+    SampleInfo info;
+    info.version = sampleVersion;
+    info.warning = sampleWarning;
+    if (sampleRef != nullptr)
+    {
+        info.name = sampleRef->name;
+        info.path = sampleRef->path;
+        info.builtInIndex = sampleRef->builtInIndex;
+        info.sampleRate = sampleRef->sampleRate;
+        info.numFrames = sampleRef->numFrames;
+        info.numChannels = sampleRef->numChannels;
+    }
+    return info;
+}
+
+juce::var AntiMatrProcessor::sampleReferenceVar() const
+{
+    auto* obj = new juce::DynamicObject();
+    if (sampleRef != nullptr)
+    {
+        obj->setProperty ("name", sampleRef->name);
+        obj->setProperty ("path", sampleRef->path);
+        obj->setProperty ("builtIn", sampleRef->builtInIndex);
+    }
+    else
+    {
+        obj->setProperty ("builtIn", 0);
+    }
+    return juce::var (obj);
+}
+
+void AntiMatrProcessor::applySampleReference (const juce::var& reference)
+{
+    auto* obj = reference.getDynamicObject();
+    if (obj == nullptr)
+    {
+        if (sampleRef == nullptr) selectBuiltInSample (0);
+        return;
+    }
+
+    const juce::String path = obj->getProperty ("path").toString();
+    const juce::String name = obj->getProperty ("name").toString();
+    const int builtIn = obj->hasProperty ("builtIn") ? (int) obj->getProperty ("builtIn") : -1;
+
+    if (path.isNotEmpty())
+    {
+        juce::String error;
+        if (auto loaded = am::loadSampleFile (juce::File (path), &error))
+        {
+            publishSample (std::move (loaded));
+            return;
+        }
+        // A missing user file must never break the patch: fall back to a built-in.
+        const int fallback = builtIn >= 0 ? builtIn : juce::jmax (0, BuiltInSamples::indexOf (name));
+        publishSample (BuiltInSamples::create (fallback), error + " - using " + BuiltInSamples::name (fallback));
+        return;
+    }
+
+    const int index = builtIn >= 0 ? builtIn : BuiltInSamples::indexOf (name);
+    publishSample (BuiltInSamples::create (juce::jmax (0, index)));
+}
+
+bool AntiMatrProcessor::analyzeSampleToMatter()
+{
+    if (sampleRef == nullptr || sampleRef->isEmpty()) return false;
+
+    analysis = SampleAnalyzer::analyse (*sampleRef);
+    if (! analysis.isValid()) return false;
+
+    // The partial table travels in the patch's matter section. Matter cannot yet
+    // consume it directly (there is no CUSTOM material table to fill), so the
+    // Shape macros are fitted to the analysis in the meantime.
+    auto* matterObj = extraState.matter.getDynamicObject();
+    juce::DynamicObject::Ptr updated (matterObj != nullptr ? matterObj->clone().release() : new juce::DynamicObject());
+    updated->setProperty ("custom", analysis.toVar());
+    extraState.matter = juce::var (updated.get());
+
+    const auto fit = SampleAnalyzer::fitShape (analysis);
+    const std::pair<Param, float> targets[] = {
+        { Param::shapeForm, fit.form }, { Param::shapeTension, fit.tension }, { Param::shapeDecay, fit.decay },
+        { Param::shapeMass, fit.mass }, { Param::shapeDensity, fit.density }, { Param::shapeDistribution, fit.distribution }
+    };
+    for (const auto& t : targets)
+        if (auto* p = apvts.getParameter (ParameterRegistry::get (t.first).id))
+            p->setValueNotifyingHost (p->convertTo0to1 (t.second));
+
+    diagnostics().events.push (EngineEventType::PresetLoaded, Subsystem::State, -1,
+                               (uint32_t) analysis.count, analysis.fundamentalHz, diagnostics().sampleClock.load());
+    sendChangeMessage();
+    return true;
+}
+
+>>>>>>> agent/sources
 AntiMatrProcessor::~AntiMatrProcessor()
 {
     stopTimer();
@@ -232,7 +366,11 @@ PatchState AntiMatrProcessor::currentPatch() const
     PatchState s = extraState;
     s.params = currentParamValues();
     s.fracture = fractureTable.toVar();
+<<<<<<< HEAD
     s.mod = modRoutings.toVar();
+=======
+    s.sample = sampleReferenceVar();
+>>>>>>> agent/sources
     s.meta.name = presetName;
     s.meta.tags = presetTags;
     s.meta.pluginVersion = ANTIMATR_VERSION_STRING;
@@ -251,8 +389,12 @@ void AntiMatrProcessor::loadPatch (const PatchState& patch, bool notifyPresetCha
     extraState = patch;
     fractureTable = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
     synth.fractureEngine().publishTable (std::make_unique<FractureTable> (fractureTable));
+<<<<<<< HEAD
     modRoutings = patch.mod.isVoid() ? ModRoutingTable() : ModRoutingTable::fromVar (patch.mod);
     synth.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (modRoutings));
+=======
+    applySampleReference (patch.sample);
+>>>>>>> agent/sources
     suppressSpaceRecall = true;    // a patch carries its own rack values
     apvts.replaceState (StateManager::toParameterTree (patch.params, kParametersType));
     suppressSpaceRecall = false;

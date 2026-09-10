@@ -110,6 +110,9 @@ void AMKnob::paint (juce::Graphics& g)
     const auto body = geo.body;
     // Hover lifts the sheen and the ring glow; dragging lifts them a little further.
     const float lit = juce::jmax (hover.value * 0.72f, dragging ? 1.0f : 0.0f);
+    // The label and the value swap places, so their cross-fade has to reach the ends:
+    // a partial fade leaves both of them printed on top of each other.
+    const float textLit = juce::jmax (hover.value, dragging ? 1.0f : 0.0f);
     const float glowAmount = juce::jlimit (0.0f, 1.0f, 0.20f + 0.30f * activity + 0.40f * lit);
     const float valueWeight = bipolar ? std::abs (p - 0.5f) * 2.0f : p;
     const auto pair = Theme::accentPair (accent);
@@ -205,12 +208,12 @@ void AMKnob::paint (juce::Graphics& g)
         const auto full = getLocalBounds().toFloat();
         const auto labelArea = juce::Rectangle<float> (full.getX(), kb.getBottom() + 2.0f, full.getWidth(), labelHeight());
         const float h = juce::jlimit (8.5f, hero ? 15.0f : 13.0f, labelArea.getHeight() * 0.7f);
-        if (lit > 0.02f)
+        if (textLit > 0.02f)
             draw::trackedText (g, getTextFromValue (getValue()), labelArea, juce::Justification::centred, Theme::valueFont (h + 1.0f),
-                               pair.second.brighter (0.25f).withAlpha (lit));
-        if (lit < 0.98f)
+                               pair.second.brighter (0.25f).withAlpha (textLit));
+        if (textLit < 0.98f)
             draw::trackedText (g, labelUpper, labelArea, juce::Justification::centred,
-                               draw::fitFont (Theme::labelFont (h), labelUpper, labelArea.getWidth() - 2.0f), Theme::textSecondary.withAlpha (1.0f - lit));
+                               draw::fitFont (Theme::labelFont (h), labelUpper, labelArea.getWidth() - 2.0f), Theme::textSecondary.withAlpha (1.0f - textLit));
     }
 }
 

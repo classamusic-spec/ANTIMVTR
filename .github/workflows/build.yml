@@ -60,6 +60,7 @@ jobs:
 
       - name: Unit tests (Windows)
         if: runner.os == 'Windows'
+        shell: cmd
         run: build\AntiMatrTests_artefacts\${{ env.BUILD_TYPE }}\AntiMatrTests.exe
 
       - name: Download pluginval

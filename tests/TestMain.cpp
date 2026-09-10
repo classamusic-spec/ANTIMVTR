@@ -42,7 +42,7 @@ int main (int argc, char* argv[])
         for (auto* t : juce::UnitTest::getAllTests())
             if (t->getCategory().equalsIgnoreCase (filter) || t->getName().containsIgnoreCase (filter))
                 tests.add (t);
-        if (tests.isEmpty()) { std::cerr << "No tests match '" << filter << "'" << std::endl; return 2; }
+        if (tests.isEmpty()) { std::cout << "No tests match '" << filter << "'" << std::endl; return 2; }
         runner.runTests (tests, seed);
     }
     else
@@ -58,10 +58,14 @@ int main (int argc, char* argv[])
         passes += r->passes;
         if (r->failures > 0)
         {
-            std::cerr << "FAIL: " << r->unitTestName << " / " << r->subcategoryName << std::endl;
-            for (const auto& m : r->messages) std::cerr << "   " << m << std::endl;
+            // Everything goes to stdout: PowerShell turns a native process's stderr into an error
+            // record and can tear the step down before the buffered stdout tail is flushed, which
+            // hid the actual failure on Windows CI.
+            std::cout << "FAIL: " << r->unitTestName << " / " << r->subcategoryName << std::endl;
+            for (const auto& m : r->messages) std::cout << "   " << m << std::endl;
         }
     }
     std::cout << "ANTI-MATR tests: " << passes << " passed, " << failures << " failed" << std::endl;
+    std::cout.flush();
     return failures == 0 ? 0 : 1;
 }

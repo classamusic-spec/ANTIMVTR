@@ -27,9 +27,11 @@ private:
 };
 
 /**
-    Generic deep page: every parameter of the given groups as bound knobs in a
-    grid. Functional from day one; dedicated designs replace these in later
-    phases without changing the parameter contract.
+    Deep page container. The editor creates one per section with the
+    section's parameter groups; the container instantiates the designed
+    page for that section (SourcePage, ShapePage, EvolvePage, FracturePage,
+    SpacePage, ModPage) and falls back to a registry-driven knob grid for
+    any group set without a dedicated design.
 */
 class GroupPage : public juce::Component
 {
@@ -44,7 +46,8 @@ private:
         std::unique_ptr<AMPanel> panel;
         std::vector<std::unique_ptr<BoundKnob>> knobs;
     };
-    std::vector<Section> sections;
+    std::unique_ptr<juce::Component> page;   // designed page (if any)
+    std::vector<Section> sections;           // generic fallback
     juce::Viewport viewport;
     juce::Component content;
     juce::Colour accent;

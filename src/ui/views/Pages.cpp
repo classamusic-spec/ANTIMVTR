@@ -102,16 +102,29 @@ public:
             "Bowed, scraped and rubbed excitation. Pressure, speed and roughness turn friction into motion." };
         static const juce::Colour accents[] = { Theme::violet, Theme::blue, Theme::cyan, Theme::ivory, Theme::magenta };
 
+        juce::ignoreUnused (taglines);
         auto b = getLocalBounds().toFloat();
         draw::insetSurface (g, b, 8.0f);
-        auto area = b.reduced (12.0f, 10.0f);
-        const float titleH = juce::jlimit (11.0f, 15.0f, area.getHeight() * 0.14f);
-        draw::trackedText (g, names[source], area.removeFromTop (titleH * 1.4f), juce::Justification::centredLeft, Theme::displayFont (titleH, 0.2f), accents[source]);
-        draw::trackedText (g, taglines[source], area.removeFromTop (titleH * 1.1f), juce::Justification::centredLeft, Theme::captionFont (titleH * 0.62f), Theme::textSecondary);
-        area.removeFromTop (6.0f);
+        auto area = b.reduced (juce::jlimit (10.0f, 18.0f, b.getWidth() * 0.05f), juce::jlimit (9.0f, 16.0f, b.getHeight() * 0.09f));
+
+        // The selector above already names the source and its tagline, so the card
+        // carries the accent rule and the description only.
+        const float titleH = juce::jlimit (10.0f, 14.0f, area.getHeight() * 0.13f);
+        auto rule = area.removeFromTop (titleH * 1.5f);
+        draw::trackedText (g, "ABOUT  " + juce::String (names[source]), rule, juce::Justification::centredLeft,
+                           Theme::captionFont (titleH * 0.78f), accents[source].withAlpha (0.85f));
+        {
+            juce::Path line;
+            const float y = rule.getBottom() - 1.0f;
+            line.startNewSubPath (rule.getX(), y);
+            line.lineTo (rule.getX() + juce::jmin (rule.getWidth() * 0.3f, 54.0f), y);
+            draw::glowPath (g, line, accents[source], 1.0f, 5.0f, 0.35f);
+        }
+        area.removeFromTop (juce::jmax (6.0f, titleH * 0.5f));
+
         juce::AttributedString text;
-        text.append (bodies[source], Theme::bodyFont (juce::jlimit (10.5f, 12.5f, titleH * 0.85f)), Theme::textSecondary.brighter (0.15f));
-        text.setLineSpacing (3.0f);
+        text.append (bodies[source], Theme::bodyFont (juce::jlimit (10.5f, 13.5f, area.getHeight() * 0.13f)), Theme::textSecondary.brighter (0.15f));
+        text.setLineSpacing (3.5f);
         juce::TextLayout layout;
         layout.createLayout (text, area.getWidth());
         layout.draw (g, area);
@@ -122,9 +135,11 @@ private:
 
 SourcePage::SourcePage (AntiMatrProcessor& p)
     : processor (p),
-      selector ({ { "Wave", Icon::Wave, Theme::violet }, { "Dust", Icon::Dust, Theme::blue }, { "Impact", Icon::Impact, Theme::cyan },
-                  { "Sample", Icon::Sample, Theme::ivory }, { "Gesture", Icon::Gesture, Theme::magenta } })
+      selector ({ { "Wave", Icon::Wave, Theme::violet, "Fractured forms" }, { "Dust", Icon::Dust, Theme::blue, "Particle field" },
+                  { "Impact", Icon::Impact, Theme::cyan, "Strike field" }, { "Sample", Icon::Sample, Theme::ivory, "Imported matter" },
+                  { "Gesture", Icon::Gesture, Theme::magenta, "Living gesture" } })
 {
+    selector.setOrientation (AMSourceSelector::Orientation::Column);
     addAndMakeVisible (sourcePanel);
     addAndMakeVisible (wavePanel);
     wavePanel.setCompact (true);
@@ -221,14 +236,21 @@ void SourcePage::resized()
     area.removeFromLeft (gap);
     sourcePanel.setBounds (left);
     {
+        // Selector at the top, description anchored to the bottom, MODE / LEVEL centred between
+        // them: the panel fills edge to edge instead of leaving a band under the thumbnails.
+        // A column of energies fills the panel: thumbnail, name and tagline per row,
+        // then MODE / LEVEL and the description of whatever is selected.
         auto c = sourcePanel.contentBounds();
-        selector.setBounds (c.removeFromTop (juce::roundToInt ((float) c.getHeight() * 0.30f)));
-        c.removeFromTop (gap);
-        auto row = c.removeFromTop (juce::jlimit (60, 90, c.getHeight() / 4));
+        if (info != nullptr)
+        {
+            info->setBounds (c.removeFromBottom (juce::jlimit (130, 210, juce::roundToInt ((float) c.getHeight() * 0.27f))));
+            c.removeFromBottom (gap);
+        }
+        auto row = c.removeFromBottom (juce::jlimit (66, 96, juce::roundToInt ((float) c.getHeight() * 0.2f)));
+        c.removeFromBottom (gap);
         if (modeControl != nullptr) modeControl->component().setBounds (row.removeFromLeft (row.getWidth() / 2));
         if (levelControl != nullptr) levelControl->component().setBounds (row);
-        c.removeFromTop (gap);
-        if (info != nullptr) info->setBounds (c.removeFromTop (juce::jmin (c.getHeight(), 190)));
+        selector.setBounds (c);
     }
     // SAMPLE owns the whole right side: its own waveform carries the start/end handles.
     wavePanel.setVisible (samplePanel == nullptr);
@@ -333,12 +355,26 @@ EvolvePage::EvolvePage (AntiMatrProcessor& p)
     : processor (p),
       operators (p, "Operators", "Movement & change", Theme::violet, { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet }, 4),
       bend (p, "Bend", "Deformation detail", Theme::violet, { Param::evolveBendPivot, Param::evolveBendRange, Param::evolveBendCurve }, 3),
-      magnet (p, "Magnet", "Alignment target", Theme::violet, { Param::evolveMagnetTarget }, 1),
       motion (p, "Motion", "Speed of change", Theme::violet, { Param::evolveSpeed, Param::evolveMotion, Param::evolveScatterSeed }, 3)
 {
     operators.setHeroKnobs (true);
-    for (auto* panel : { &operators, &bend, &magnet, &motion }) addAndMakeVisible (*panel);
+    for (auto* panel : { &operators, &bend, &motion }) addAndMakeVisible (*panel);
+    addAndMakeVisible (magnetPanel);
     addAndMakeVisible (fieldPanel);
+
+    // Seven alignment targets: a list shows them all instead of hiding six behind a stepper.
+    magnetList = std::make_unique<AMOptionList> (paramChoices (Param::evolveMagnetTarget), Theme::violet);
+    magnetList->setTooltip (paramTooltip (Param::evolveMagnetTarget));
+    magnetPanel.addAndMakeVisible (*magnetList);
+    {
+        auto* target = processor.parameters().getParameter (ParameterRegistry::get (Param::evolveMagnetTarget).id);
+        magnetAttachment = std::make_unique<juce::ParameterAttachment> (*target, [this] (float v)
+        {
+            magnetList->setSelected ((int) std::lround (v), juce::dontSendNotification);
+        });
+        magnetList->onChange = [this] (int i) { magnetAttachment->setValueAsCompleteGesture ((float) i); };
+        magnetAttachment->sendInitialUpdate();
+    }
     fieldPanel.addAndMakeVisible (field);
     field.setTooltip ("Drag: gravity (x) and scatter (y). Double-click resets.");
     for (auto param : { Param::evolveCrush, Param::evolveFreeze })
@@ -415,7 +451,8 @@ void EvolvePage::resized()
     const int w = (area.getWidth() - gap * 2 - magnetW) / 2;
     bend.setBounds (area.removeFromLeft (w));
     area.removeFromLeft (gap);
-    magnet.setBounds (area.removeFromLeft (magnetW));
+    magnetPanel.setBounds (area.removeFromLeft (magnetW));
+    magnetList->setBounds (magnetPanel.contentBounds());
     area.removeFromLeft (gap);
     motion.setBounds (area);
 }
@@ -432,7 +469,7 @@ void EvolvePage::timerCallback()
     field.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 4.0f));
 
     const auto& mod = latestModulation (processor);
-    for (auto* panel : { &operators, &bend, &magnet, &motion }) panel->refreshModRings (mod);
+    for (auto* panel : { &operators, &bend, &motion }) panel->refreshModRings (mod);
 }
 
 //==============================================================================

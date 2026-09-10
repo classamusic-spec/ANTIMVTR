@@ -6,6 +6,7 @@
 #include "ui/components/AMTab.h"
 #include "ui/components/AMXYPad.h"
 #include "ui/components/AMStepEditor.h"
+#include "ui/components/AMOptionList.h"
 
 namespace am::ui
 {
@@ -97,7 +98,10 @@ public:
 private:
     void timerCallback() override;
     AntiMatrProcessor& processor;
-    ParamPanel operators, bend, magnet, motion;
+    ParamPanel operators, bend, motion;
+    AMPanel magnetPanel { "Magnet", "Alignment target", Theme::violet };
+    std::unique_ptr<AMOptionList> magnetList;
+    std::unique_ptr<juce::ParameterAttachment> magnetAttachment;
     AMPanel fieldPanel { "Field", "Gravity, scatter, crush & freeze", Theme::violet };
     AMXYPad field { "Gravity", "Scatter", Theme::violet };
     std::vector<std::unique_ptr<BoundControl>> fieldControls;   // crush & freeze, under the pad

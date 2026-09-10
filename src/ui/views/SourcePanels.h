@@ -2,6 +2,7 @@
 
 #include "Controls.h"
 #include "ui/components/AMXYPad.h"
+#include "ui/components/AMOptionList.h"
 
 namespace am::ui
 {
@@ -36,15 +37,19 @@ public:
 
 private:
     juce::Rectangle<float> plotArea() const;
+    juce::Rectangle<float> rulerArea() const;
     void rebuildPeaks();
+    void paintEmptyState (juce::Graphics& g);
+    void paintRuler (juce::Graphics& g);
     int  handleAt (juce::Point<int> p) const;
     float xForPosition (float position01) const;
     float positionForX (float x) const;
 
     SampleRef sample;
     juce::Colour accent;
-    std::vector<float> minPeaks, maxPeaks;
+    std::vector<float> minPeaks, maxPeaks, rmsPeaks;
     int peakWidth = 0;
+    float normalise = 1.0f;          ///< display gain so quiet material still fills the view
     float start = 0.0f, end = 1.0f, energy = 0.0f;
     int dragging = -1, hovered = -1;
     juce::String caption;
@@ -111,37 +116,15 @@ public:
     ~GesturePanel() override;
 
     void resized() override;
-    void paintOverChildren (juce::Graphics& g) override;
 
 private:
-    /** Vertical list of the gesture models: one click to any of them. */
-    class ModeList : public juce::Component
-    {
-    public:
-        ModeList (juce::StringArray items, juce::Colour accent);
-        void setSelected (int index);
-        std::function<void (int)> onSelect;
-
-        void paint (juce::Graphics& g) override;
-        void mouseDown (const juce::MouseEvent& e) override;
-        void mouseMove (const juce::MouseEvent& e) override;
-        void mouseExit (const juce::MouseEvent&) override { hovered = -1; repaint(); }
-
-    private:
-        int rowAt (juce::Point<int> p) const;
-        juce::StringArray names;
-        juce::Colour accent;
-        int selected = 0, hovered = -1;
-    };
-
     void timerCallback() override;
 
     AntiMatrProcessor& processor;
-    std::unique_ptr<ModeList> mode;
+    std::unique_ptr<AMOptionList> mode;
     AMXYPad  pad { "Pressure", "Speed", Theme::magenta };
     std::vector<std::unique_ptr<BoundControl>> controls;
     std::unique_ptr<juce::ParameterAttachment> modeAttachment, padX, padY;
-    juce::Rectangle<int> descriptionArea;
     int currentMode = 0;
 };
 

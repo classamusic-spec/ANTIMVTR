@@ -6,7 +6,7 @@ namespace am::ui
 AMSourceSelector::AMSourceSelector (std::vector<Item> i) : items (std::move (i))
 {
     items.resize (juce::jmin ((int) items.size(), kMaxItems));
-    for (auto& it : items) labels.push_back (it.label.toUpperCase());
+    for (auto& it : items) { labels.push_back (it.label.toUpperCase()); captions.push_back (it.caption.toUpperCase()); }
     setWantsKeyboardFocus (false);
     scratch.preallocateSpace (1024);
     if (! items.empty()) lit[0].snap (1.0f);
@@ -40,11 +40,35 @@ void AMSourceSelector::setSelected (int index, juce::NotificationType notify)
     if (notify != juce::dontSendNotification && onChange) onChange (selected);
 }
 
+int AMSourceSelector::preferredHeight (int width) const noexcept
+{
+    if (items.empty() || width <= 0) return 0;
+    // A thumbnail is 0.76 of its cell and the label band is 20% of the height, so the
+    // circle stops growing once the height passes about 1.28 cells.
+    const float cell = (float) width / (float) items.size();
+    return juce::roundToInt (juce::jlimit (52.0f, 170.0f, cell) * 1.28f);
+}
+
+juce::Rectangle<float> AMSourceSelector::cellBounds (int index) const
+{
+    const auto b = getLocalBounds().toFloat();
+    const int n = juce::jmax (1, (int) items.size());
+    if (orientation == Orientation::Column)
+    {
+        const float h = b.getHeight() / (float) n;
+        return { b.getX(), b.getY() + h * (float) index, b.getWidth(), h };
+    }
+    const float w = b.getWidth() / (float) n;
+    return { b.getX() + w * (float) index, b.getY(), w, b.getHeight() };
+}
+
 int AMSourceSelector::indexAt (juce::Point<int> p) const
 {
     if (items.empty()) return -1;
-    const int w = getWidth() / (int) items.size();
-    return juce::jlimit (0, (int) items.size() - 1, p.x / juce::jmax (1, w));
+    const int n = (int) items.size();
+    if (orientation == Orientation::Column)
+        return juce::jlimit (0, n - 1, p.y / juce::jmax (1, getHeight() / n));
+    return juce::jlimit (0, n - 1, p.x / juce::jmax (1, getWidth() / n));
 }
 
 void AMSourceSelector::mouseDown (const juce::MouseEvent& e) { setSelected (indexAt (e.getPosition())); }
@@ -179,20 +203,65 @@ void AMSourceSelector::drawThumbnail (juce::Graphics& g, const Item& item, juce:
 void AMSourceSelector::paint (juce::Graphics& g)
 {
     if (items.empty()) return;
-    const auto b = getLocalBounds().toFloat();
-    const float cellW = b.getWidth() / (float) items.size();
-    const float labelH = juce::jlimit (10.0f, 18.0f, b.getHeight() * 0.2f);
 
     for (int i = 0; i < (int) items.size(); ++i)
     {
-        auto cell = juce::Rectangle<float> (b.getX() + cellW * (float) i, b.getY(), cellW, b.getHeight());
-        auto area = cell.withTrimmedBottom (labelH);
-        const float d = juce::jmin (area.getWidth(), area.getHeight()) * 0.76f;
-        auto circle = area.withSizeKeepingCentre (d, d);
+        const auto cell = cellBounds (i);
         const auto& item = items[(size_t) i];
         const float on = lit[(size_t) i].value;
         const float hv = hov[(size_t) i].value * (1.0f - on);
 
+        juce::Rectangle<float> circle;
+        if (orientation == Orientation::Column)
+        {
+            const float pad = juce::jlimit (2.0f, 8.0f, cell.getHeight() * 0.09f);
+            auto row = cell.reduced (0.0f, pad);
+            const float d = juce::jmin (row.getHeight(), cell.getWidth() * 0.34f);
+
+            // The whole row is the target, so a lit entry reads as a selected list item.
+            if (on > 0.01f || hv > 0.01f)
+            {
+                const float corner = juce::jlimit (5.0f, 12.0f, row.getHeight() * 0.2f);
+                juce::ColourGradient wash (item.accent.withAlpha (0.18f * on + 0.05f * hv), row.getX(), row.getY(),
+                                           item.accent.withAlpha (0.02f * on), row.getRight(), row.getY(), false);
+                g.setGradientFill (wash);
+                g.fillRoundedRectangle (row, corner);
+                g.setColour (item.accent.withAlpha (0.28f * on + 0.14f * hv));
+                g.drawRoundedRectangle (row.reduced (0.5f), corner, 1.0f);
+                if (on > 0.01f)
+                {
+                    g.setColour (item.accent.withAlpha (0.9f * on));
+                    g.fillRoundedRectangle (row.withWidth (juce::jmax (2.0f, row.getHeight() * 0.05f)), 1.5f);
+                }
+            }
+
+            auto inner = row.withTrimmedLeft (juce::jlimit (8.0f, 20.0f, cell.getWidth() * 0.06f));
+            circle = inner.removeFromLeft (d).withSizeKeepingCentre (d, d);
+
+            auto text = inner.withTrimmedLeft (juce::jlimit (7.0f, 16.0f, d * 0.24f)).withTrimmedRight (6.0f);
+            const bool hasCaption = captions[(size_t) i].isNotEmpty() && text.getHeight() > 26.0f;
+            const float nameH = juce::jlimit (9.5f, 13.5f, text.getHeight() * (hasCaption ? 0.32f : 0.42f));
+            auto nameArea = hasCaption ? text.removeFromTop (text.getHeight() * 0.55f) : text;
+            draw::trackedText (g, labels[(size_t) i], nameArea, hasCaption ? juce::Justification::bottomLeft : juce::Justification::centredLeft,
+                               draw::fitFont (on > 0.5f ? Theme::labelFontStrong (nameH) : Theme::labelFont (nameH), labels[(size_t) i], nameArea.getWidth()),
+                               Theme::textSecondary.interpolatedWith (Theme::textPrimary, juce::jmax (on, hv * 0.5f)));
+            if (hasCaption)
+            {
+                const float capH = juce::jlimit (7.5f, 10.0f, nameH * 0.72f);
+                draw::trackedText (g, captions[(size_t) i], text, juce::Justification::topLeft,
+                                   draw::fitFont (Theme::captionFont (capH), captions[(size_t) i], text.getWidth()),
+                                   item.accent.withAlpha (0.35f + 0.45f * on));
+            }
+        }
+        else
+        {
+            const float labelH = juce::jlimit (10.0f, 18.0f, cell.getHeight() * 0.2f);
+            auto area = cell.withTrimmedBottom (labelH);
+            const float d = juce::jmin (area.getWidth(), area.getHeight()) * 0.76f;
+            circle = area.withSizeKeepingCentre (d, d);
+        }
+
+        const float d = circle.getWidth();
         if (on > 0.01f)
         {
             draw::glowEllipse (g, circle, item.accent, d * 0.24f, on * (0.75f + 0.25f * energy));
@@ -208,9 +277,12 @@ void AMSourceSelector::paint (juce::Graphics& g)
 
         drawThumbnail (g, item, circle, on, i);
 
+        if (orientation == Orientation::Column) continue;
+
+        const float labelH = juce::jlimit (10.0f, 18.0f, cell.getHeight() * 0.2f);
         auto labelArea = cell.withTop (circle.getBottom() + 3.0f);
         const float h = juce::jlimit (8.5f, 12.0f, labelH * 0.68f);
-        const auto font = draw::fitFont (on > 0.5f ? Theme::labelFontStrong (h) : Theme::labelFont (h), labels[(size_t) i], cellW - 4.0f);
+        const auto font = draw::fitFont (on > 0.5f ? Theme::labelFontStrong (h) : Theme::labelFont (h), labels[(size_t) i], cell.getWidth() - 4.0f);
         draw::trackedText (g, labels[(size_t) i], labelArea, juce::Justification::centredTop, font,
                            Theme::textSecondary.interpolatedWith (Theme::textPrimary, juce::jmax (on, hv * 0.5f)));
     }

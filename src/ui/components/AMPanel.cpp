@@ -31,13 +31,6 @@ juce::Rectangle<int> AMPanel::headerBounds() const
     return slabBounds().toNearestInt().withHeight (h).reduced (pad, 0).withTrimmedTop (pad / 2);
 }
 
-juce::Rectangle<int> AMPanel::headerRightBounds() const
-{
-    headerRightBoundsUsed = true;
-    auto h = headerBounds();
-    return h.removeFromRight (h.getWidth() / 2);
-}
-
 juce::Rectangle<int> AMPanel::contentBounds() const
 {
     const auto h = headerBounds();
@@ -45,15 +38,21 @@ juce::Rectangle<int> AMPanel::contentBounds() const
     return slabBounds().toNearestInt().withTop (h.getBottom() + pad / 2).reduced (pad, 0).withTrimmedBottom (pad);
 }
 
-void AMPanel::paint (juce::Graphics& g)
+juce::Rectangle<int> AMPanel::headerRightBounds() const
+{
+    if (! headerRightBoundsUsed)
+    {
+        headerRightBoundsUsed = true;
+        const_cast<AMPanel*> (this)->invalidateChrome();
+    }
+    auto h = headerBounds();
+    return h.removeFromRight (h.getWidth() / 2);
+}
+
+void AMPanel::paintChrome (juce::Graphics& g) const
 {
     const auto b = slabBounds();
-    // SPEC section 1: a corner radius of about 1.2 % of the editor width, taken from
-    // the panel's own bounds so a short panel is not over-rounded.
     const float corner = juce::jlimit (5.0f, Theme::kPanelRadius, juce::jmin (b.getWidth() * 0.045f, b.getHeight() * 0.16f));
-
-    if (activity > 0.02f)
-        draw::glowRoundedRect (g, b, corner, accent, 16.0f, activity * 0.35f);
 
     draw::SlabStyle style;
     // The shadow reaches exactly as far as the margin the slab was inset by, so the
@@ -100,10 +99,65 @@ void AMPanel::paint (juce::Graphics& g)
             g.setGradientFill (grad);
             g.strokePath (line, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
-        draw::glowPath (g, line, pair.second, 1.0f, 7.0f, (0.35f + 0.55f * activity) * 0.9f);
+        draw::glowPath (g, line, pair.second, 1.0f, 7.0f, 0.32f);
 
         g.setColour (Theme::borderSoft);
         g.drawLine (h.getX() + lineW, lineY, h.getRight(), lineY, 1.0f);
+    }
+}
+
+void AMPanel::renderChrome (float scale)
+{
+    chromeScale = juce::jlimit (0.5f, 4.0f, scale);
+    const int w = juce::jmax (1, juce::roundToInt ((float) getWidth() * chromeScale));
+    const int h = juce::jmax (1, juce::roundToInt ((float) getHeight() * chromeScale));
+    // A software image: this is an offscreen cache, never a native surface.
+    chrome = juce::Image (juce::SoftwareImageType().create (juce::Image::ARGB, w, h, true));
+    juce::Graphics cg (chrome);
+    cg.addTransform (juce::AffineTransform::scale (chromeScale));
+    paintChrome (cg);
+}
+
+void AMPanel::paint (juce::Graphics& g)
+{
+    if (getWidth() < 2 || getHeight() < 2) return;
+
+    const float scale = juce::jlimit (0.5f, 4.0f, g.getInternalContext().getPhysicalPixelScaleFactor());
+    if (chrome.isNull() || std::abs (chromeScale - scale) > 0.01f
+        || chrome.getWidth() != juce::jmax (1, juce::roundToInt ((float) getWidth() * scale)))
+    {
+        renderChrome (scale);
+        // A child repainting asks the panel to paint only the strip under it. If the
+        // chrome had to be rebuilt in one of those, the rest of the slab still shows
+        // the old image, so ask for a full pass before anything else is drawn.
+        if (! g.getClipBounds().contains (getLocalBounds()))
+        {
+            repaint();
+            return;
+        }
+    }
+
+    const auto b = slabBounds();
+    const float corner = juce::jlimit (5.0f, Theme::kPanelRadius, juce::jmin (b.getWidth() * 0.045f, b.getHeight() * 0.16f));
+
+    // Only the activity glow is live; everything else is the cached chrome.
+    if (activity > 0.02f)
+        draw::glowRoundedRect (g, b, corner, accent, 16.0f, activity * 0.35f);
+
+    // A blit is multiplied by the context's current colour, and the glow above left a
+    // near-transparent one behind, so the brush is reset before the chrome goes down.
+    g.setColour (juce::Colours::white);
+    g.drawImageTransformed (chrome, juce::AffineTransform::scale (1.0f / chromeScale));
+
+    if (showAccentLine && activity > 0.02f)
+    {
+        const auto hb = headerBounds().toFloat();
+        const float lineY = hb.getBottom() + (compact ? 1.0f : 3.0f);
+        const float lineW = juce::jmin (hb.getWidth() * 0.26f, compact ? 40.0f : 84.0f);
+        juce::Path line;
+        line.startNewSubPath (hb.getX(), lineY);
+        line.lineTo (hb.getX() + lineW, lineY);
+        draw::glowPath (g, line, Theme::accentPartner (accent), 1.0f, 7.0f, 0.55f * activity);
     }
 }
 

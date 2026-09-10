@@ -108,7 +108,8 @@ void AMKnob::paint (juce::Graphics& g)
     const float trackW = geo.trackWidth;
     const auto arcBounds = geo.arc;
     const auto body = geo.body;
-    const float lit = juce::jmax (hover.value, dragging ? 1.0f : 0.0f);
+    // Hover lifts the sheen and the ring glow; dragging lifts them a little further.
+    const float lit = juce::jmax (hover.value * 0.72f, dragging ? 1.0f : 0.0f);
     const float glowAmount = juce::jlimit (0.0f, 1.0f, 0.20f + 0.30f * activity + 0.40f * lit);
     const float valueWeight = bipolar ? std::abs (p - 0.5f) * 2.0f : p;
     const auto pair = Theme::accentPair (accent);

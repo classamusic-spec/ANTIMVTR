@@ -49,12 +49,32 @@ namespace amtest
         return p;
     }
 
+    inline void* trackedAllocateNoThrow (std::size_t size) noexcept
+    {
+        if (countingAllocations.load (std::memory_order_relaxed))
+            allocationCount.fetch_add (1, std::memory_order_relaxed);
+        return std::malloc (size == 0 ? 1 : size);
+    }
+
     inline void trackedFreeAligned (void* p) noexcept
     {
        #if defined (_MSC_VER)
         _aligned_free (p);
        #else
         std::free (p);
+       #endif
+    }
+
+    inline void* trackedAllocateAlignedNoThrow (std::size_t size, std::size_t alignment) noexcept
+    {
+        if (countingAllocations.load (std::memory_order_relaxed))
+            allocationCount.fetch_add (1, std::memory_order_relaxed);
+        if (alignment < sizeof (void*)) alignment = sizeof (void*);
+        const std::size_t rounded = ((size == 0 ? 1 : size) + alignment - 1) / alignment * alignment;
+       #if defined (_MSC_VER)
+        return _aligned_malloc (rounded, alignment);
+       #else
+        return std::aligned_alloc (alignment, rounded);
        #endif
     }
 
@@ -67,10 +87,24 @@ namespace amtest
     };
 }
 
+// Every form must be overridden together. libstdc++ allocates std::stable_sort's temporary buffer
+// through the nothrow operator new and releases it through the plain operator delete; overriding
+// only the throwing forms leaves that block allocated by one allocator and freed by another, which
+// is undefined behaviour that happens to survive on glibc and is a genuine hazard elsewhere.
 void* operator new (std::size_t size)                       { return amtest::trackedAllocate (size); }
 void* operator new[] (std::size_t size)                     { return amtest::trackedAllocate (size); }
 void* operator new (std::size_t s, std::align_val_t a)      { return amtest::trackedAllocateAligned (s, (std::size_t) a); }
 void* operator new[] (std::size_t s, std::align_val_t a)    { return amtest::trackedAllocateAligned (s, (std::size_t) a); }
+
+void* operator new (std::size_t size, const std::nothrow_t&) noexcept                    { return amtest::trackedAllocateNoThrow (size); }
+void* operator new[] (std::size_t size, const std::nothrow_t&) noexcept                  { return amtest::trackedAllocateNoThrow (size); }
+void* operator new (std::size_t s, std::align_val_t a, const std::nothrow_t&) noexcept   { return amtest::trackedAllocateAlignedNoThrow (s, (std::size_t) a); }
+void* operator new[] (std::size_t s, std::align_val_t a, const std::nothrow_t&) noexcept { return amtest::trackedAllocateAlignedNoThrow (s, (std::size_t) a); }
+
+void  operator delete (void* p, const std::nothrow_t&) noexcept                   { std::free (p); }
+void  operator delete[] (void* p, const std::nothrow_t&) noexcept                 { std::free (p); }
+void  operator delete (void* p, std::align_val_t, const std::nothrow_t&) noexcept { amtest::trackedFreeAligned (p); }
+void  operator delete[] (void* p, std::align_val_t, const std::nothrow_t&) noexcept { amtest::trackedFreeAligned (p); }
 void  operator delete (void* p) noexcept                    { std::free (p); }
 void  operator delete[] (void* p) noexcept                  { std::free (p); }
 void  operator delete (void* p, std::size_t) noexcept       { std::free (p); }

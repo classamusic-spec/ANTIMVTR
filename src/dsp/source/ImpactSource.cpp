@@ -34,6 +34,7 @@ void ImpactSource::prepare (double sampleRate, int maxBlockSize)
         s.tilt.prepare (sr);
     }
     dc.prepare (sr, 8.0f);
+    residueDecay = std::exp (-1.0f / (float) juce::jmax (2.0, 0.003 * sr));
 
     reset();
 }
@@ -49,6 +50,7 @@ void ImpactSource::reset()
     combDelay = 0;
     std::fill (comb.begin(), comb.end(), 0.0f);
     dc.reset();
+    stealResidue = 0.0f;
     lastEnergy = 0.0f;
 }
 
@@ -119,7 +121,9 @@ void ImpactSource::spawnStrike()
             const float v = strikes[(size_t) k].level();
             if (v < lowest) { lowest = v; best = k; }
         }
-        if (lowest > 0.15f) return;     // stealing here would click: drop the strike instead
+        // Continue from where the stolen strike was, so the roll never drops a
+        // hit and the join stays continuous.
+        stealResidue = juce::jlimit (-2.0f, 2.0f, stealResidue + strikes[(size_t) best].lastOut);
         slot = best;
     }
 
@@ -208,8 +212,12 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             {
                 const float ratio = kMetalRatios[k] * (1.0f + p.hardness * 0.35f * rng.nextBipolar());
                 const float f = root * ratio;
-                s.mInc[k]   = f < nyquist ? f / (float) sr : 0.0f;
-                s.mPhase[k] = rng.nextFloat();
+                const float w = f < nyquist ? (float) kTwoPi * f / (float) sr : 0.0f;
+                s.mDCos[k]  = std::cos (w);
+                s.mDSin[k]  = std::sin (w);
+                const float phase0 = rng.nextFloat();
+                s.mCos[k]   = Tables::sineAt (wrap01 (phase0 + 0.25f));
+                s.mSin[k]   = Tables::sineAt (phase0);
                 s.mEnv[k]   = 1.0f;
                 s.mAmp[k]   = f < nyquist ? std::pow (1.0f / (1.0f + (float) k), slope) * (0.6f + 0.4f * rng.nextFloat())
                                           : 0.0f;
@@ -219,6 +227,7 @@ void ImpactSource::initStrike (Strike& s, Rng& rng)
             }
             const float norm = 1.0f / juce::jmax (1.0e-6f, sumSq);   // bounds the peak of the partial sum
             for (auto& a : s.mAmp) a *= norm;
+            s.mCount = kMetalPartials;
             s.clickAmt = 0.35f * p.hardness;
             s.lp.setCutoff (juce::jlimit (200.0f, nyquist, expMap (bright, 2000.0f, 14000.0f)));
             s.decayClick = std::exp (-1.0f / (float) juce::jmax (2.0, 0.0015 * sr));
@@ -312,13 +321,17 @@ inline float ImpactSource::renderStrike (Strike& s) noexcept
 
         case Mode::MetalStrike:
         {
-            for (int k = 0; k < kMetalPartials; ++k)
+            for (int k = 0; k < s.mCount; ++k)
             {
                 s.mEnv[k] *= s.mDec[k];
-                x += excitation::Tables::sineAt (s.mPhase[k]) * s.mAmp[k] * s.mEnv[k];
-                s.mPhase[k] += s.mInc[k];
-                if (s.mPhase[k] >= 1.0f) s.mPhase[k] -= 1.0f;
+                const float ns = s.mSin[k] * s.mDCos[k] + s.mCos[k] * s.mDSin[k];
+                const float nc = s.mCos[k] * s.mDCos[k] - s.mSin[k] * s.mDSin[k];
+                s.mSin[k] = ns;
+                s.mCos[k] = nc;
+                x += ns * s.mAmp[k] * s.mEnv[k];
             }
+            // The upper partials decay fastest, so retire them from the top.
+            while (s.mCount > 1 && s.mEnv[s.mCount - 1] * s.mAmp[s.mCount - 1] < 1.0e-5f) --s.mCount;
             s.envClick *= s.decayClick;
             x += s.lp.process (s.rng.nextBipolar()) * s.clickAmt * s.envClick;
             break;
@@ -350,7 +363,8 @@ inline float ImpactSource::renderStrike (Strike& s) noexcept
     }
 
     ++s.age;
-    return x * e * s.amp;
+    s.lastOut = x * e * s.amp;
+    return s.lastOut;
 }
 
 //==============================================================================
@@ -381,7 +395,8 @@ void ImpactSource::render (float* l, float* r, int n, const RenderContext& ctx, 
             }
         }
 
-        float x = 0.0f;
+        float x = stealResidue;
+        stealResidue *= residueDecay;
         for (int k = 0; k < numStrikes; )
         {
             Strike& s = strikes[(size_t) k];
@@ -412,6 +427,7 @@ void ImpactSource::render (float* l, float* r, int n, const RenderContext& ctx, 
     if (bad > 0)
     {
         numStrikes = 0;
+        stealResidue = 0.0f;
         dc.reset();
         std::fill (comb.begin(), comb.end(), 0.0f);
         if (ctx.diagnostics != nullptr)

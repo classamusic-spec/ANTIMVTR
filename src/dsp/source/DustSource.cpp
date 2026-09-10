@@ -401,9 +401,14 @@ void DustSource::renderCloud (float* l, float* r, int n)
                 g.invLen = 1.0f / (float) g.len;
                 const float semis = p.jitter * grainRng.nextBipolar() * 6.0f;
                 const double f = juce::jlimit (5.0, sr * 0.45, p.freq * (double) fastPow2 (semis / 12.0f));
-                g.inc = (float) (f / sr);
-                g.phase = wrap01 (p.position + p.jitter * grainRng.nextFloat());
-                g.rPhase = rPhaseOffset;
+                const float w = (float) (kTwoPi * f / sr);
+                g.dCos = std::cos (w);
+                g.dSin = std::sin (w);
+                const float phase0 = wrap01 (p.position + p.jitter * grainRng.nextFloat());
+                g.c = Tables::sineAt (wrap01 (phase0 + 0.25f));
+                g.s = Tables::sineAt (phase0);
+                g.rCos = Tables::sineAt (wrap01 (rPhaseOffset + 0.25f));
+                g.rSin = Tables::sineAt (rPhaseOffset);
                 g.tone = toneAmt * toneNorm;
                 g.noise = noiseAmt * noiseNorm;
                 const float amp = 1.0f - 0.5f * p.jitter * grainRng.nextFloat();
@@ -421,8 +426,12 @@ void DustSource::renderCloud (float* l, float* r, int n)
         {
             auto& g = grains[(size_t) k];
             const float w = Tables::hannAt ((float) g.age * g.invLen);
-            const float s = Tables::sineAt (g.phase);
-            const float sR = wideNoise ? Tables::sineAt (wrap01 (g.phase + g.rPhase)) : s;
+
+            const float ns = g.s * g.dCos + g.c * g.dSin;
+            const float nc = g.c * g.dCos - g.s * g.dSin;
+            g.s = ns;
+            g.c = nc;
+            const float sR = ns * g.rCos + nc * g.rSin;   // identity when stereo is 0
 
             float nL = 0.0f, nR = 0.0f;
             if (wantNoise)
@@ -431,11 +440,9 @@ void DustSource::renderCloud (float* l, float* r, int n)
                 nR = wideNoise ? g.rng.nextBipolar() : nL;
             }
 
-            sumL += w * (g.tone * s  + g.noise * nL) * g.gainL;
+            sumL += w * (g.tone * ns + g.noise * nL) * g.gainL;
             sumR += w * (g.tone * sR + g.noise * nR) * g.gainR;
 
-            g.phase += g.inc;
-            if (g.phase >= 1.0f) g.phase -= 1.0f;
             if (++g.age >= g.len) grains[(size_t) k] = grains[(size_t) --numGrains];
             else ++k;
         }

@@ -75,7 +75,12 @@ private:
         bool  spike = false;                 ///< IMPULSE: one unit sample still to be injected
         float phase = 0.0f, inc = 0.0f, incTarget = 0.0f, glide = 0.0f;
         float harm2 = 0.0f, noiseAmt = 0.0f, clickAmt = 0.0f;
-        float mPhase[kMetalPartials] {}, mInc[kMetalPartials] {};
+        float lastOut = 0.0f;                ///< last emitted sample, used to steal without a click
+        // METAL STRIKE partials, each on its own quadrature rotator. `mCount`
+        // shrinks as the fast upper partials fall silent.
+        int   mCount = kMetalPartials;
+        float mCos[kMetalPartials] {}, mSin[kMetalPartials] {};
+        float mDCos[kMetalPartials] {}, mDSin[kMetalPartials] {};
         float mAmp[kMetalPartials] {}, mDec[kMetalPartials] {}, mEnv[kMetalPartials] {};
         excitation::Svf            svf;
         excitation::ExciterLowpass lp;
@@ -101,6 +106,9 @@ private:
     int   combWrite = 0, combSize = 0, combDelay = 0;
 
     excitation::DcBlocker dc;
+    // When the pool is full the quietest strike is stolen and its last sample is
+    // handed to this decaying residue, so the join is continuous instead of a step.
+    float stealResidue = 0.0f, residueDecay = 0.99f;
     Rng   repeatRng { 11 };
     uint32_t noteId = 0, strikeCounter = 0;
     bool  gate = false, pendingStrike = false;

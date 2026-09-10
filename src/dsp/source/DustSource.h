@@ -43,7 +43,7 @@ private:
     //==========================================================================
     static constexpr int kMaxCrackleEvents = 48;
     static constexpr int kMaxPulses        = 24;
-    static constexpr int kMaxGrains        = 32;
+    static constexpr int kMaxGrains        = 24;
     static constexpr int kMaxPartials      = 64;
 
     /** Cached, per-block parameter snapshot. */
@@ -80,13 +80,18 @@ private:
         float invLen = 1.0f, gainL = 0.0f, gainR = 0.0f;
     };
 
-    /** One grain of the granular CLOUD. */
+    /**
+        One grain of the granular CLOUD. Like the FROZEN partials the tone runs
+        on a quadrature rotator rather than a table lookup, which also hands the
+        right channel its decorrelating phase offset for free.
+    */
     struct Grain
     {
         bool  active = false;
         int   age = 0, len = 1;
         float invLen = 1.0f;
-        float phase = 0.0f, inc = 0.0f, rPhase = 0.0f;
+        float c = 1.0f, s = 0.0f, dCos = 1.0f, dSin = 0.0f;
+        float rCos = 1.0f, rSin = 0.0f;
         float tone = 0.7f, noise = 0.7f;
         float gainL = 0.0f, gainR = 0.0f;
         Rng   rng { 1 };

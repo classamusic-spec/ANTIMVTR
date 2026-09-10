@@ -9,7 +9,7 @@ namespace
 {
     constexpr float kPi    = juce::MathConstants<float>::pi;
     constexpr float kTwoPi = juce::MathConstants<float>::twoPi;
-    constexpr float kFocal = 2.9f;        // camera distance in sphere radii
+    constexpr float kFocal = 2.5f;        // camera distance in sphere radii
 
     inline juce::Colour alpha (juce::Colour c, float a) noexcept { return c.withAlpha (juce::jlimit (0.0f, 1.0f, a)); }
     inline float sat (float v) noexcept { return juce::jlimit (0.0f, 1.0f, v); }
@@ -425,7 +425,7 @@ void AntiMatterVisualizer::buildOrganism (const Frame& f)
             if (reach > objectExtent) objectExtent = reach;
         }
 
-        numSpans += LiquidOrganism::splitByDepth (r, row.data(), n, organism.isAngular (f.p), f.coreR * 1.45f,
+        numSpans += LiquidOrganism::splitByDepth (r, row.data(), n, organism.isAngular (f.p), f.coreR * 1.02f,
                                                   spans.data() + numSpans, LiquidOrganism::kMaxSpans - numSpans);
     }
 

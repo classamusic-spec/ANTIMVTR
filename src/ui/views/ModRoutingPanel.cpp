@@ -1,4 +1,5 @@
 #include "ModRoutingPanel.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -35,53 +36,33 @@ namespace
     juce::String depthText (const ModRouting& r)
     {
         const auto& d = ParameterRegistry::get (r.target);
-        const float amount = r.depth * (d.max - d.min);
-        juce::String s = (amount >= 0.0f ? "+" : "") + juce::String (amount, std::abs (amount) < 10.0f ? 2 : 1);
-        if (d.unit[0] != 0) s << " " << d.unit;
-        return s;
+        return layout::modDepthText (r.depth, d.min, d.max, d.unit);
     }
 }
 
 //==============================================================================
 ModRowLayout ModRowLayout::forRow (juce::Rectangle<int> row) noexcept
 {
+    const auto c = layout::modRowColumns (row.getWidth(), row.getHeight());
+    const int y = row.getY(), h = row.getHeight(), x = row.getX();
+    auto full = [x, y, h] (const layout::Span& s) { return juce::Rectangle<int> (x + s.start, y, s.size, h); };
+
     ModRowLayout l;
-    const int h = juce::jmax (1, row.getHeight());
-    const int gap = juce::jmax (4, h / 5);
-
-    l.chip = row.removeFromLeft (juce::jmax (2, h / 10)).reduced (0, juce::jmax (1, h / 6));
-
-    auto inner = row.reduced (juce::jmax (7, h / 3), 0);
-    const int w = juce::jmax (1, inner.getWidth());
-
-    l.remove   = inner.removeFromRight (juce::jlimit (18, 30, h));
-    inner.removeFromRight (gap);
-    const int polarityW = juce::jlimit (58, 88, w / 12);
-    l.polarity = inner.removeFromRight (polarityW).withSizeKeepingCentre (polarityW, juce::jlimit (17, 26, h * 2 / 3));
-    inner.removeFromRight (gap);
-    l.power    = inner.removeFromRight (juce::jlimit (28, 40, w / 24));
-    inner.removeFromRight (gap * 2);
-    l.value    = inner.removeFromRight (juce::jlimit (50, 78, w / 12));
-    inner.removeFromRight (gap);
-
-    const int names = juce::jlimit (140, 420, (int) ((float) w * 0.34f));
-    auto block = inner.removeFromLeft (juce::jmin (names, juce::jmax (60, inner.getWidth() - 60)));
-    l.source      = block.removeFromLeft (juce::jmax (44, (int) ((float) block.getWidth() * 0.36f)));
-    l.arrow       = block.removeFromLeft (juce::jmax (12, h / 2));
-    l.destination = block;
-    inner.removeFromLeft (gap);
-    l.depth = inner;
+    l.chip        = full (c.chip).reduced (0, c.chipInsetY);
+    l.source      = full (c.source);
+    l.arrow       = full (c.arrow);
+    l.destination = full (c.destination);
+    l.depth       = full (c.depth);
+    l.value       = full (c.value);
+    l.power       = full (c.power);
+    l.polarity    = full (c.polarity).withSizeKeepingCentre (c.polarity.size, c.polarityHeight);
+    l.remove      = full (c.remove);
     return l;
 }
 
 int modScopeColumns (int count, int width) noexcept
 {
-    if (count <= 0) return 1;
-    const int maxByWidth = juce::jlimit (1, 4, width / 190);
-    int cols = count <= 4 ? count : (count <= 6 ? 3 : 4);
-    cols = juce::jmin (cols, maxByWidth);
-    while (cols > 2 && count % cols != 0 && count % (cols - 1) == 0) --cols;
-    return juce::jmax (1, cols);
+    return layout::modScopeColumns (count, width);
 }
 
 //==============================================================================

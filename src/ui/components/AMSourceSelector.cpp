@@ -1,4 +1,5 @@
 #include "AMSourceSelector.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -42,11 +43,7 @@ void AMSourceSelector::setSelected (int index, juce::NotificationType notify)
 
 int AMSourceSelector::preferredHeight (int width) const noexcept
 {
-    if (items.empty() || width <= 0) return 0;
-    // A thumbnail is 0.76 of its cell and the label band is 20% of the height, so the
-    // circle stops growing once the height passes about 1.28 cells.
-    const float cell = (float) width / (float) items.size();
-    return juce::roundToInt (juce::jlimit (52.0f, 170.0f, cell) * 1.28f);
+    return layout::sourceSelectorHeight (width, (int) items.size());
 }
 
 juce::Rectangle<float> AMSourceSelector::cellBounds (int index) const

@@ -1,4 +1,5 @@
 #include "SourcePanels.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -202,14 +203,7 @@ void SampleWaveView::paintRuler (juce::Graphics& g)
     const double seconds = sample->lengthSeconds();
     if (seconds <= 0.0) return;
 
-    // A step that keeps roughly 6-10 divisions whatever the length.
-    static const double steps[] = { 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0 };
-    double step = steps[0];
-    for (double candidate : steps)
-    {
-        step = candidate;
-        if (seconds / candidate <= 9.0) break;
-    }
+    const double step = layout::waveRulerStep (seconds);
 
     const float h = juce::jlimit (7.0f, 9.5f, ruler.getHeight() * 0.58f);
     g.setColour (Theme::borderSoft);

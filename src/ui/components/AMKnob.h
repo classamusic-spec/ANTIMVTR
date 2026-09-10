@@ -5,6 +5,7 @@
 #include "AMModRing.h"
 #include "AMModAssign.h"
 #include "dsp/mod/ModulationSnapshot.h"
+#include "ui/UILayout.h"
 
 #include <optional>
 
@@ -31,12 +32,12 @@ struct KnobRings
         KnobRings r;
         const float d = juce::jmin (footprint.getWidth(), footprint.getHeight());
         const auto square = footprint.withSizeKeepingCentre (d, d);
-        if (d <= 0.0f) return r;
-        r.ringStroke = juce::jmax (1.1f, d * 0.016f);
-        r.trackWidth = juce::jmax (1.4f, d * (hero ? 0.030f : 0.026f));
-        r.orbit = square.reduced (r.ringStroke * 1.4f);
-        r.arc   = r.orbit.reduced (juce::jmin (r.ringStroke * 3.0f, r.orbit.getWidth() * 0.16f));
-        r.body  = r.arc.reduced (juce::jmin (r.trackWidth * 1.7f, r.arc.getWidth() * 0.18f));
+        const auto radii = layout::knobRadii (d, hero);
+        r.ringStroke = radii.ringStroke;
+        r.trackWidth = radii.trackWidth;
+        r.orbit = square.withSizeKeepingCentre (radii.orbit, radii.orbit);
+        r.arc   = square.withSizeKeepingCentre (radii.arc, radii.arc);
+        r.body  = square.withSizeKeepingCentre (radii.body, radii.body);
         return r;
     }
 

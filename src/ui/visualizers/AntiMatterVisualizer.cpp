@@ -310,8 +310,9 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
     drawBackdrop (g, f);
     drawStars (g, f);               mark (1);
     drawFragments (g, f, false);    mark (2);
-    if (f.numLobes == 2) { drawLobe (g, f, 1); mark (4); drawStrands (g, f); mark (3); }
+    if (f.numLobes == 2) { drawLobe (g, f, 1); mark (4); }
     drawLobe (g, f, 0);             mark (4);
+    if (f.numLobes == 2) { drawStrands (g, f); mark (3); }
     drawSparks (g, f);              mark (12);
     drawFragments (g, f, true);     mark (13);
     drawNodes (g, f);               mark (14);
@@ -833,6 +834,16 @@ void AntiMatterVisualizer::drawRim (juce::Graphics& g, const Frame& f, int L)
         g.strokePath (bodyPath, juce::PathStrokeType (wideGlow, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 
+    // Inner reflection: the rim light bouncing inside the glass wall, opposite the key light.
+    {
+        ObjectField::toPath (o, shellPath, 0.94f - 0.03f * f.melt);
+        juce::ColourGradient inner (alpha (Theme::ivory, 0.0f), o.centre.x - f.R * 0.6f, o.centre.y - f.R * 0.6f,
+                                    alpha (Theme::ivory.interpolatedWith (Theme::magenta, 0.3f), (0.30f + 0.15f * f.pulse) * meltSoft * A), o.centre.x + f.R * 0.8f, o.centre.y + f.R * 0.8f, false);
+        inner.addColour (0.45, alpha (Theme::ivory, 0.03f * A));
+        g.setGradientFill (inner);
+        g.strokePath (shellPath, juce::PathStrokeType (juce::jmax (0.6f, 0.8f * f.px)));
+    }
+
     const float shimmerT = f.time * 2.2f;
     const float hueCycles = 1.5f + 0.7f * f.density;
     for (int i = 0; i < segs; ++i)
@@ -919,7 +930,7 @@ void AntiMatterVisualizer::drawCracks (juce::Graphics& g, const Frame& f, int L)
 void AntiMatterVisualizer::drawStrands (juce::Graphics& g, const Frame& f)
 {
     // Taffy strands between the two torn lobes: stretched matter that has not let go yet.
-    const float show = smoothstep (0.06f, 0.4f, f.tear) * (1.0f - smoothstep (0.8f, 1.0f, f.tear));
+    const float show = smoothstep (0.06f, 0.4f, f.tear) * (1.0f - 0.7f * smoothstep (0.85f, 1.0f, f.tear));
     if (show <= 0.01f) return;
     const auto& a = lobes[0];
     const auto& b = lobes[1];

@@ -36,7 +36,7 @@ void AMKnob::setModTarget (std::optional<Param> p)
 
 bool AMKnob::isAssignTarget() const noexcept
 {
-    return modTarget.has_value() && ModAssign::get().isArmed();
+    return modTarget.has_value() && ModAssign::get().isArmedFor (this);
 }
 
 bool AMKnob::refreshModRing (const ModulationSnapshot& snapshot)
@@ -195,7 +195,7 @@ void AMKnob::mouseDown (const juce::MouseEvent& e)
         return;
     }
     // Assign mode swallows the click instead of starting a drag.
-    if (modTarget.has_value() && ModAssign::get().assignTo (*modTarget))
+    if (modTarget.has_value() && ModAssign::get().assignTo (*modTarget, this))
         return;
     setMouseDragSensitivity (e.mods.isShiftDown() ? 1400 : 240);
     dragging = true;

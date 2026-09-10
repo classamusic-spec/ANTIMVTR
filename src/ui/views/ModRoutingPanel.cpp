@@ -169,7 +169,10 @@ ModRoutingPanel::ModRoutingPanel (AntiMatrProcessor& p)
 
     assignButton.setFilled (true);
     assignButton.setTooltip ("Arm assignment, then click any knob in the plug-in.");
-    assignButton.onClick = [this] { ModAssign::get().arm (pendingSource); };
+    assignButton.onClick = [this]
+    {
+        ModAssign::get().arm (pendingSource, this, [this] (ModSource s, Param t) { return addRouting (s, t); });
+    };
     addAndMakeVisible (assignButton);
 
     targetButton.setOutlined (true);
@@ -190,7 +193,6 @@ ModRoutingPanel::ModRoutingPanel (AntiMatrProcessor& p)
     addAndMakeVisible (viewport);
 
     ModAssign::get().addChangeListener (this);
-    ModAssign::get().onAssign = [this] (ModSource s, Param t) { return addRouting (s, t); };
     processor.addChangeListener (this);
 
     rebuildRows();
@@ -202,9 +204,8 @@ ModRoutingPanel::~ModRoutingPanel()
 {
     stopTimer();
     processor.removeChangeListener (this);
+    ModAssign::get().cancelFor (this);
     ModAssign::get().removeChangeListener (this);
-    ModAssign::get().onAssign = nullptr;
-    ModAssign::get().cancel();
 }
 
 //==============================================================================
@@ -264,7 +265,7 @@ void ModRoutingPanel::paint (juce::Graphics& g)
 
     auto area = viewport.getBounds().toFloat();
     const float h = juce::jlimit (11.0f, 15.0f, area.getHeight() * 0.055f);
-    const bool armed = ModAssign::get().isArmed();
+    const bool armed = ModAssign::get().isArmedFor (this);
 
     auto line = area.removeFromTop (area.getHeight() * 0.42f).removeFromBottom (h * 2.4f);
     draw::trackedText (g, armed ? "CLICK ANY KNOB TO FINISH THE ASSIGNMENT" : "NOTHING IS ROUTED YET",
@@ -335,7 +336,7 @@ void ModRoutingPanel::changeListenerCallback (juce::ChangeBroadcaster* source)
 
 void ModRoutingPanel::updateAssignButton()
 {
-    const bool armed = ModAssign::get().isArmed();
+    const bool armed = ModAssign::get().isArmedFor (this);
     assignButton.setButtonText (armed ? "CLICK A KNOB" : "ASSIGN");
     assignButton.setAccent (armed ? Theme::amber.brighter (0.3f) : Theme::amber);
     sourceButton.setButtonText (juce::String (modSourceName (pendingSource)).toUpperCase());
@@ -363,7 +364,11 @@ void ModRoutingPanel::showSourceMenu()
     {
         if (safe == nullptr || result <= 0 || result >= kNumModSources) return;
         safe->pendingSource = (ModSource) result;
-        if (ModAssign::get().isArmed()) ModAssign::get().arm (safe->pendingSource);
+        if (ModAssign::get().isArmedFor (safe))
+        {
+            ModAssign::get().cancel();
+            ModAssign::get().arm (safe->pendingSource, safe, [safe] (ModSource s, Param t) { return safe != nullptr && safe->addRouting (s, t); });
+        }
         safe->updateAssignButton();
     });
 }

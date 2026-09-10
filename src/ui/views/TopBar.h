@@ -68,7 +68,7 @@ private:
     AMSegment ab { { "A", "B" }, Theme::cyan };
     AMSlider output { "Output", Theme::ivory };
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputAttachment;
-    juce::Rectangle<int> swirlArea;
+    AMIconButton abCopy { Icon::Swirl, Theme::textSecondary };   ///< copies the current A/B slot to the other one
     int captionWidth = 180;
     int page = 0;
     bool lab = false;

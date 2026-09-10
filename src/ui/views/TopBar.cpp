@@ -231,6 +231,9 @@ NavBar::NavBar (AntiMatrProcessor& p, bool showLab) : processor (p), lab (showLa
     addAndMakeVisible (ab);
     ab.setSelected (processor.currentABSlot(), juce::dontSendNotification);
     ab.onChange = [this] (int i) { processor.selectABSlot (i); if (onABChange) onABChange (i); };
+    abCopy.setTooltip ("Copy this slot to the other A/B slot");
+    abCopy.onClick = [this] { processor.copyABToOther(); };
+    addAndMakeVisible (abCopy);
 
     output.setShowLabel (false);
     output.setShowValue (false);
@@ -262,7 +265,7 @@ void NavBar::resized()
     const int abW = juce::jlimit (60, 84, row.getWidth() / 4);
     ab.setBounds (row.removeFromLeft (abW));
     row.removeFromLeft (pad / 2);
-    swirlArea = row.removeFromLeft (rowH);
+    abCopy.setBounds (row.removeFromLeft (rowH));
     output.setBounds (row.reduced (2, 0));
 
     area.removeFromLeft (juce::jlimit (50, 90, getWidth() * 5 / 100));   // version caption
@@ -283,9 +286,6 @@ void NavBar::paint (juce::Graphics& g)
     const float h = juce::jlimit (7.5f, 9.5f, b.getHeight() * 0.11f);
     const int pad = juce::jmax (10, getWidth() / 64);
     draw::trackedText (g, "V" + juce::String (ANTIMATR_VERSION_STRING), b.withWidth (120.0f).withTrimmedLeft ((float) pad), juce::Justification::centredLeft, Theme::captionFont (h), Theme::textDim);
-
-    // output swirl icon
-    Icons::draw (g, Icon::Swirl, swirlArea.toFloat().reduced (swirlArea.getHeight() * 0.18f), Theme::textSecondary, 0.8f);
 
     auto brand = b.withLeft (b.getRight() - (float) captionWidth - (float) pad).withTrimmedRight ((float) pad);
     draw::trackedText (g, "INSTRUMENTS", brand.withHeight (b.getHeight() * 0.5f), juce::Justification::bottomRight, Theme::captionFont (h), Theme::textDim);

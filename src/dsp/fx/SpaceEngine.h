@@ -33,7 +33,13 @@ public:
     void reset();
     void process (float* l, float* r, int n, const RenderContext& ctx);
 
-    /** Wet energy as a fraction of the total, 0..1 — the UI's SPACE halo. */
+    /**
+        Wet energy as a fraction of the Space stage's output energy, 0..1 —
+        the UI's SPACE halo. 0 when fully dry, 1 when fully wet, and in
+        between it follows both the MIX macro and how much the rack is
+        actually doing. Lightly smoothed across blocks so the halo breathes
+        instead of flickering.
+    */
     float activity() const noexcept { return lastActivity; }
 
     /** SPACE adds no latency: the limiter is zero-latency by design. */
@@ -54,7 +60,7 @@ private:
 
     LinearRamp dryRamp, wetRamp;
     SpacePresets::Routing routing, pendingRouting;
-    bool routingChanging = false, routingInitialised = false;
+    bool routingChanging = false, routingInitialised = false, firstMixBlock = true;
     float changeGain = 1.0f, changeTarget = 1.0f, changeStep = 0.01f;
 
     double sr = 48000.0;

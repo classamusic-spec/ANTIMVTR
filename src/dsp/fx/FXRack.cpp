@@ -48,6 +48,7 @@ void FXRack::reset()
     idleBlocks.fill (kIdleBlocksBeforeReset);
     clamped = false;
     delayNeedsSnap = true;
+    firstUpdate = true;
     currentTilt = 0.0f;
     tiltActive = false;
 }
@@ -127,6 +128,13 @@ void FXRack::updateParameters (const RenderContext& ctx, const SpacePresets::Rou
 
     compressor.setParams (ctx.param (Param::spaceCompAmount));
 
+    // Nothing has been rendered yet, so there is nothing to crossfade from.
+    if (firstUpdate)
+    {
+        for (auto& g : gates) g.snapToTarget();
+        firstUpdate = false;
+    }
+
     // ---- feedback safety: only report paths that are actually running
     clamped = (gates[(int) Slot::Delay].active()    && delay.feedbackClamped())
            || (gates[(int) Slot::Granular].active() && granular.feedbackClamped())
@@ -186,9 +194,9 @@ void FXRack::runSlot (Slot slot, float* l, float* r, int n)
 
     idleBlocks[(int) slot] = 0;
 
-    if (gate.value() >= 1.0f && gate.active())
+    if (gate.settledOpen())
     {
-        processSlot (slot, l, r, n);      // fully open: no crossfade needed
+        processSlot (slot, l, r, n);      // fully open, nothing pending: no crossfade needed
         return;
     }
 

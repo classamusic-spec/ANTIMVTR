@@ -316,6 +316,8 @@ public:
 
     void setEnabled (bool shouldBeOn) noexcept { target = shouldBeOn ? 1.0f : 0.0f; }
     void snapTo (bool on) noexcept { target = gain = on ? 1.0f : 0.0f; }
+    /** Jumps to the pending state — only valid when nothing is playing yet. */
+    void snapToTarget() noexcept { gain = target; }
 
     inline float next() noexcept
     {
@@ -327,6 +329,8 @@ public:
     /** True when the module has to run this block (audible or still fading). */
     bool active() const noexcept { return gain > 0.0f || target > 0.0f; }
     bool closed() const noexcept { return gain <= 0.0f && target <= 0.0f; }
+    /** Fully open with nothing pending: the crossfade can be skipped. */
+    bool settledOpen() const noexcept { return gain >= 1.0f && target >= 1.0f; }
     float value() const noexcept { return gain; }
 
 private:

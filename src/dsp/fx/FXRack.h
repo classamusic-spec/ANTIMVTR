@@ -89,6 +89,7 @@ private:
     bool tiltActive = false;
     bool clamped = false;
     bool delayNeedsSnap = true;
+    bool firstUpdate = true;
 };
 
 } // namespace am

@@ -35,6 +35,7 @@ void SpaceEngine::reset()
     routingInitialised = false;
     changeGain = changeTarget = 1.0f;
     idleBlocks = 0;
+    firstMixBlock = true;
     blockDryEnergy = blockWetEnergy = 0.0;
     lastActivity = 0.0f;
 }
@@ -103,6 +104,12 @@ void SpaceEngine::processChunk (float* l, float* r, int n, const RenderContext& 
         ctx.diagnostics->safety.note (SafetyEvent::FeedbackClamp, Subsystem::Space);
 
     // ---- equal-power dry/wet, with the Space-change fade folded into the wet
+    if (firstMixBlock)
+    {
+        dryRamp.reset (dryGain);      // nothing was playing before: no crossfade needed
+        wetRamp.reset (wetGain);
+        firstMixBlock = false;
+    }
     dryRamp.setTarget (dryGain, n);
     wetRamp.setTarget (wetGain, n);
 
@@ -119,7 +126,7 @@ void SpaceEngine::processChunk (float* l, float* r, int n, const RenderContext& 
         l[i] = dl * d + wl;
         r[i] = dr * d + wr;
 
-        blockDryEnergy += (double) dl * dl + (double) dr * dr;
+        blockDryEnergy += (double) (dl * d) * (dl * d) + (double) (dr * d) * (dr * d);
         blockWetEnergy += (double) wl * wl + (double) wr * wr;
     }
 

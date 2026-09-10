@@ -76,7 +76,7 @@ public:
                 delayed[(size_t) c] = a;
                 a = inPhase;
 
-                const float wet = a * cosine - b * sine;
+                const float wet = a * cosine + b * sine;
                 buf[i] = x + m * (wet - x);
             }
         }

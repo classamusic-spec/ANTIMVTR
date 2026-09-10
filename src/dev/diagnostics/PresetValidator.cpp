@@ -1,6 +1,9 @@
 #include "PresetValidator.h"
 
 #include "dsp/SynthEngine.h"
+#include "dsp/fracture/Fragment.h"
+#include "dsp/source/SampleData.h"
+#include "state/ModRouting.h"
 #include "state/StateManager.h"
 
 namespace am::dev
@@ -218,6 +221,28 @@ PresetValidationResult PresetValidator::validateOne (PresetManager& presets, int
     engine.prepare (sr, blockSize);
     engine.reset();
     engine.control().resetTo (patch.params);
+
+    // The patch is more than its parameters: publish the sections the plugin
+    // publishes so the validator judges the preset a player would hear.
+    {
+        auto table = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
+        engine.fractureEngine().publishTable (std::make_unique<FractureTable> (table));
+
+        auto routings = patch.mod.isVoid() ? ModRoutingTable() : ModRoutingTable::fromVar (patch.mod);
+        engine.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (routings));
+
+        // Factory presets only ever reference built-in (generated) samples; a
+        // user file is not loaded here because the validator must not touch disk.
+        int builtIn = 0;
+        if (auto* reference = patch.sample.getDynamicObject())
+        {
+            if (reference->hasProperty ("builtIn"))
+                builtIn = (int) reference->getProperty ("builtIn");
+            else
+                builtIn = juce::jmax (0, BuiltInSamples::indexOf (reference->getProperty ("name").toString()));
+        }
+        engine.publishSample (BuiltInSamples::create (juce::jlimit (0, BuiltInSamples::count() - 1, builtIn)));
+    }
     auto& diag = engine.diagnostics();
     diag.safety.reset();
     diag.profiler.reset();

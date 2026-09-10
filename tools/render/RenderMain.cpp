@@ -37,6 +37,7 @@
 #include "dsp/SynthEngine.h"
 #include "dsp/source/SampleData.h"
 #include "dsp/source/SampleAnalyzer.h"
+#include "dsp/fracture/Fragment.h"
 #include "presets/PresetManager.h"
 #include "state/StateManager.h"
 #include "state/ModRouting.h"
@@ -228,11 +229,13 @@ int main (int argc, char* argv[])
         }
     }
 
-    // Modulation routings (--mod), published exactly the way the plugin does it.
-    ModRoutingTable routings;
+    // Modulation routings: the patch's own table unless --mod overrides it.
+    ModRoutingTable routings = patch.mod.isVoid() ? ModRoutingTable() : ModRoutingTable::fromVar (patch.mod);
+    bool modOverride = false;
     for (int i = 0; i < args.size(); ++i)
     {
         if (args[i].text != "--mod" || i + 1 >= args.size()) continue;
+        if (! modOverride) { routings.clear(); modOverride = true; }
         ModRouting r;
         if (! parseModRouting (args[i + 1].text, r)) { std::cerr << "Bad --mod routing: " << args[i + 1].text << std::endl; return 2; }
         if (routings.add (r) < 0) { std::cerr << "Rejected --mod routing: " << args[i + 1].text << std::endl; return 2; }
@@ -244,9 +247,28 @@ int main (int argc, char* argv[])
     engine.control().resetTo (patch.params);
     engine.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (routings));
 
-    // SAMPLE source data: a built-in ("builtin:N") or any audio file.
+    // The patch's own Fracture table, exactly as the plugin publishes it.
+    {
+        auto table = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
+        engine.fractureEngine().publishTable (std::make_unique<FractureTable> (table));
+    }
+
+    // SAMPLE source data: a built-in ("builtin:N") or any audio file. Without
+    // --sample the patch's own reference decides (factory patches only ever
+    // reference the generated built-ins).
     SampleRef sample;
-    if (hasOption (args, "--sample"))
+    if (! hasOption (args, "--sample"))
+    {
+        if (auto* reference = patch.sample.getDynamicObject())
+        {
+            const int builtIn = reference->hasProperty ("builtIn")
+                                  ? (int) reference->getProperty ("builtIn")
+                                  : juce::jmax (0, BuiltInSamples::indexOf (reference->getProperty ("name").toString()));
+            sample = BuiltInSamples::create (juce::jlimit (0, BuiltInSamples::count() - 1, builtIn));
+            engine.publishSample (sample);
+        }
+    }
+    else
     {
         const auto spec = optionValue (args, "--sample");
         if (spec.startsWithIgnoreCase ("builtin:"))

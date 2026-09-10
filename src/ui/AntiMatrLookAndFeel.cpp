@@ -109,6 +109,9 @@ void AntiMatrLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar&, in
 
 namespace
 {
+    constexpr float kTooltipMaxWidth = 320.0f;
+    constexpr int   kTooltipPadX = 14, kTooltipPadY = 8;
+
     /** First line in the label face, the rest as secondary body copy. */
     juce::TextLayout tooltipLayout (const juce::String& text, float maxWidth)
     {
@@ -128,9 +131,9 @@ namespace
 
 juce::Rectangle<int> AntiMatrLookAndFeel::getTooltipBounds (const juce::String& tipText, juce::Point<int> screenPos, juce::Rectangle<int> parentArea)
 {
-    const auto layout = tooltipLayout (tipText, 320.0f);
-    const int w = juce::roundToInt (layout.getWidth()) + 24;
-    const int h = juce::roundToInt (layout.getHeight()) + 16;
+    const auto layout = tooltipLayout (tipText, kTooltipMaxWidth);
+    const int w = juce::roundToInt (layout.getWidth()) + kTooltipPadX * 2 + 2;
+    const int h = juce::roundToInt (layout.getHeight()) + kTooltipPadY * 2;
     return juce::Rectangle<int> (screenPos.x > parentArea.getCentreX() ? screenPos.x - (w + 12) : screenPos.x + 24,
                                  screenPos.y > parentArea.getCentreY() ? screenPos.y - (h + 6) : screenPos.y + 6, w, h)
                .constrainedWithin (parentArea);
@@ -149,7 +152,7 @@ void AntiMatrLookAndFeel::drawTooltip (juce::Graphics& g, const juce::String& te
     // accent bar
     juce::Path bar; bar.startNewSubPath (b.getX() + 5.0f, b.getY() + 7.0f); bar.lineTo (b.getX() + 5.0f, b.getBottom() - 7.0f);
     draw::glowPath (g, bar, Theme::cyan, 1.5f, 6.0f, 0.6f);
-    tooltipLayout (text, b.getWidth() - 24.0f).draw (g, b.reduced (14.0f, 8.0f).withTrimmedLeft (2.0f));
+    tooltipLayout (text, kTooltipMaxWidth).draw (g, b.reduced ((float) kTooltipPadX, (float) kTooltipPadY).withTrimmedLeft (2.0f));
 }
 
 void AntiMatrLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button, const juce::Colour&, bool highlighted, bool down)

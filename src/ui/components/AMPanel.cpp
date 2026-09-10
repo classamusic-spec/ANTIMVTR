@@ -24,6 +24,7 @@ juce::Rectangle<int> AMPanel::headerBounds() const
 
 juce::Rectangle<int> AMPanel::headerRightBounds() const
 {
+    headerRightBoundsUsed = true;
     auto h = headerBounds();
     return h.removeFromRight (h.getWidth() / 2);
 }
@@ -52,7 +53,8 @@ void AMPanel::paint (juce::Graphics& g)
 
     auto titleArea = h.withHeight (titleH * 1.35f);
     if (compact) titleArea = h;
-    draw::trackedText (g, title, titleArea, juce::Justification::centredLeft, Theme::titleFont (titleH), Theme::textPrimary);
+    const float titleMaxW = (headerRightBoundsUsed ? h.getWidth() * 0.5f : h.getWidth()) - 4.0f;
+    draw::trackedText (g, title, titleArea, juce::Justification::centredLeft, draw::fitFont (Theme::titleFont (titleH), title, titleMaxW, 8.0f), Theme::textPrimary);
 
     if (! compact && subtitle.isNotEmpty() && h.getHeight() > 34.0f)
     {

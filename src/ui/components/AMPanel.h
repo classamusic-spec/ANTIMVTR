@@ -40,6 +40,7 @@ private:
     juce::Colour accent;
     bool showAccentLine = true;
     bool compact = false;
+    mutable bool headerRightBoundsUsed = false;
     float activity = 0.0f;
 };
 

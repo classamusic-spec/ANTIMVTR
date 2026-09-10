@@ -210,7 +210,8 @@ void AMSourceSelector::paint (juce::Graphics& g)
 
         auto labelArea = cell.withTop (circle.getBottom() + 3.0f);
         const float h = juce::jlimit (8.5f, 12.0f, labelH * 0.68f);
-        draw::trackedText (g, labels[(size_t) i], labelArea, juce::Justification::centredTop, on > 0.5f ? Theme::labelFontStrong (h) : Theme::labelFont (h),
+        const auto font = draw::fitFont (on > 0.5f ? Theme::labelFontStrong (h) : Theme::labelFont (h), labels[(size_t) i], cellW - 4.0f);
+        draw::trackedText (g, labels[(size_t) i], labelArea, juce::Justification::centredTop, font,
                            Theme::textSecondary.interpolatedWith (Theme::textPrimary, juce::jmax (on, hv * 0.5f)));
     }
 }

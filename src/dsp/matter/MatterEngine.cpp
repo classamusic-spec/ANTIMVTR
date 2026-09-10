@@ -8,7 +8,7 @@ namespace am
 
 namespace
 {
-    constexpr float kSourceGain  = 0.17f;   ///< sustained excitation into the nodes (before damping normalisation)
+    constexpr float kSourceGain  = 0.24f;   ///< sustained excitation into the nodes (before damping normalisation)
     constexpr float kStrikeGain  = 1.5f;   ///< strike pulse into the nodes
     constexpr float kOutputGain  = 1.0f;
     constexpr float kCouplingMax = 0.004f;  ///< per-sample coupling strength at shape.coupling = 1 (before the stability bound)
@@ -322,7 +322,7 @@ void MatterEngine::process (const float* excL, const float* excR, float* outL, f
         float exc = std::isfinite (nd.excitation) ? std::clamp (nd.excitation, 0.0f, 2.0f) : 0.0f;
         const float dampNorm = std::sqrt (damping) * std::sqrt (std::sqrt (damping));   // damping^0.75
         aIn[i] = active ? exc * kSourceGain * dampNorm : 0.0f;
-        bIn[i] = active ? std::sqrt (exc) * strikeNodeGain : 0.0f;   // the strike is brighter than the sustained drive
+        bIn[i] = active ? exc * strikeNodeGain : 0.0f;
         if (active) rMax = std::max (rMax, r);
     }
     reportSafety (ctx, SafetyEvent::InvalidFrequency, invalidFreq);

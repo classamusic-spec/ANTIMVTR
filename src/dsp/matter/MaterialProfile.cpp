@@ -231,7 +231,7 @@ namespace
 
         {
             auto& m = t[(size_t) MaterialType::Crystal];
-            m.name = "CRYSTAL"; m.ownStructure = FormAnchor::Crystalline; m.structurePull = 0.55f;
+            m.name = "CRYSTAL"; m.ownStructure = FormAnchor::Crystalline; m.structurePull = 0.7f;
             m.t60Scale = 1.7f; m.dampingSlope = 0.12f;
             m.weightSlope = -0.25f; m.weightRipple = 0.1f;
             m.couplingScale = 0.5f; m.bandBWeight = 0.3f;
@@ -242,8 +242,8 @@ namespace
         }
         {
             auto& m = t[(size_t) MaterialType::Metal];
-            m.name = "METAL"; m.ownStructure = FormAnchor::Metallic; m.structurePull = 0.55f;
-            m.t60Scale = 1.3f; m.dampingSlope = 0.3f;
+            m.name = "METAL"; m.ownStructure = FormAnchor::Metallic; m.structurePull = 0.7f;
+            m.t60Scale = 1.6f; m.dampingSlope = 0.2f;
             m.weightSlope = -0.15f; m.weightRipple = 0.25f;
             m.couplingScale = 1.0f; m.bandBWeight = 1.0f;
             m.nonlinearity = 0.6f; m.hardening = 1.0f;
@@ -253,9 +253,9 @@ namespace
         }
         {
             auto& m = t[(size_t) MaterialType::Organic];
-            m.name = "ORGANIC"; m.ownStructure = FormAnchor::Inharmonic; m.structurePull = 0.5f;
+            m.name = "ORGANIC"; m.ownStructure = FormAnchor::Inharmonic; m.structurePull = 0.6f;
             m.stretch = 0.0008f; m.ratioJitter = 0.05f;
-            m.t60Scale = 0.5f; m.dampingSlope = 0.9f;
+            m.t60Scale = 0.7f; m.dampingSlope = 0.7f;
             m.weightSlope = 0.2f; m.weightRipple = 0.4f;
             m.couplingScale = 0.7f; m.bandBWeight = 0.5f;
             m.nonlinearity = 0.4f; m.hardening = -1.0f;
@@ -265,8 +265,8 @@ namespace
         }
         {
             auto& m = t[(size_t) MaterialType::Liquid];
-            m.name = "LIQUID"; m.ownStructure = FormAnchor::Stochastic; m.structurePull = 0.55f;
-            m.t60Scale = 0.55f; m.dampingSlope = 0.8f;
+            m.name = "LIQUID"; m.ownStructure = FormAnchor::Stochastic; m.structurePull = 0.65f;
+            m.t60Scale = 0.7f; m.dampingSlope = 0.7f;
             m.weightSlope = 0.3f; m.weightRipple = 0.3f;
             m.couplingScale = 1.0f; m.bandBWeight = 0.8f;
             m.nonlinearity = 0.5f; m.hardening = -1.0f;
@@ -276,8 +276,8 @@ namespace
         }
         {
             auto& m = t[(size_t) MaterialType::Membrane];
-            m.name = "MEMBRANE"; m.ownStructure = FormAnchor::Membrane; m.structurePull = 0.6f;
-            m.t60Scale = 0.35f; m.dampingSlope = 1.1f;
+            m.name = "MEMBRANE"; m.ownStructure = FormAnchor::Membrane; m.structurePull = 0.7f;
+            m.t60Scale = 0.5f; m.dampingSlope = 1.0f;
             m.weightSlope = 0.1f; m.weightRipple = 0.15f;
             m.couplingScale = 0.8f; m.bandBWeight = 0.4f;
             m.nonlinearity = 0.7f; m.hardening = -1.0f;
@@ -287,7 +287,7 @@ namespace
         }
         {
             auto& m = t[(size_t) MaterialType::String];
-            m.name = "STRING"; m.ownStructure = FormAnchor::Stretched; m.structurePull = 0.65f;
+            m.name = "STRING"; m.ownStructure = FormAnchor::Stretched; m.structurePull = 0.75f;
             m.stretch = 0.0003f;
             m.t60Scale = 1.0f; m.dampingSlope = 0.55f;
             m.weightSlope = 0.0f; m.weightRipple = 0.1f;
@@ -299,7 +299,7 @@ namespace
         }
         {
             auto& m = t[(size_t) MaterialType::Wood];
-            m.name = "WOOD"; m.ownStructure = FormAnchor::Stretched; m.structurePull = 0.55f;
+            m.name = "WOOD"; m.ownStructure = FormAnchor::Stretched; m.structurePull = 0.65f;
             m.stretch = 0.02f; m.ratioJitter = 0.02f;
             m.t60Scale = 0.25f; m.dampingSlope = 1.2f;
             m.weightSlope = 0.4f; m.weightRipple = 0.3f;
@@ -311,7 +311,7 @@ namespace
         }
         {
             auto& m = t[(size_t) MaterialType::Void];
-            m.name = "VOID"; m.ownStructure = FormAnchor::Crystalline; m.structurePull = 0.7f;
+            m.name = "VOID"; m.ownStructure = FormAnchor::Crystalline; m.structurePull = 0.8f;
             m.t60Scale = 2.5f; m.dampingSlope = 0.05f;
             m.weightSlope = 0.2f; m.weightRipple = 0.2f;
             m.couplingScale = 0.6f; m.bandBWeight = 0.5f;

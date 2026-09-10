@@ -80,7 +80,7 @@ void MaterialMorpher::computeTargets (const Input& in, MatterNode* nodes) noexce
     const float t60Base  = 0.05f * pow2 (clamp01 (in.decay) * 8.6f) * P.t60Scale * pow2 ((mass - 0.4f) * 1.0f);
     const float slope    = P.dampingSlope + (mass - 0.4f) * 0.8f - (tension - 0.5f) * 0.4f;
     const float tilt     = P.weightSlope + (mass - 0.4f) * 1.2f - (distr - 0.5f) * 0.8f;
-    const float excTilt  = (1.0f - excite) * 1.0f - P.exciteTilt * 0.4f + (mass - 0.4f) * 0.5f;
+    const float excTilt  = (1.0f - excite) * 3.0f - P.exciteTilt * 0.5f + (mass - 0.4f) * 0.5f;   // EXCITE: 0 = fundamental only, 0.5 = soft mallet, 1 = broadband
     const float nl       = surface * P.nonlinearity;
     const float detune   = surface * P.detune;
     const float pan      = clamp01 (in.stereo) * P.stereoWidth;
@@ -132,7 +132,7 @@ void MaterialMorpher::computeTargets (const Input& in, MatterNode* nodes) noexce
                 float& ph = wobblePhase[(size_t) i];
                 ph += wobbleAdv * wobbleRate[(size_t) i];
                 ph -= std::floor (ph);
-                lr += P.wobble * fastSin01 (ph);
+                lr += P.wobble * fastSin01 (ph) * (i == 0 ? 0.3f : 1.0f);   // the fundamental wobbles less so a sustained source can still drive it
             }
 
             const float lrPos = std::max (0.0f, lr);
@@ -164,7 +164,7 @@ void MaterialMorpher::computeTargets (const Input& in, MatterNode* nodes) noexce
             const float amp = std::min (1.0f, n.energy * n.energy * 156.0f);   // ≈ (A / 0.08)²
             const float pitchable = std::min (1.0f, std::max (0.0f, lr) * 2.0f); // the fundamental stays locked to the source
             f   *= pow2 (P.hardening * nl * 0.12f * amp * pitchable);
-            t60 /= 1.0f + nl * 3.0f * amp;
+            t60 /= 1.0f + nl * 1.5f * amp;
         }
 
         const bool ok = std::isfinite (f) && f >= kMinFrequencyHz && f < fMax && w > 1.0e-4f;

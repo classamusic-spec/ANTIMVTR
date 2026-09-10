@@ -267,7 +267,7 @@ public:
             {
                 Harness h (48000.0, 128);
                 h.set (Param::shapeMaterialA, (float) m); h.set (Param::shapeMaterialB, (float) m);
-                h.set (Param::shapeStrike, 1.0f); h.set (Param::shapeDensity, 0.7f);
+                h.set (Param::shapeStrike, 1.0f); h.set (Param::shapeDensity, 0.7f); h.set (Param::shapeExcite, 0.9f);
                 h.start (48);
                 auto out = h.render (2.0);
                 expect (allFinite (out));
@@ -425,6 +425,41 @@ public:
             expect (std::sqrt (sum / 48000.0) > 0.01, "strike should ring with a silent source");
             expectEquals ((int) engine.diagnostics().safety.count (SafetyEvent::NaN), 0);
             expectEquals ((int) engine.diagnostics().safety.count (SafetyEvent::ResonatorReset), 0);
+        }
+
+        beginTest ("Legato replica (diagnostic)");
+        {
+            auto mono = ParameterRegistry::defaults();
+            mono[(size_t) paramIndex (Param::ampAttack)] = 0.001f;
+            mono[(size_t) paramIndex (Param::ampRelease)] = 0.05f;
+            mono[(size_t) paramIndex (Param::masterMode)] = 2.0f;
+            mono[(size_t) paramIndex (Param::masterGlide)] = 0.2f;
+            SynthEngine engine;
+            engine.prepare (48000.0, 128);
+            engine.control().resetTo (mono);
+            juce::AudioBuffer<float> audio (2, 48000);
+            audio.clear();
+            TransportInfo transport;
+            juce::String trace;
+            for (int pos = 0; pos < 48000; pos += 128)
+            {
+                juce::MidiBuffer midi;
+                if (pos == 0) midi.addEvent (juce::MidiMessage::noteOn (1, 48, 0.8f), 0);
+                if (pos == 128 * 20) midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.8f), 0);
+                if (pos == 128 * 200) midi.addEvent (juce::MidiMessage::noteOff (1, 60), 0);
+                if (pos == 43200) midi.addEvent (juce::MidiMessage::noteOff (1, 48), 0);
+                juce::AudioBuffer<float> chunk (audio.getArrayOfWritePointers(), 2, pos, 128);
+                engine.process (chunk, midi, mono, transport);
+                if (pos % (128 * 10) == 0 && pos <= 128 * 120)
+                {
+                    const int fv = engine.voiceManager().mostRecentVoice();
+                    const auto& m = engine.voiceManager().voice (fv).matter();
+                    trace += juce::String (pos / 128) + ":" + juce::String (engine.voiceManager().voice (fv).noteState().frequency, 1) + "/" + juce::String (m.renderedFrequency (0), 1) + "/" + juce::String (m.node (0).energy, 3) + " ";
+                }
+            }
+            auto zc = [&] (int a, int b) { int c = 0; for (int i = a + 1; i < b; ++i) if ((audio.getSample (0, i - 1) < 0.0f) != (audio.getSample (0, i) < 0.0f)) ++c; return c; };
+            logMessage ("legato replica crossings: early " + juce::String (zc (128 * 20, 128 * 20 + 2400)) + " late " + juce::String (zc (128 * 90, 128 * 90 + 2400)) + " back " + juce::String (zc (128 * 300, 128 * 300 + 2400)));
+            logMessage ("block:noteHz/node0Hz/energy " + trace);
         }
 
         beginTest ("Benchmark: 16 voices x 64 nodes, 48 kHz / 128 samples (informational)");

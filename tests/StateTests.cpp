@@ -1,6 +1,7 @@
 #include <juce_core/juce_core.h>
 #include "state/StateManager.h"
 #include "presets/PresetManager.h"
+#include "state/PatchMorph.h"
 
 using namespace am;
 
@@ -104,6 +105,46 @@ public:
             }
             expect (pm.findFactory ("void bloom") >= 0);
             expect (pm.findFactory ("nope") < 0);
+        }
+
+        beginTest ("A/B morph: ends are exact, floats move perceptually, choices snap, everything stays in range");
+        {
+            PatchState a = PresetManager::initPatch(), b = PresetManager::initPatch();
+            a.meta.name = "Alpha"; b.meta.name = "Beta";
+            auto& ra = a.params; auto& rb = b.params;
+            ra[(size_t) paramIndex (Param::shapeDecay)] = 0.2f;   rb[(size_t) paramIndex (Param::shapeDecay)] = 0.8f;
+            ra[(size_t) paramIndex (Param::ampRelease)] = 0.05f;  rb[(size_t) paramIndex (Param::ampRelease)] = 5.0f;
+            ra[(size_t) paramIndex (Param::shapeMaterialA)] = 0;  rb[(size_t) paramIndex (Param::shapeMaterialA)] = 5;
+            ra[(size_t) paramIndex (Param::waveOctave)] = -2;     rb[(size_t) paramIndex (Param::waveOctave)] = 2;
+            ra[(size_t) paramIndex (Param::evolveFreeze)] = 0;    rb[(size_t) paramIndex (Param::evolveFreeze)] = 1;
+
+            expect (PatchMorph::interpolate (ra, rb, 0.0f) == ra, "t = 0 must be A exactly");
+            expect (PatchMorph::interpolate (ra, rb, 1.0f) == rb, "t = 1 must be B exactly");
+
+            const auto mid = PatchMorph::interpolate (ra, rb, 0.5f);
+            expectWithinAbsoluteError (mid[(size_t) paramIndex (Param::shapeDecay)], 0.5f, 1.0e-5f);
+            const float rel = mid[(size_t) paramIndex (Param::ampRelease)];
+            expect (rel > 0.05f && rel < 5.0f, "release must sit between the ends");
+            expect (rel < 2.525f, "release must morph on the perceptual (skewed) curve, not linearly");
+            expectEquals ((int) mid[(size_t) paramIndex (Param::shapeMaterialA)], 5, "choices snap to B at 0.5");
+            expectEquals ((int) PatchMorph::interpolate (ra, rb, 0.49f)[(size_t) paramIndex (Param::shapeMaterialA)], 0, "choices stay A below 0.5");
+            expectEquals ((int) mid[(size_t) paramIndex (Param::waveOctave)], 0, "integers round");
+            expectEquals ((int) PatchMorph::interpolate (ra, rb, 0.3f)[(size_t) paramIndex (Param::evolveFreeze)], 0);
+
+            for (float t : { -1.0f, 0.0f, 0.25f, 0.5f, 0.75f, 1.0f, 2.0f, std::numeric_limits<float>::quiet_NaN() })
+            {
+                const auto m = PatchMorph::interpolate (ra, rb, t);
+                for (const auto& d : ParameterRegistry::all())
+                {
+                    const float v = m[(size_t) paramIndex (d.param)];
+                    expect (std::isfinite (v) && v >= d.min && v <= d.max, juce::String (d.id) + " out of range at t = " + juce::String (t));
+                }
+            }
+
+            const auto patch = PatchMorph::interpolate (a, b, 0.25f);
+            expect (patch.meta.name.contains ("Alpha") && patch.meta.name.contains ("Beta") && patch.meta.name.contains ("25%"));
+            expectEquals (PatchMorph::interpolate (a, b, 0.0f).meta.name, juce::String ("Alpha"));
+            expectEquals (PatchMorph::interpolate (a, b, 1.0f).meta.name, juce::String ("Beta"));
         }
     }
 };

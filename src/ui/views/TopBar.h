@@ -47,10 +47,12 @@ private:
 };
 
 /** Bottom navigation: pages, A/B, output level, brand caption. */
-class NavBar : public juce::Component
+class NavBar : public juce::Component,
+               private juce::ChangeListener
 {
 public:
     explicit NavBar (AntiMatrProcessor& p, bool showLab);
+    ~NavBar() override;
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -66,12 +68,14 @@ private:
     AntiMatrProcessor& processor;
     std::vector<std::unique_ptr<AMTab>> tabs;
     AMSegment ab { { "A", "B" }, Theme::cyan };
+    AMSlider morph { "Morph", Theme::cyan };                     ///< continuous A ↔ B morph
     AMSlider output { "Output", Theme::ivory };
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputAttachment;
     AMIconButton abCopy { Icon::Swirl, Theme::textSecondary };   ///< copies the current A/B slot to the other one
     int captionWidth = 180;
     int page = 0;
     bool lab = false;
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;
 };
 
 } // namespace am::ui

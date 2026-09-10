@@ -85,6 +85,10 @@ public:
     void selectABSlot (int slot);
     void copyABToOther();
 
+    /** A/B morph: 0 = slot A, 1 = slot B; the interpolated patch becomes the live state (message thread). */
+    void  morphAB (float t);
+    float currentABMorph() const noexcept { return abMorph; }
+
     /** Diagnostics-friendly parameter snapshot (message thread). */
     ParamValues currentParamValues() const;
 
@@ -123,6 +127,8 @@ private:
 
     int abSlot = 0;
     PatchState abStates[2];
+    float abMorph = 0.0f;      ///< 0 = A, 1 = B
+    bool  abMorphing = false;  ///< the live patch is a morph result, not an edited slot
 
     int reportedLatency = 0;
     PatchState extraState;   ///< non-parameter sections kept for round-tripping

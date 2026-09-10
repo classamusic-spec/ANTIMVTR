@@ -1,4 +1,5 @@
 #include "AntiMatrProcessor.h"
+#include "state/PatchMorph.h"
 #include "AntiMatrEditor.h"
 #include "state/StateManager.h"
 
@@ -248,7 +249,11 @@ void AntiMatrProcessor::loadPatch (const PatchState& patch, bool notifyPresetCha
     diagnostics().events.push (EngineEventType::PresetLoaded, Subsystem::State, -1, (uint32_t) std::max (0, currentPreset), 0.0f,
                                diagnostics().sampleClock.load());
     if (notifyPresetChange)
+    {
+        abMorphing = false;
+        abMorph = (float) abSlot;
         sendChangeMessage();
+    }
 }
 
 void AntiMatrProcessor::loadFactoryPreset (int index)
@@ -295,14 +300,51 @@ void AntiMatrProcessor::selectABSlot (int slot)
 {
     slot = juce::jlimit (0, 1, slot);
     if (slot == abSlot) return;
-    abStates[abSlot] = currentPatch();
+    if (! abMorphing)                       // a morph result is not an edit of the slot it started from
+        abStates[abSlot] = currentPatch();
     abSlot = slot;
+    abMorph = (float) abSlot;
+    abMorphing = false;
     loadPatch (abStates[abSlot]);
 }
 
 void AntiMatrProcessor::copyABToOther()
 {
     abStates[1 - abSlot] = currentPatch();
+    abMorphing = false;
+    abMorph = (float) abSlot;
+}
+
+void AntiMatrProcessor::morphAB (float t)
+{
+    t = std::isfinite (t) ? juce::jlimit (0.0f, 1.0f, t) : 0.0f;
+    if (! abMorphing)
+        abStates[abSlot] = currentPatch();  // keep the edits made in this slot before the morph started
+    abMorphing = true;
+    abMorph = t;
+
+    PatchState m = PatchMorph::interpolate (abStates[0], abStates[1], t);
+
+    // The Fracture table is plain floats: blend it element-wise, masks from the nearer slot.
+    const auto ta = abStates[0].fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (abStates[0].fracture);
+    const auto tb = abStates[1].fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (abStates[1].fracture);
+    FractureTable tm = t < 0.5f ? ta : tb;
+    auto mix = [t] (float a, float b) { return a + (b - a) * t; };
+    for (int f = 0; f < kMaxFractureFragments; ++f)
+    {
+        auto& d = tm.fragments[(size_t) f]; const auto& a = ta.fragments[(size_t) f]; const auto& b = tb.fragments[(size_t) f];
+        d.pitch = mix (a.pitch, b.pitch); d.delay = mix (a.delay, b.delay); d.pan = mix (a.pan, b.pan); d.decay = mix (a.decay, b.decay);
+        d.probability = mix (a.probability, b.probability); d.feedback = mix (a.feedback, b.feedback); d.spread = mix (a.spread, b.spread); d.gain = mix (a.gain, b.gain);
+    }
+    for (int i = 0; i < kMaxSequencerSteps; ++i)
+    {
+        auto& d = tm.steps[(size_t) i]; const auto& a = ta.steps[(size_t) i]; const auto& b = tb.steps[(size_t) i];
+        d.gate = mix (a.gate, b.gate); d.pitch = mix (a.pitch, b.pitch); d.pan = mix (a.pan, b.pan); d.gain = mix (a.gain, b.gain);
+        d.probability = mix (a.probability, b.probability); d.evolve = mix (a.evolve, b.evolve); d.shape = mix (a.shape, b.shape);
+    }
+    m.fracture = tm.toVar();
+    loadPatch (m, false);
+    sendChangeMessage();
 }
 
 //==============================================================================

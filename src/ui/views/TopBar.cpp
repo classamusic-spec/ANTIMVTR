@@ -230,7 +230,16 @@ NavBar::NavBar (AntiMatrProcessor& p, bool showLab) : processor (p), lab (showLa
     }
     addAndMakeVisible (ab);
     ab.setSelected (processor.currentABSlot(), juce::dontSendNotification);
-    ab.onChange = [this] (int i) { processor.selectABSlot (i); if (onABChange) onABChange (i); };
+    ab.onChange = [this] (int i) { processor.selectABSlot (i); morph.setValue (i, juce::dontSendNotification); if (onABChange) onABChange (i); };
+    morph.setRange (0.0, 1.0, 0.0);
+    morph.setValue (processor.currentABMorph(), juce::dontSendNotification);
+    morph.setShowLabel (false);
+    morph.setShowValue (false);
+    morph.setTooltip ("Morph between the A and B slots");
+    morph.setDoubleClickReturnValue (true, (double) processor.currentABSlot());
+    morph.onValueChange = [this] { processor.morphAB ((float) morph.getValue()); };
+    addAndMakeVisible (morph);
+    processor.addChangeListener (this);
     abCopy.setTooltip ("Copy this slot to the other A/B slot");
     abCopy.onClick = [this] { processor.copyABToOther(); };
     addAndMakeVisible (abCopy);
@@ -242,6 +251,18 @@ NavBar::NavBar (AntiMatrProcessor& p, bool showLab) : processor (p), lab (showLa
     output.setDoubleClickReturnValue (true, ParameterRegistry::get (Param::masterGain).defaultValue);
     addAndMakeVisible (output);
     setPage (0);
+}
+
+NavBar::~NavBar()
+{
+    processor.removeChangeListener (this);
+}
+
+void NavBar::changeListenerCallback (juce::ChangeBroadcaster*)
+{
+    ab.setSelected (processor.currentABSlot(), juce::dontSendNotification);
+    if (! morph.isMouseButtonDown())
+        morph.setValue (processor.currentABMorph(), juce::dontSendNotification);
 }
 
 void NavBar::setPage (int index)
@@ -264,6 +285,8 @@ void NavBar::resized()
     row.removeFromRight (captionWidth + pad / 2);   // brand caption
     const int abW = juce::jlimit (60, 84, row.getWidth() / 4);
     ab.setBounds (row.removeFromLeft (abW));
+    row.removeFromLeft (pad / 2);
+    morph.setBounds (row.removeFromLeft (abW).reduced (2, 0));
     row.removeFromLeft (pad / 2);
     abCopy.setBounds (row.removeFromLeft (rowH));
     output.setBounds (row.reduced (2, 0));

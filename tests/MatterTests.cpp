@@ -108,6 +108,16 @@ namespace
         std::vector<float> mags; double binHz;
         double centroid() const { double n = 0, d = 0; for (size_t k = 1; k < mags.size(); ++k) { n += mags[k] * (double) k * binHz; d += mags[k]; } return d > 0 ? n / d : 0; }
         double flatness() const { double lg = 0, mean = 0; size_t c = 0; for (size_t k = 1; k < mags.size(); ++k) { lg += std::log (mags[k] + 1e-12); mean += mags[k]; ++c; } return std::exp (lg / c) / (mean / c + 1e-12); }
+        /** Frequencies of the spectral peaks above `relativeDb` (relative to the strongest bin), ascending. */
+        std::vector<double> peakFrequencies (double relativeDb) const
+        {
+            float mx = 0.0f; for (float m : mags) mx = std::max (mx, m);
+            const float th = mx * (float) std::pow (10.0, relativeDb / 20.0);
+            std::vector<double> out;
+            for (size_t k = 2; k + 2 < mags.size(); ++k)
+                if (mags[k] > th && mags[k] > mags[k - 1] && mags[k] > mags[k + 1]) out.push_back ((double) k * binHz);
+            return out;
+        }
         int peaks (double relativeDb) const
         {
             float mx = 0.0f; for (float m : mags) mx = std::max (mx, m);
@@ -261,7 +271,8 @@ public:
 
         beginTest ("Materials differ (CRYSTAL / METAL / MEMBRANE / ORGANIC / STRING / LIQUID)");
         {
-            struct Stat { double centroid, flatness; int peaks; double t60; };
+            struct Stat { double centroid, flatness; int peaks; double t60; std::vector<double> ratios; };
+            const double f0 = midiNoteToHz (48);
             std::vector<Stat> stats;
             for (int m : { 0, 1, 4, 2, 5, 3 })
             {
@@ -272,7 +283,9 @@ public:
                 auto out = h.render (2.0);
                 expect (allFinite (out));
                 auto s = spectrumOf (out, 48000.0, 0);
-                stats.push_back ({ s.centroid(), s.flatness(), s.peaks (-40.0), measureT60 (out, 48000.0, 240) });
+                std::vector<double> ratios;
+                for (double f : s.peakFrequencies (-40.0)) if (f > f0 * 1.25 && ratios.size() < 6) ratios.push_back (std::log2 (f / f0));
+                stats.push_back ({ s.centroid(), s.flatness(), s.peaks (-40.0), measureT60 (out, 48000.0, 240), ratios });
                 logMessage (juce::String (materialName ((MaterialType) m)) + ": centroid " + juce::String (s.centroid(), 0) + " Hz, flatness "
                             + juce::String (s.flatness(), 4) + ", peaks " + juce::String (s.peaks (-40.0)) + ", T60 " + juce::String (stats.back().t60, 2));
             }
@@ -280,9 +293,14 @@ public:
             for (size_t i = 0; i < stats.size(); ++i)
                 for (size_t j = i + 1; j < stats.size(); ++j)
                 {
+                    // Modal structure distance: mean |Δ log2 ratio| of the first partials above the fundamental.
+                    double structure = 0.0; size_t common = std::min (stats[i].ratios.size(), stats[j].ratios.size());
+                    for (size_t k = 0; k < common; ++k) structure += std::abs (stats[i].ratios[k] - stats[j].ratios[k]);
+                    structure = common >= 3 ? structure / (double) common : 0.0;
                     const bool differs = std::abs (stats[i].centroid - stats[j].centroid) > 0.15 * std::max (stats[i].centroid, stats[j].centroid)
                                       || std::abs (stats[i].t60 - stats[j].t60) > 0.3 * std::max (stats[i].t60, stats[j].t60)
-                                      || std::abs (stats[i].peaks - stats[j].peaks) > 3;
+                                      || std::abs (stats[i].peaks - stats[j].peaks) > 3
+                                      || structure > 0.06;
                     if (differs) ++distinct;
                 }
             expectEquals (distinct, 15, "every pair of materials should differ in centroid, ring time or partial count");

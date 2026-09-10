@@ -11,7 +11,7 @@ namespace
     constexpr float kSourceGain  = 0.24f;   ///< sustained excitation into the nodes (before damping normalisation)
     constexpr float kStrikeGain  = 1.5f;   ///< strike pulse into the nodes
     constexpr float kOutputGain  = 1.0f;
-    constexpr float kCouplingMax = 0.004f;  ///< per-sample coupling strength at shape.coupling = 1 (before the stability bound)
+    constexpr float kCouplingMax = 0.0025f; ///< per-sample coupling strength at shape.coupling = 1 (before the stability bound)
     constexpr float kGlideMs     = 12.0f;
     constexpr float kRunawayLimit = 1.0e4f;
 }
@@ -115,7 +115,7 @@ void MatterEngine::buildStrike (const NoteState& note, const ShapeValues& v) noe
     const float amp = v.strike * (0.25f + 0.75f * std::pow (vel, 1.3f));
 
     // Contact time: material, MASS (heavier = softer) and velocity (harder hits are shorter).
-    const float contactMs = P.strikeContact * std::exp2 ((v.mass - 0.4f) * 2.5f) * (1.3f - 0.6f * vel);
+    const float contactMs = P.strikeContact * std::exp2 ((v.mass - 0.4f) * 1.5f) * (1.3f - 0.6f * vel);
     const int   L = std::clamp ((int) std::lround ((double) contactMs * 0.001 * sr), 4, 1024);
     const float pulseScale = amp * 2.0f / (float) L;              // pulse sums to `amp`
     const float noisePeak  = pulseScale * P.strikeNoise * 0.7f;
@@ -189,8 +189,8 @@ void MatterEngine::conditionExcitation (const float* excL, const float* excR, in
     const float hpMix   = tilt > 0.0f ? 0.8f * tilt : 0.0f;
 
     // SURFACE: wavefold of the excitation and interaction with the object's own motion.
-    const float foldMix   = surface * 0.5f;
-    const float foldDrive = 0.25f * (1.0f + 2.5f * surface);   // phase units for fastSin01 (¼ = 90°)
+    const float foldMix   = surface * 0.35f;
+    const float foldDrive = 0.25f * (1.0f + 1.2f * surface);   // phase units for fastSin01 (¼ = 90°): one fold at SURFACE 1
     const float interact  = surface * 0.8f;
     const float grain     = surface * P.grain * 0.06f;
 

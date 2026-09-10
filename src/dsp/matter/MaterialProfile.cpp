@@ -237,7 +237,7 @@ namespace
             m.couplingScale = 0.5f; m.bandBWeight = 0.3f;
             m.nonlinearity = 0.15f; m.hardening = 1.0f;
             m.stereoWidth = 1.0f; m.stereoPattern = StereoPattern::Random;
-            m.exciteTilt = 0.45f; m.strikeContact = 0.22f; m.strikeNoise = 0.12f; m.bodyWeight = 0.05f;
+            m.exciteTilt = 0.45f; m.strikeContact = 0.15f; m.strikeNoise = 0.12f; m.bodyWeight = 0.05f;
             m.wobble = 0.0f; m.detune = 0.004f; m.grain = 0.1f;
         }
         {
@@ -248,19 +248,19 @@ namespace
             m.couplingScale = 1.0f; m.bandBWeight = 1.0f;
             m.nonlinearity = 0.6f; m.hardening = 1.0f;
             m.stereoWidth = 1.0f; m.stereoPattern = StereoPattern::Random;
-            m.exciteTilt = 0.5f; m.strikeContact = 0.3f; m.strikeNoise = 0.35f; m.bodyWeight = 0.2f;
+            m.exciteTilt = 0.5f; m.strikeContact = 0.2f; m.strikeNoise = 0.35f; m.bodyWeight = 0.2f;
             m.wobble = 0.0f; m.detune = 0.012f; m.grain = 0.2f;
         }
         {
             auto& m = t[(size_t) MaterialType::Organic];
             m.name = "ORGANIC"; m.ownStructure = FormAnchor::Inharmonic; m.structurePull = 0.6f;
             m.stretch = 0.0008f; m.ratioJitter = 0.05f;
-            m.t60Scale = 0.7f; m.dampingSlope = 0.7f;
-            m.weightSlope = 0.2f; m.weightRipple = 0.4f;
+            m.t60Scale = 0.8f; m.dampingSlope = 0.7f;
+            m.weightSlope = 0.1f; m.weightRipple = 0.4f;
             m.couplingScale = 0.7f; m.bandBWeight = 0.5f;
             m.nonlinearity = 0.4f; m.hardening = -1.0f;
             m.stereoWidth = 0.6f; m.stereoPattern = StereoPattern::Random;
-            m.exciteTilt = -0.3f; m.strikeContact = 1.4f; m.strikeNoise = 0.6f; m.bodyWeight = 0.35f;
+            m.exciteTilt = -0.3f; m.strikeContact = 0.9f; m.strikeNoise = 0.6f; m.bodyWeight = 0.35f;
             m.wobble = 0.006f; m.wobbleRate = 0.7f; m.detune = 0.02f; m.grain = 0.6f;
         }
         {
@@ -271,18 +271,18 @@ namespace
             m.couplingScale = 1.0f; m.bandBWeight = 0.8f;
             m.nonlinearity = 0.5f; m.hardening = -1.0f;
             m.stereoWidth = 0.9f; m.stereoPattern = StereoPattern::Random;
-            m.exciteTilt = -0.6f; m.strikeContact = 3.5f; m.strikeNoise = 0.7f; m.bodyWeight = 0.5f;
+            m.exciteTilt = -0.6f; m.strikeContact = 2.0f; m.strikeNoise = 0.7f; m.bodyWeight = 0.5f;
             m.wobble = 0.03f; m.wobbleRate = 1.6f; m.detune = 0.025f; m.grain = 0.8f;
         }
         {
             auto& m = t[(size_t) MaterialType::Membrane];
             m.name = "MEMBRANE"; m.ownStructure = FormAnchor::Membrane; m.structurePull = 0.7f;
-            m.t60Scale = 0.5f; m.dampingSlope = 1.0f;
-            m.weightSlope = 0.1f; m.weightRipple = 0.15f;
+            m.t60Scale = 0.6f; m.dampingSlope = 1.0f;
+            m.weightSlope = 0.05f; m.weightRipple = 0.15f;
             m.couplingScale = 0.8f; m.bandBWeight = 0.4f;
             m.nonlinearity = 0.7f; m.hardening = -1.0f;
             m.stereoWidth = 0.8f; m.stereoPattern = StereoPattern::Alternate;
-            m.exciteTilt = -0.4f; m.strikeContact = 1.8f; m.strikeNoise = 0.55f; m.bodyWeight = 0.6f;
+            m.exciteTilt = -0.4f; m.strikeContact = 1.0f; m.strikeNoise = 0.55f; m.bodyWeight = 0.6f;
             m.wobble = 0.0f; m.detune = 0.01f; m.grain = 0.4f;
         }
         {
@@ -294,7 +294,7 @@ namespace
             m.couplingScale = 0.4f; m.bandBWeight = 0.2f;
             m.nonlinearity = 0.3f; m.hardening = 1.0f;
             m.stereoWidth = 0.3f; m.stereoPattern = StereoPattern::Narrow;
-            m.exciteTilt = 0.0f; m.strikeContact = 0.55f; m.strikeNoise = 0.3f; m.bodyWeight = 0.15f;
+            m.exciteTilt = 0.0f; m.strikeContact = 0.4f; m.strikeNoise = 0.3f; m.bodyWeight = 0.15f;
             m.wobble = 0.0f; m.detune = 0.006f; m.grain = 0.3f;
         }
         {
@@ -306,7 +306,7 @@ namespace
             m.couplingScale = 0.5f; m.bandBWeight = 0.3f;
             m.nonlinearity = 0.3f; m.hardening = -1.0f;
             m.stereoWidth = 0.5f; m.stereoPattern = StereoPattern::Alternate;
-            m.exciteTilt = -0.2f; m.strikeContact = 0.9f; m.strikeNoise = 0.45f; m.bodyWeight = 0.4f;
+            m.exciteTilt = -0.2f; m.strikeContact = 0.6f; m.strikeNoise = 0.45f; m.bodyWeight = 0.4f;
             m.wobble = 0.0f; m.detune = 0.012f; m.grain = 0.4f;
         }
         {
@@ -317,7 +317,7 @@ namespace
             m.couplingScale = 0.6f; m.bandBWeight = 0.5f;
             m.nonlinearity = 0.2f; m.hardening = -1.0f;
             m.stereoWidth = 1.0f; m.stereoPattern = StereoPattern::Random;
-            m.exciteTilt = -0.5f; m.strikeContact = 5.0f; m.strikeNoise = 0.3f; m.bodyWeight = 0.8f;
+            m.exciteTilt = -0.5f; m.strikeContact = 3.0f; m.strikeNoise = 0.3f; m.bodyWeight = 0.8f;
             m.wobble = 0.01f; m.wobbleRate = 0.2f; m.detune = 0.02f; m.grain = 0.5f;
         }
         {
@@ -327,7 +327,7 @@ namespace
             m.couplingScale = 0.6f; m.bandBWeight = 0.4f;
             m.nonlinearity = 0.3f; m.hardening = 0.0f;
             m.stereoWidth = 0.6f; m.stereoPattern = StereoPattern::Random;
-            m.exciteTilt = 0.0f; m.strikeContact = 0.8f; m.strikeNoise = 0.3f; m.bodyWeight = 0.2f;
+            m.exciteTilt = 0.0f; m.strikeContact = 0.6f; m.strikeNoise = 0.3f; m.bodyWeight = 0.2f;
             m.detune = 0.01f; m.grain = 0.3f;
         }
         return t;

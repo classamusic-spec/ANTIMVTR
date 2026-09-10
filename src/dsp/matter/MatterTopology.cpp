@@ -32,7 +32,9 @@ void MatterTopology::build (TopologyType type, uint32_t seed, int nodeCount, int
     }
 
     Rng rng (hashSeed (seed, 0x70B0106Fu + (uint32_t) type));
-    auto taper = [this] (int i) { return 1.0f / (1.0f + 0.015f * (float) i); };   // upper nodes couple a little less
+    // Upper nodes couple a little less; edges touching the fundamental are weak so a sustained
+    // source can still lock to it (the hub of a STAR is exempt: coupling to the fundamental is its point).
+    auto taper = [] (int i) { return (i == 0 ? 0.25f : 1.0f) / (1.0f + 0.015f * (float) i); };
     const float wB = clamp01 (bandBWeight);
 
     switch (type)
@@ -45,7 +47,7 @@ void MatterTopology::build (TopologyType type, uint32_t seed, int nodeCount, int
         case TopologyType::Ring:
             sA = 1;
             for (int i = 0; i + 1 < count; ++i) kA[(size_t) i] = taper (i);
-            extras[(size_t) numExtra++] = { count - 1, 0, 0.8f };
+            extras[(size_t) numExtra++] = { count - 1, 0, 0.25f };
             break;
 
         case TopologyType::Clusters:

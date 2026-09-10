@@ -21,17 +21,18 @@ namespace am::ui
 */
 struct Theme
 {
-    // Surfaces
-    static inline const juce::Colour background   { 0xff07070b };
-    static inline const juce::Colour backgroundTop { 0xff0b0b11 };
-    static inline const juce::Colour panel        { 0xff0e0e14 };
-    static inline const juce::Colour panelTop     { 0xff12121a };
-    static inline const juce::Colour panelInset   { 0xff0a0a0f };
-    static inline const juce::Colour panelEdge    { 0xff050508 };   // dark line outside panels (depth)
+    // Surfaces — a warm near-black chassis carrying cooler grey-blue slabs.
+    static inline const juce::Colour background   { 0xff080807 };   // chassis, warm charcoal
+    static inline const juce::Colour backgroundTop { 0xff131211 };
+    static inline const juce::Colour panel        { 0xff11141c };   // bottom of a raised slab
+    static inline const juce::Colour panelTop     { 0xff1d222d };   // top of a raised slab (lit)
+    static inline const juce::Colour panelInset   { 0xff07080b };   // recessed screens
+    static inline const juce::Colour panelEdge    { 0xff030304 };   // dark line outside panels (depth)
     static inline const juce::Colour border       { 0x14ffffff };   // ~8% white hairline
     static inline const juce::Colour borderSoft   { 0x0affffff };
     static inline const juce::Colour glass        { 0x08ffffff };
     static inline const juce::Colour glassStrong  { 0x14ffffff };
+    static inline const juce::Colour metal        { 0xff5a5f6b };   // screw heads, chrome rims
 
     // Text
     static inline const juce::Colour textPrimary   { 0xffeaeaf2 };
@@ -39,16 +40,17 @@ struct Theme
     static inline const juce::Colour textDim       { 0xff55556a };
     static inline const juce::Colour textValue     { 0xffc9c9d6 };
 
-    // Luminous accents
+    // Luminous accents — one pair per section (SPEC section 9).
     static inline const juce::Colour blue    { 0xff4f8dff };
     static inline const juce::Colour cyan    { 0xff67e6ff };
     static inline const juce::Colour violet  { 0xff8f63ff };
+    static inline const juce::Colour indigo  { 0xff5a5ce8 };
     static inline const juce::Colour magenta { 0xffe455cf };
     static inline const juce::Colour ivory   { 0xfff1e7d3 };
     static inline const juce::Colour amber   { 0xffffb46b };
 
-    static inline const juce::Colour knobBase  { 0xff15151d };
-    static inline const juce::Colour knobTrack { 0xff232330 };
+    static inline const juce::Colour knobBase  { 0xff191d26 };
+    static inline const juce::Colour knobTrack { 0xff0b0d13 };
 
     /** Accent for a section, used to colour knobs and glows consistently. */
     enum class Section { Source, Shape, Evolve, Fracture, Space, Mod, Neutral };
@@ -66,6 +68,26 @@ struct Theme
             default:                return textSecondary;
         }
     }
+
+    /** The second colour of a section's accent pair (SPEC section 9). */
+    static juce::Colour accentPartner (juce::Colour c) noexcept
+    {
+        const auto argb = c.getARGB();
+        if (argb == blue.getARGB())    return cyan;
+        if (argb == cyan.getARGB())    return violet;
+        if (argb == violet.getARGB())  return indigo;
+        if (argb == indigo.getARGB())  return violet;
+        if (argb == magenta.getARGB()) return violet;
+        if (argb == ivory.getARGB())   return blue;
+        if (argb == amber.getARGB())   return magenta;
+        // Anything else pairs with a brighter, slightly rotated version of itself.
+        return c.withRotatedHue (0.055f).brighter (0.22f);
+    }
+
+    /** Both halves of a section's accent pair, in sweep order. */
+    static std::pair<juce::Colour, juce::Colour> accentPair (juce::Colour c) noexcept { return { c, accentPartner (c) }; }
+
+    static std::pair<juce::Colour, juce::Colour> accentPair (Section s) noexcept { return accentPair (accentFor (s)); }
 
     //==========================================================================
     /** The embedded typefaces (each may be nullptr in a build without assets). */
@@ -97,8 +119,8 @@ struct Theme
 
     /** Wordmark / hero text in the display face (Michroma). */
     static juce::Font displayFont (float height, float tracking = 0.18f) { return make (typefaces().display, height * 0.94f, tracking); }
-    /** Wide-tracked uppercase title (panel headers). */
-    static juce::Font titleFont (float height)   { return make (typefaces().display, height * 0.9f, 0.16f); }
+    /** Wide-tracked uppercase title (panel headers). One family, four sizes (SPEC section 8). */
+    static juce::Font titleFont (float height)   { return make (typefaces().labelSemiBold, height, 0.30f, true); }
     /** Small tracked label under knobs / tabs (Be Vietnam Pro Medium). */
     static juce::Font labelFont (float height)   { return make (typefaces().labelMedium, height, 0.14f); }
     /** Stronger tracked label (buttons, selected states). */

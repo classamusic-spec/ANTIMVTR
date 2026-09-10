@@ -40,23 +40,29 @@ juce::Rectangle<int> AMPanel::contentBounds() const
 
 void AMPanel::paint (juce::Graphics& g)
 {
-    const auto b = getLocalBounds().toFloat();
+    const auto b = getLocalBounds().toFloat().reduced (1.5f);
     const float corner = juce::jlimit (6.0f, Theme::kPanelRadius, b.getWidth() * 0.03f);
+    const float small = juce::jmin (b.getWidth(), b.getHeight());
 
     if (activity > 0.02f)
         draw::glowRoundedRect (g, b, corner, accent, 16.0f, activity * 0.35f);
 
-    draw::panelSurface (g, b, corner);
+    draw::raisedSlab (g, b, corner);
+
+    // Four screws bolt the slab to the chassis, one inset from each corner.
+    const float inset = juce::jlimit (6.0f, 13.0f, small * 0.024f);
+    draw::rivets (g, b, inset, juce::jlimit (2.0f, 4.0f, small * 0.0085f));
 
     const auto h = headerBounds().toFloat();
     const float titleH = compact ? juce::jlimit (10.0f, 14.0f, h.getHeight() * 0.5f)
-                                 : juce::jlimit (11.0f, 18.0f, h.getHeight() * 0.38f);
+                                 : juce::jlimit (11.0f, 17.0f, h.getHeight() * 0.36f);
     const float subH   = juce::jlimit (7.5f, 10.0f, h.getHeight() * 0.2f);
 
-    auto titleArea = h.withHeight (titleH * 1.35f);
+    auto titleArea = h.withHeight (titleH * 1.45f);
     if (compact) titleArea = h;
     const float titleMaxW = (headerRightBoundsUsed ? h.getWidth() * 0.5f : h.getWidth()) - 4.0f;
-    draw::trackedText (g, title, titleArea, juce::Justification::centredLeft, draw::fitFont (Theme::titleFont (titleH), title, titleMaxW, 8.0f), Theme::textPrimary);
+    draw::trackedText (g, title, titleArea, juce::Justification::centredLeft,
+                       draw::fitFont (Theme::titleFont (titleH), title, titleMaxW, 8.0f), Theme::textPrimary);
 
     if (! compact && subtitle.isNotEmpty() && h.getHeight() > titleH * 1.35f + subH * 1.2f)
     {
@@ -68,10 +74,21 @@ void AMPanel::paint (juce::Graphics& g)
     {
         const float lineY = h.getBottom() + (compact ? 1.0f : 3.0f);
         const float lineW = juce::jmin (h.getWidth() * 0.26f, compact ? 40.0f : 84.0f);
+        const auto pair = Theme::accentPair (accent);
+
+        // The underline is cut into the slab, then lit in the section colours.
+        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.drawLine (h.getX(), lineY + 1.2f, h.getRight(), lineY + 1.2f, 1.0f);
+
         juce::Path line;
         line.startNewSubPath (h.getX(), lineY);
         line.lineTo (h.getX() + lineW, lineY);
-        draw::glowPath (g, line, accent, 1.2f, 7.0f, 0.45f + 0.55f * activity);
+        {
+            juce::ColourGradient grad (pair.first, h.getX(), lineY, pair.second, h.getX() + lineW, lineY, false);
+            g.setGradientFill (grad);
+            g.strokePath (line, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+        draw::glowPath (g, line, pair.second, 1.0f, 7.0f, (0.35f + 0.55f * activity) * 0.9f);
 
         g.setColour (Theme::borderSoft);
         g.drawLine (h.getX() + lineW, lineY, h.getRight(), lineY, 1.0f);

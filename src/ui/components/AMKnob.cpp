@@ -107,57 +107,83 @@ void AMKnob::paint (juce::Graphics& g)
 
     const float trackW = geo.trackWidth;
     const auto arcBounds = geo.arc;
-    const float lit = juce::jmax (hover.value, dragging ? 1.0f : 0.0f);
-    const float glowAmount = juce::jlimit (0.0f, 1.0f, 0.22f + 0.35f * activity + 0.45f * lit);
-    const float valueWeight = bipolar ? std::abs (p - 0.5f) * 2.0f : p;
-
-    // Controlled glow behind the arc, scaled by the value so idle knobs stay quiet.
-    draw::glowEllipse (g, arcBounds, accent, d * 0.12f, glowAmount * (0.2f + 0.8f * valueWeight));
-
-    // Sphere base
     const auto body = geo.body;
-    draw::sphere (g, body, lit * 0.6f);
+    const float lit = juce::jmax (hover.value, dragging ? 1.0f : 0.0f);
+    const float glowAmount = juce::jlimit (0.0f, 1.0f, 0.20f + 0.30f * activity + 0.40f * lit);
+    const float valueWeight = bipolar ? std::abs (p - 0.5f) * 2.0f : p;
+    const auto pair = Theme::accentPair (accent);
 
-    // Track
-    g.setColour (Theme::knobTrack);
-    g.strokePath (draw::arc (arcBounds, startAngle, endAngle), juce::PathStrokeType (trackW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    // 1. Outer arc ring — a soft outer glow that grows with the value, then the
+    //    dark unfilled track it runs in, then the lit part in the accent pair.
+    draw::glowEllipse (g, arcBounds, pair.second, d * 0.14f, glowAmount * (0.18f + 0.82f * valueWeight));
 
-    // Value arc
     {
-        juce::Path valueArc;
+        auto track = draw::arc (arcBounds, startAngle, endAngle);
+        g.setColour (juce::Colours::black.withAlpha (0.75f));
+        g.strokePath (track, juce::PathStrokeType (trackW * 1.9f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.setColour (Theme::knobTrack.brighter (0.16f));
+        g.strokePath (track, juce::PathStrokeType (trackW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
+    // 2. A dark moat between ring and body, so the ring reads as separate hardware.
+    {
+        const float moat = (arcBounds.getWidth() - body.getWidth()) * 0.5f;
+        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.fillEllipse (body.expanded (juce::jmax (0.0f, moat - trackW * 1.15f)));
+    }
+
+    // 3-6. The moulded body: dome, machined rim, specular bloom, contact shadow.
+    draw::domeBody (g, body, Theme::knobBase, lit * 0.7f);
+
+    // The lit part of the value arc, over the moat so its glow spills on the metal.
+    {
+        float from = startAngle, to = angle;
         if (bipolar)
         {
             const float mid = (startAngle + endAngle) * 0.5f;
-            if (std::abs (angle - mid) > 0.01f) valueArc = draw::arc (arcBounds, juce::jmin (mid, angle), juce::jmax (mid, angle));
-            // centre tick
-            g.setColour (Theme::textDim);
-            g.fillEllipse (arcBounds.getCentreX() - trackW * 0.6f, arcBounds.getY() - trackW * 0.6f, trackW * 1.2f, trackW * 1.2f);
-        }
-        else if (p > 0.002f)
-        {
-            valueArc = draw::arc (arcBounds, startAngle, angle);
-        }
-        if (! valueArc.isEmpty())
-            draw::glowPath (g, valueArc, accent, trackW, trackW * 3.2f, glowAmount);
+            from = juce::jmin (mid, angle);
+            to   = juce::jmax (mid, angle);
 
-        // bright tip at the end of the arc
+            // centre tick, cut into the track
+            g.setColour (Theme::textDim.withAlpha (0.85f));
+            g.fillEllipse (arcBounds.getCentreX() - trackW * 0.55f, arcBounds.getY() - trackW * 0.55f, trackW * 1.1f, trackW * 1.1f);
+        }
+
+        if (to > from + 0.004f)
+        {
+            const auto valueArc = draw::arc (arcBounds, from, to);
+            // halo first, then the crisp two-stop gradient core
+            g.setColour (pair.second.withAlpha (0.10f + 0.16f * glowAmount));
+            g.strokePath (valueArc, juce::PathStrokeType (trackW * 3.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            g.setColour (pair.first.withAlpha (0.16f + 0.20f * glowAmount));
+            g.strokePath (valueArc, juce::PathStrokeType (trackW * 2.1f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            draw::gradientArc (g, arcBounds, from, to, pair.first, pair.second, trackW, 0.92f + 0.08f * lit);
+        }
+
+        // bright tip at the live end of the arc
         const float r = arcBounds.getWidth() * 0.5f;
         const juce::Point<float> tip (arcBounds.getCentreX() + std::sin (angle) * r, arcBounds.getCentreY() - std::cos (angle) * r);
         if (valueWeight > 0.002f || lit > 0.01f)
-            draw::glowDot (g, tip, trackW * 0.55f, accent.brighter (0.3f), 0.4f + 0.6f * lit);
+            draw::glowDot (g, tip, trackW * 0.5f, pair.second.brighter (0.35f), 0.35f + 0.65f * lit);
     }
 
-    // Fine white indicator on the sphere
+    // 5. The indicator: the brightest thing on the knob, cut across the dome.
     {
         const float r = body.getWidth() * 0.5f;
         const auto c = body.getCentre();
-        const juce::Point<float> inner (c.x + std::sin (angle) * r * 0.58f, c.y - std::cos (angle) * r * 0.58f);
-        const juce::Point<float> outer (c.x + std::sin (angle) * r * 0.90f, c.y - std::cos (angle) * r * 0.90f);
-        const float w = juce::jmax (1.2f, d * 0.024f);
-        g.setColour (juce::Colours::black.withAlpha (0.35f));
-        g.drawLine (juce::Line<float> (inner, outer).withShortenedStart (-0.5f), w + 1.5f);
-        g.setColour (Theme::textPrimary.withAlpha (0.78f + 0.22f * lit));
-        g.drawLine (juce::Line<float> (inner, outer), w);
+        const juce::Point<float> inner (c.x + std::sin (angle) * r * 0.55f, c.y - std::cos (angle) * r * 0.55f);
+        const juce::Point<float> outer (c.x + std::sin (angle) * r * 0.88f, c.y - std::cos (angle) * r * 0.88f);
+        const float w = juce::jmax (1.3f, d * 0.026f);
+
+        // the groove it sits in
+        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.drawLine (inner.x, inner.y + w * 0.55f, outer.x, outer.y + w * 0.55f, w * 1.25f);
+
+        // faint halo, then the crisp near-white core
+        g.setColour (juce::Colour (0xfff6f7ff).withAlpha (0.10f + 0.10f * lit));
+        g.drawLine (inner.x, inner.y, outer.x, outer.y, w * 2.6f);
+        g.setColour (juce::Colour (0xfff8f9ff).withAlpha (0.88f + 0.12f * lit));
+        g.drawLine (inner.x, inner.y, outer.x, outer.y, w);
     }
 
     // Assign mode: every modulatable knob offers itself as a destination.
@@ -178,7 +204,7 @@ void AMKnob::paint (juce::Graphics& g)
         const float h = juce::jlimit (8.5f, hero ? 15.0f : 13.0f, labelArea.getHeight() * 0.7f);
         if (lit > 0.02f)
             draw::trackedText (g, getTextFromValue (getValue()), labelArea, juce::Justification::centred, Theme::valueFont (h + 1.0f),
-                               accent.brighter (0.25f).withAlpha (lit));
+                               pair.second.brighter (0.25f).withAlpha (lit));
         if (lit < 0.98f)
             draw::trackedText (g, labelUpper, labelArea, juce::Justification::centred,
                                draw::fitFont (Theme::labelFont (h), labelUpper, labelArea.getWidth() - 2.0f), Theme::textSecondary.withAlpha (1.0f - lit));

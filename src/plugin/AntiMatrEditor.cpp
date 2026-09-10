@@ -90,15 +90,8 @@ void AntiMatrEditor::timerCallback()
 
 void AntiMatrEditor::paint (juce::Graphics& g)
 {
-    const auto b = getLocalBounds().toFloat();
-    juce::ColourGradient grad (ui::Theme::backgroundTop, b.getCentreX(), b.getY(), ui::Theme::background, b.getCentreX(), b.getBottom(), false);
-    g.setGradientFill (grad);
-    g.fillAll();
-
-    // Faint vignette so panels float on the void.
-    juce::ColourGradient vignette (juce::Colours::transparentBlack, b.getCentreX(), b.getCentreY(), juce::Colours::black.withAlpha (0.35f), b.getX(), b.getY(), true);
-    g.setGradientFill (vignette);
-    g.fillRect (b);
+    // The chassis: warm charcoal, grained, corners falling away (SPEC section 1).
+    ui::draw::chassisBackground (g, getLocalBounds().toFloat());
 }
 
 void AntiMatrEditor::resized()

@@ -1,5 +1,6 @@
 #include "PatchMorph.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace am

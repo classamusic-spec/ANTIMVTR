@@ -47,12 +47,35 @@ scripts         build / test / render / snapshot / validate helpers
 
 ## Status
 
-Phase 0 complete: build system, parameter contract, voice system (poly / mono
-/ legato, glide, sustain, bend, pressure, stealing), sine WAVE source, ADSR,
-master safety stage, JSON state with migration, factory preset skeleton,
-mutation engine, diagnostics architecture, DSP LAB shell, Main page UI shell
-with the procedural ANTI-MATTER object, offline render + snapshot tools, and
-tests across 44.1–96 kHz and 32–1024 sample blocks. pluginval strictness 5
-passes on the VST3.
+Integrated so far (all on the branch, tests green, pluginval strictness 5 passes):
+
+* **Sources** — WAVE (8 procedural banks × 16 frames, mip-mapped, BLEP/BLAMP
+  sync, unison), DUST (stochastic particle exciter), IMPACT (strike models).
+  SAMPLE and GESTURE are in progress.
+* **Matter** — SIMD coupled-form modal node graph (up to 64 nodes per voice),
+  9 materials with morphing, 7 FORM anchors, topologies, contractive coupling,
+  velocity-scaled strike with coherence normalisation and per-note scatter.
+  Dry material renders (Crystal / Metal / Membrane / Organic / String /
+  Liquid) are audibly distinct — see `renders/gate*/` after
+  `scripts/render.sh`.
+* **Voice lifetime** — the amplitude envelope shapes the excitation; Matter
+  rings out per its Decay after note-off (30 s cap), stolen voices fade in 3 ms.
+* **Fracture** — post-mix STFT fragment engine (1024/2048, 75 % overlap,
+  mel-spaced fragments, step sequencer, dynamic latency reporting).
+* **Space** — curated FX racks per Space type (distortion, chorus, delay,
+  granular delay, frequency shifter, spectral diffusion, pitch shifter,
+  reverb, EQ, compressor, limiter) recalled on type change, macros live.
+* **Master** — gain, DC guard, NaN scrub, instant-attack limiter, safety
+  counters; polyphony headroom (N^-0.3).
+* **UI** — full design system (pure code, no bitmaps), Main page with the
+  procedural ANTI-MATTER object, Source / Shape / Evolve / Fracture / Space /
+  Mod pages, preset browser, resizable from 1100×690 to 1600×1000+.
+* **DSP LAB** — hidden developer workspace (page 8 in dev builds): signal
+  inspector, Matter node/topology views, performance, safety, presets, events.
+* **Tools** — `AntiMatrRender` (MIDI → WAV + JSON metrics), `AntiMatrSnapshot`
+  (editor → PNG), `scripts/analyze.py` (spectrograms).
+
+In progress: Evolve operators, modulation engine and mod matrix, Sample +
+Gesture sources, factory content and mutation/DNA refinement.
 
 See `docs/SPEC.md` §94 for the phase roadmap.

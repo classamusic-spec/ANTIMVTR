@@ -91,3 +91,8 @@ Render at least: a single note dry (`--dry matter`), a chord, a note with
 note-off before the tail ends (decay measurement), and extremes of each
 parameter (0 and 1). Confirm `nonFinite == 0`, `safety` all zero (or
 explained), `peak <= 1`, and CPU well within budget at 16 voices.
+
+Level targets (velocity 100, one voice): sources ≈ −15 dBFS peak; Matter
+notes −12…−2 dBFS peak across Shape extremes; a 16-note chord may touch the
+limiter but must never count `Hard clip`. Start notes at 0.2 s
+(`--seq 60:0.2:1.7`) when measuring peaks so the gain smoother has settled.

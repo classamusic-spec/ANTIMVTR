@@ -80,9 +80,29 @@ pressure, mod wheel, all-notes-off, stealing (releasing → quietest → oldest)
 POLY / MONO / LEGATO with a held-note stack and glide. Per-channel bend and
 pressure make the structure MPE-ready.
 
-Each voice: `SourceEngine` (all sources, SINGLE/LAYER mixing) →
-`EvolveEngine::apply (matter)` → `MatterEngine::process` → `shape.mix` blend →
-velocity → `ADSREnvelope`. Voices end when the amp envelope finishes.
+Each voice: `SourceEngine` (all sources, SINGLE/LAYER mixing) → amplitude
+envelope applied to the **excitation** → `EvolveEngine::apply (matter)` →
+`MatterEngine::process` → `shape.mix` blend → velocity. The envelope gates the
+energy, not the material: after note-off Matter rings out per its Decay until
+its energy is gone (30 s cap), so a voice ends when the envelope has finished
+AND Matter is silent. Stolen voices fade over 3 ms (`kill`). Matter's output is
+trimmed +12 dB (`kMatterOutputTrim`) so a struck object sits level with the
+raw sources.
+
+### Level architecture
+
+* Sources render at about −15 dBFS peak for a single note.
+* Matter: the strike of a modal object peaks with the coherent sum of its
+  excitation-weighted node gains (all nodes start in phase), while the ring
+  RMS does not grow with node count. `MatterEngine` normalises the strike
+  towards the coherent sum of the default object (`kStrikeRef`, power 0.75,
+  contact-time low-pass included) and follows a square-root STRIKE law, so a
+  single note stays between roughly −12 and −2 dBFS across all Shape
+  settings. Each note's strike lands up to 1.5 ms late by a seeded amount so
+  chords never stack sample-aligned pulses.
+* `SynthEngine` applies polyphony headroom `0.65 / N^0.3` eased over 40 ms.
+* `MasterSection`: gain → hard ceiling → instant-attack limiter (80 ms
+  release) → final clip; every limited or clipped sample is counted.
 
 ## Matter (interface, Phase 5+ implementation)
 

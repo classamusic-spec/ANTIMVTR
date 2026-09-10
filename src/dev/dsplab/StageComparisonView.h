@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SignalInspector.h"
+#include "dsp/fracture/FractureEngine.h"
 
 namespace am::dev
 {
@@ -56,8 +57,24 @@ class FractureView : public StageComparisonView
 public:
     FractureView();
 
+    void updateFrame (const LabFrame& f) override;
+    void resized() override;
+
 protected:
     std::vector<KeyValueTable::Row> extraInfo (const LabFrame& f) override;
+
+private:
+    /** Per-fragment gate / energy bars and the sequencer step, read wait-free from the engine. */
+    class FragmentPanel : public LabPanel
+    {
+    public:
+        FragmentPanel() : LabPanel ("Fragments  gate / energy / step") {}
+        void set (const FractureEngine::FragmentActivity& a) { activity = a; repaint(); }
+        void paint (juce::Graphics& g) override;
+    private:
+        FractureEngine::FragmentActivity activity;
+    };
+    FragmentPanel fragments;
 };
 
 //==============================================================================

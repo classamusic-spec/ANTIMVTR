@@ -1,4 +1,5 @@
 #include "StageComparisonView.h"
+#include "plugin/AntiMatrProcessor.h"
 
 namespace am::dev
 {
@@ -138,6 +139,57 @@ FractureView::FractureView()
                            "Bypass Fracture", &DevControls::bypassFracture)
 {
     setInfoTitle ("Fracture");
+    fragments.setAccent (Theme::magenta);
+    addAndMakeVisible (fragments);
+}
+
+void FractureView::updateFrame (const LabFrame& f)
+{
+    StageComparisonView::updateFrame (f);
+    FractureEngine::FragmentActivity a;
+    f.processor.engine().fractureEngine().fillFragmentActivity (a);
+    fragments.set (a);
+}
+
+void FractureView::resized()
+{
+    StageComparisonView::resized();
+    // Carve a strip for the fragment bars out of the spectrum area (the base class laid out the rest).
+    auto area = getLocalBounds();
+    area.removeFromRight (juce::jmax (215, area.getWidth() * 26 / 100) + 5);
+    area.removeFromBottom (juce::jmax (110, area.getHeight() * 38 / 100) + 5);
+    const int stripH = juce::jlimit (56, 90, area.getHeight() / 4);
+    fragments.setBounds (area.removeFromBottom (stripH));
+}
+
+void FractureView::FragmentPanel::paint (juce::Graphics& g)
+{
+    LabPanel::paint (g);
+    auto area = contentBoundsF().reduced (4.0f, 2.0f);
+    const int n = juce::jlimit (0, kMaxFractureFragments, activity.numFragments);
+    if (n <= 0 || area.isEmpty())
+    {
+        g.setColour (Theme::textDim);
+        g.setFont (Theme::captionFont (9.0f));
+        g.drawText ("FRACTURE IDLE", area, juce::Justification::centred);
+        return;
+    }
+    const float w = area.getWidth() / (float) n;
+    for (int f = 0; f < n; ++f)
+    {
+        auto col = juce::Rectangle<float> (area.getX() + (float) f * w, area.getY(), w, area.getHeight()).reduced (juce::jmin (2.0f, w * 0.15f), 0.0f);
+        const float gate = juce::jlimit (0.0f, 1.0f, activity.gain[(size_t) f]);
+        const float energy = juce::jlimit (0.0f, 1.0f, activity.energy[(size_t) f]);
+        g.setColour (Theme::magenta.withAlpha (0.18f + 0.35f * gate));
+        g.fillRect (col.withTop (col.getBottom() - col.getHeight() * gate));
+        g.setColour (Theme::cyan.withAlpha (0.85f));
+        const float eh = col.getHeight() * energy;
+        g.fillRect (col.withTop (col.getBottom() - eh).withWidth (juce::jmax (1.0f, col.getWidth() * 0.35f)).withX (col.getCentreX() - col.getWidth() * 0.175f));
+    }
+    g.setColour (Theme::textDim);
+    g.setFont (Theme::captionFont (8.5f));
+    g.drawText ("STEP " + juce::String (activity.currentStep + 1) + "   WET " + juce::String (activity.overall, 3),
+                area.removeFromTop (11.0f), juce::Justification::topRight);
 }
 
 std::vector<KeyValueTable::Row> FractureView::extraInfo (const LabFrame& f)

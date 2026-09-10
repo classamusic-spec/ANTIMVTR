@@ -34,7 +34,7 @@ private:
     PresetValidator validator;
     std::vector<PresetValidationResult> results;
 
-    LabPanel controls { "Preset validator  (§86)" };
+    LabPanel controls { juce::CharPointer_UTF8 ("Preset validator  (\xc2\xa786)") };
     juce::TextButton startButton { "VALIDATE ALL" }, cancelButton { "CANCEL" };
     juce::Slider holdSeconds;
     juce::Label holdLabel;

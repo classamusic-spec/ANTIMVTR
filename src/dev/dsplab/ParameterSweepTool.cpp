@@ -52,7 +52,7 @@ void SweepPlotView::paint (juce::Graphics& g)
         juce::Path p;
         for (size_t i = 0; i < points->size(); ++i)
         {
-            const float x = area.getX() + area.getWidth() * (float) i / (float) juce::jmax<size_t> (1, points->size() - 1);
+            const float x = area.getX() + area.getWidth() * (float) i / (float) std::max<size_t> (1, points->size() - 1);
             const float v = juce::jlimit (0.0f, 1.0f, valueFn ((*points)[i]) / scale);
             const float y = area.getBottom() - v * area.getHeight();
             if (i == 0) p.startNewSubPath (x, y); else p.lineTo (x, y);

@@ -41,20 +41,29 @@ void AMToggle::paint (juce::Graphics& g)
     auto pill = juce::Rectangle<float> (b.getCentreX() - pillW * 0.5f, top, pillW, pillH);
     const float corner = pillH * 0.5f;
     const float on = lit.value;
+    const auto pair = Theme::accentPair (accent);
 
-    if (on > 0.02f) draw::glowRoundedRect (g, pill, corner, accent, 8.0f, 0.5f * on);
-    g.setColour (Theme::panelInset.interpolatedWith (accent.withAlpha (0.25f), on));
-    g.fillRoundedRectangle (pill, corner);
-    g.setColour (Theme::border.interpolatedWith (accent.withAlpha (0.6f), on).withMultipliedAlpha (1.0f + 0.5f * hover.value));
-    g.drawRoundedRectangle (pill.reduced (0.5f), corner, 1.0f);
+    // A capsule cut into the panel; when it is on the recess fills with light.
+    if (on > 0.02f) draw::glowRoundedRect (g, pill, corner, pair.second, 8.0f, 0.5f * on);
+    draw::insetWell (g, pill, corner, Theme::panelInset, 1.0f);
+    if (on > 0.02f)
+    {
+        draw::gradientCapsule (g, pill.reduced (1.2f), corner - 1.2f, pair.first, pair.second, 0.55f * on);
+        g.setColour (pair.second.withAlpha (0.55f * on));
+        g.drawRoundedRectangle (pill.reduced (1.2f), corner - 1.2f, 1.0f);
+    }
+    if (hover.value > 0.02f)
+    {
+        g.setColour (juce::Colours::white.withAlpha (0.05f * hover.value));
+        g.drawRoundedRectangle (pill.reduced (0.6f), corner - 0.6f, 1.0f);
+    }
 
-    // knob travels left → right
-    const float kr = pillH * 0.5f - 3.0f;
-    const float kx = pill.getX() + 3.0f + kr + (pill.getWidth() - 6.0f - kr * 2.0f) * on;
+    // The handle travels left to right, built like a miniature knob.
+    const float kr = pillH * 0.5f - 2.6f;
+    const float kx = pill.getX() + 2.6f + kr + (pill.getWidth() - 5.2f - kr * 2.0f) * on;
     const auto knob = juce::Rectangle<float> (kx - kr, pill.getCentreY() - kr, kr * 2.0f, kr * 2.0f);
-    if (on > 0.02f) draw::glowEllipse (g, knob, accent, kr * 1.2f, on);
-    g.setColour (Theme::textSecondary.interpolatedWith (juce::Colours::white, on));
-    g.fillEllipse (knob);
+    if (on > 0.02f) draw::glowEllipse (g, knob, pair.second, kr * 1.1f, 0.8f * on);
+    draw::domeBody (g, knob, juce::Colour (0xff8f95a4).interpolatedWith (juce::Colour (0xffe6e9f2), on), 0.35f + 0.5f * on, 0.85f);
 
     if (hasLabel)
     {
@@ -129,23 +138,30 @@ void AMChoice::paint (juce::Graphics& g)
         draw::trackedText (g, label, labelArea, juce::Justification::centred, draw::fitFont (Theme::labelFont (h), label, b.getWidth() - 2.0f), Theme::textSecondary);
     }
     const float corner = pill.getHeight() * 0.5f;
-    const float lit = hover.value;
+    const float hovered = hover.value;
+    const auto pair = Theme::accentPair (accent);
 
-    if (lit > 0.02f) draw::glowRoundedRect (g, pill, corner, accent, 7.0f, 0.3f * lit);
-    g.setColour (Theme::panelInset);
-    g.fillRoundedRectangle (pill, corner);
-    g.setColour (Theme::border.withMultipliedAlpha (1.0f + lit));
-    g.drawRoundedRectangle (pill.reduced (0.5f), corner, 1.0f);
+    // A readout window cut into the panel, with the stepping chevrons on its lips.
+    if (hovered > 0.02f) draw::glowRoundedRect (g, pill, corner, pair.second, 7.0f, 0.28f * hovered);
+    draw::insetWell (g, pill, corner, Theme::panelInset, 1.0f);
+    draw::softLight (g, pill.getCentre(), pill.getWidth() * 0.42f, pair.first, 0.045f + 0.05f * hovered);
+    if (hovered > 0.02f)
+    {
+        g.setColour (pair.second.withAlpha (0.22f * hovered));
+        g.drawRoundedRectangle (pill.reduced (0.8f), corner - 0.8f, 1.0f);
+    }
 
     const float zone = juce::jmin (pill.getWidth() * 0.28f, pill.getHeight() * 1.2f);
-    const auto chevColour = Theme::textSecondary.interpolatedWith (accent, lit);
+    const auto chevColour = Theme::textSecondary.interpolatedWith (pair.second, hovered);
     draw::chevron (g, pill.withWidth (zone).reduced (zone * 0.25f, pill.getHeight() * 0.28f), -1, chevColour);
     draw::chevron (g, pill.withLeft (pill.getRight() - zone).reduced (zone * 0.25f, pill.getHeight() * 0.28f), 1, chevColour);
 
     const float h = juce::jlimit (8.5f, 12.0f, pill.getHeight() * 0.42f);
     const juce::String text = choices.isEmpty() ? juce::String() : choices[selected];
     const auto textArea = pill.reduced (zone, 0.0f);
-    draw::trackedText (g, text, textArea, juce::Justification::centred, draw::fitFont (Theme::labelFont (h), text, textArea.getWidth()), Theme::textPrimary);
+    const auto font = draw::fitFont (Theme::labelFont (h), text, textArea.getWidth());
+    draw::trackedText (g, text, textArea.translated (0.0f, 1.0f), juce::Justification::centred, font, juce::Colours::black.withAlpha (0.6f));
+    draw::trackedText (g, text, textArea, juce::Justification::centred, font, Theme::textPrimary);
 }
 
 } // namespace am::ui

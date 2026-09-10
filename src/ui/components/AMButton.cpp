@@ -14,51 +14,64 @@ void AMButton::mouseExit (const juce::MouseEvent& e)  { anim.animate (hover, 0.0
 
 void AMButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
-    const auto b = getLocalBounds().toFloat();
-    const float corner = chip ? b.getHeight() * 0.5f : juce::jmin (10.0f, b.getHeight() * 0.3f);
+    const auto b = getLocalBounds().toFloat().reduced (1.0f);
+    const float corner = chip ? b.getHeight() * 0.5f : juce::jmin (10.0f, b.getHeight() * 0.32f);
     const bool on = getToggleState();
     const float lit = juce::jlimit (0.0f, 1.0f, juce::jmax (hover.value, highlighted ? 0.6f : 0.0f) + (down ? 0.4f : 0.0f));
     const float energy = juce::jlimit (0.0f, 1.0f, lit + (on ? 0.7f : 0.0f));
+    const auto pair = Theme::accentPair (accent);
 
-    if (outlined || filled || chip || on)
+    // Every button is a small machined key: raised when it is up, pressed into
+    // its seat when it is held, lit in the accent when it is on.
+    if (energy > 0.05f)
+        draw::glowRoundedRect (g, b, corner, pair.second, 9.0f, energy * 0.45f);
+
+    if (down)
     {
-        auto r = b.reduced (1.0f);
-        if (energy > 0.05f)
-            draw::glowRoundedRect (g, r, corner, accent, 9.0f, energy * 0.5f);
-        if (filled || on)
-        {
-            juce::ColourGradient grad (accent.withAlpha (0.30f + 0.15f * lit), r.getX(), r.getY(), accent.withAlpha (0.12f), r.getX(), r.getBottom(), false);
-            g.setGradientFill (grad);
-        }
-        else
-        {
-            g.setColour (Theme::panelInset.withAlpha (0.9f).brighter (0.05f * lit));
-        }
-        g.fillRoundedRectangle (r, corner);
-        g.setColour ((filled || on) ? accent.withAlpha (0.55f) : Theme::border.withAlpha (0.08f + 0.2f * lit));
-        g.drawRoundedRectangle (r, corner, 1.0f);
+        draw::insetWell (g, b, corner, Theme::panelInset, 0.85f);
     }
-    else if (lit > 0.02f)
+    else
     {
-        // text button: soft accent underline glow on hover
-        juce::Path line;
-        line.startNewSubPath (b.getX() + b.getWidth() * 0.2f, b.getBottom() - 4.0f);
-        line.lineTo (b.getRight() - b.getWidth() * 0.2f, b.getBottom() - 4.0f);
-        draw::glowPath (g, line, accent.withAlpha (lit), 1.0f, 6.0f, lit * 0.8f);
+        draw::SlabStyle style;
+        style.top    = Theme::panelTop.brighter (0.05f + 0.10f * lit);
+        style.bottom = Theme::panel.darker (0.15f);
+        style.shadow = 0.7f;
+        style.brush  = 0.7f;
+        draw::raisedSlab (g, b, corner, style);
+    }
+
+    if (filled || on)
+    {
+        draw::gradientCapsule (g, b.reduced (1.0f), corner - 1.0f, pair.first, pair.second, 0.26f + 0.12f * lit);
+        g.setColour (pair.second.withAlpha (0.55f));
+        g.drawRoundedRectangle (b.reduced (1.0f), corner - 1.0f, 1.0f);
+    }
+    else if (outlined)
+    {
+        g.setColour (Theme::border.withMultipliedAlpha (1.0f + 1.5f * lit));
+        g.drawRoundedRectangle (b.reduced (1.0f), corner - 1.0f, 1.0f);
     }
 
     auto textArea = b;
     const float h = chip ? juce::jlimit (8.0f, 11.0f, b.getHeight() * 0.42f) : juce::jlimit (9.0f, 13.0f, b.getHeight() * 0.34f);
     const auto textColour = (on || filled) ? Theme::textPrimary
-                                           : Theme::textSecondary.interpolatedWith (Theme::textPrimary, 0.25f + 0.75f * lit);
+                                           : Theme::textSecondary.interpolatedWith (Theme::textPrimary, 0.3f + 0.7f * lit);
     if (iconGlyph.has_value())
     {
         auto iconArea = textArea.removeFromLeft (b.getHeight()).reduced (b.getHeight() * 0.3f);
-        Icons::draw (g, *iconGlyph, iconArea, on || lit > 0.5f ? accent : Theme::textSecondary, 0.9f);
+        Icons::draw (g, *iconGlyph, iconArea, on || lit > 0.5f ? pair.second : Theme::textSecondary, 0.9f);
         textArea = textArea.withTrimmedRight (b.getHeight() * 0.4f);
     }
-    draw::trackedText (g, getButtonText().toUpperCase(), textArea, juce::Justification::centred,
-                       (on || filled) ? Theme::labelFontStrong (h) : Theme::labelFont (h), textColour);
+    if (down) textArea = textArea.translated (0.0f, 0.7f);
+
+    // The lettering is cut into the key, so it keeps its lit lower lip.
+    const auto font = draw::fitFont ((on || filled) ? Theme::labelFontStrong (h) : Theme::labelFont (h),
+                                     getButtonText().toUpperCase(), textArea.getWidth() - 4.0f);
+    const float trailing = font.getExtraKerningFactor() * font.getHeight() * 0.5f;
+    draw::trackedText (g, getButtonText().toUpperCase(), textArea.translated (0.0f, 1.0f), juce::Justification::centred, font,
+                       juce::Colours::black.withAlpha (0.55f));
+    draw::trackedText (g, getButtonText().toUpperCase(), textArea, juce::Justification::centred, font, textColour);
+    juce::ignoreUnused (trailing);
 }
 
 //==============================================================================
@@ -76,18 +89,32 @@ void AMIconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     const float lit = juce::jlimit (0.0f, 1.0f, juce::jmax (hover.value, highlighted ? 0.5f : 0.0f) + (down ? 0.5f : 0.0f));
     const float s = juce::jmin (b.getWidth(), b.getHeight());
     const auto circle = b.withSizeKeepingCentre (s, s);
+    const auto pair = Theme::accentPair (accent);
+
     if (outlined)
     {
-        g.setColour (Theme::border.withAlpha (0.08f + 0.1f * lit));
-        g.drawEllipse (circle.reduced (1.5f), 1.0f);
+        // A small round key seated in the panel.
+        if (down)
+        {
+            draw::insetWell (g, circle.reduced (1.0f), s * 0.5f, Theme::panelInset, 0.9f);
+        }
+        else
+        {
+            draw::domeBody (g, circle.reduced (1.0f), Theme::knobBase.darker (0.15f), lit * 0.7f, 0.8f);
+        }
     }
     if (lit > 0.02f)
     {
-        draw::glowEllipse (g, circle.reduced (2.0f), accent, 8.0f, 0.6f * lit);
-        g.setColour (accent.withAlpha (0.12f * lit));
-        g.fillEllipse (circle.reduced (2.0f));
+        draw::glowEllipse (g, circle.reduced (2.0f), pair.second, 8.0f, 0.55f * lit);
+        if (! outlined)
+        {
+            g.setColour (pair.second.withAlpha (0.10f * lit));
+            g.fillEllipse (circle.reduced (2.0f));
+        }
     }
-    Icons::draw (g, icon, circle.reduced (s * 0.28f), accent.interpolatedWith (Theme::textPrimary, lit), 0.9f);
+    auto iconArea = circle.reduced (s * (outlined ? 0.32f : 0.28f));
+    if (down) iconArea = iconArea.translated (0.0f, 0.6f);
+    Icons::draw (g, icon, iconArea, accent.interpolatedWith (Theme::textPrimary, 0.35f + 0.65f * lit), 0.95f);
 }
 
 //==============================================================================
@@ -121,36 +148,51 @@ void AMSegment::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
     const float corner = juce::jmin (b.getHeight() * 0.5f, 14.0f);
-    g.setColour (Theme::panelInset);
-    g.fillRoundedRectangle (b, corner);
-    juce::ColourGradient shade (juce::Colours::black.withAlpha (0.35f), 0.0f, b.getY(), juce::Colours::transparentBlack, 0.0f, b.getCentreY(), false);
-    g.setGradientFill (shade);
-    g.fillRoundedRectangle (b, corner);
-    g.setColour (Theme::border);
-    g.drawRoundedRectangle (b.reduced (0.5f), corner, 1.0f);
+
+    // The strip itself is a capsule cut into the panel.
+    draw::insetWell (g, b, corner, Theme::panelInset, 1.0f);
 
     if (items.isEmpty()) return;
     const float w = b.getWidth() / (float) items.size();
     const float h = juce::jlimit (8.0f, 12.0f, b.getHeight() * 0.4f);
+    const auto pair = Theme::accentPair (accent);
 
-    // gliding thumb
+    // The selected cell is a raised slab that glides between the cells.
     {
         auto pill = juce::Rectangle<float> (b.getX() + w * thumb.value, b.getY(), w, b.getHeight()).reduced (2.5f);
-        draw::glowRoundedRect (g, pill, corner - 2.0f, accent, 8.0f, 0.5f);
-        juce::ColourGradient grad (accent.withAlpha (0.30f), pill.getX(), pill.getY(), accent.withAlpha (0.10f), pill.getX(), pill.getBottom(), false);
-        g.setGradientFill (grad);
-        g.fillRoundedRectangle (pill, corner - 2.0f);
-        g.setColour (accent.withAlpha (0.5f));
-        g.drawRoundedRectangle (pill, corner - 2.0f, 1.0f);
-        g.setColour (juce::Colours::white.withAlpha (0.08f));
-        g.drawLine (pill.getX() + corner * 0.6f, pill.getY() + 1.0f, pill.getRight() - corner * 0.6f, pill.getY() + 1.0f, 1.0f);
+        const float pc = juce::jmax (1.0f, corner - 2.0f);
+        draw::glowRoundedRect (g, pill, pc, pair.second, 8.0f, 0.45f);
+
+        draw::SlabStyle style;
+        style.top    = Theme::panelTop.brighter (0.16f);
+        style.bottom = Theme::panel;
+        style.shadow = 0.55f;
+        style.brush  = 0.6f;
+        draw::raisedSlab (g, pill, pc, style);
+
+        draw::gradientCapsule (g, pill.reduced (0.8f), pc - 0.8f, pair.first, pair.second, 0.30f);
+        g.setColour (pair.second.withAlpha (0.55f));
+        g.drawRoundedRectangle (pill.reduced (0.8f), pc - 0.8f, 1.0f);
+    }
+
+    // Fine seams between the cells, cut into the strip.
+    for (int i = 1; i < items.size(); ++i)
+    {
+        const float x = b.getX() + w * (float) i;
+        g.setColour (juce::Colours::black.withAlpha (0.45f));
+        g.drawLine (x, b.getY() + corner * 0.5f, x, b.getBottom() - corner * 0.5f, 1.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.045f));
+        g.drawLine (x + 1.0f, b.getY() + corner * 0.5f, x + 1.0f, b.getBottom() - corner * 0.5f, 1.0f);
     }
 
     for (int i = 0; i < items.size(); ++i)
     {
         auto cell = juce::Rectangle<float> (b.getX() + w * (float) i, b.getY(), w, b.getHeight());
         const bool on = i == selected;
-        draw::trackedText (g, items[i].toUpperCase(), cell, juce::Justification::centred, on ? Theme::labelFontStrong (h) : Theme::labelFont (h),
+        const auto font = draw::fitFont (on ? Theme::labelFontStrong (h) : Theme::labelFont (h), items[i].toUpperCase(), cell.getWidth() - 6.0f);
+        draw::trackedText (g, items[i].toUpperCase(), cell.translated (0.0f, 1.0f), juce::Justification::centred, font,
+                           juce::Colours::black.withAlpha (0.5f));
+        draw::trackedText (g, items[i].toUpperCase(), cell, juce::Justification::centred, font,
                            on ? Theme::textPrimary : (i == hover ? Theme::textSecondary.brighter (0.4f) : Theme::textSecondary));
     }
 }
@@ -187,53 +229,57 @@ void AMSlider::paint (juce::Graphics& g)
     const float labelW = showLabel ? juce::jmin (b.getWidth() * 0.24f, 92.0f) : 0.0f;
     const float valueW = showValue ? juce::jmin (b.getWidth() * 0.16f, 58.0f) : 0.0f;
     const float lit = juce::jmax (hover.value, isMouseButtonDown() ? 1.0f : 0.0f);
+    const auto pair = Theme::accentPair (accent);
 
     auto labelArea = b.removeFromLeft (labelW);
     auto valueArea = b.removeFromRight (valueW);
-    const float r = juce::jlimit (4.5f, 8.0f, b.getHeight() * 0.2f);
-    auto track = b.reduced (r + 4.0f, 0.0f);
+    const float r = juce::jlimit (4.5f, 9.0f, b.getHeight() * 0.24f);
+    auto row = b.reduced (r + 3.0f, 0.0f);
 
     if (showLabel)
         draw::trackedText (g, label, labelArea, juce::Justification::centredLeft, Theme::labelFont (h), Theme::textPrimary.withAlpha (0.82f));
     if (showValue)
         draw::trackedText (g, getTextFromValue (getValue()), valueArea, juce::Justification::centredRight, Theme::valueFont (h + 1.0f),
-                           Theme::textValue.interpolatedWith (accent, 0.5f * lit));
+                           Theme::textValue.interpolatedWith (pair.second, 0.5f * lit).withAlpha (0.85f));
 
-    const float y = track.getCentreY();
+    const float y = row.getCentreY();
     const auto range = getRange();
     const float p = range.getLength() > 0.0 ? (float) ((getValue() - range.getStart()) / range.getLength()) : 0.0f;
-    const float x = track.getX() + track.getWidth() * p;
+    const float x = row.getX() + row.getWidth() * p;
 
-    // track groove
-    g.setColour (juce::Colours::black.withAlpha (0.5f));
-    g.drawLine (track.getX(), y + 1.0f, track.getRight(), y + 1.0f, 2.0f);
-    g.setColour (Theme::knobTrack);
-    g.drawLine (track.getX(), y, track.getRight(), y, 2.0f);
+    // Recessed capsule track: dark inside, with a lit lower lip.
+    const float trackH = juce::jlimit (4.0f, 11.0f, r * 1.15f);
+    const auto track = juce::Rectangle<float> (row.getX() - trackH * 0.5f, y - trackH * 0.5f, row.getWidth() + trackH, trackH);
+    draw::insetWell (g, track, trackH * 0.5f, Theme::panelInset, 1.0f);
 
-    // lit portion (from the centre when the range is bipolar)
+    // The filled portion, in the section's accent pair, glowing softly.
     {
-        const float origin = bipolar ? track.getCentreX() : track.getX();
+        const float origin = bipolar ? track.getCentreX() : track.getX() + trackH * 0.5f;
+        const float lo = juce::jmin (origin, x), hi = juce::jmax (origin, x);
+        if (hi - lo > 0.8f)
+        {
+            auto fill = juce::Rectangle<float> (lo, y - trackH * 0.5f, hi - lo, trackH).reduced (0.0f, 1.2f).expanded (trackH * 0.42f, 0.0f);
+            juce::Graphics::ScopedSaveState save (g);
+            juce::Path clip;
+            clip.addRoundedRectangle (track.reduced (1.0f), (trackH - 2.0f) * 0.5f);
+            g.reduceClipRegion (clip);
+            draw::glowRoundedRect (g, fill, fill.getHeight() * 0.5f, pair.second, 7.0f, 0.35f + 0.45f * lit);
+            draw::gradientCapsule (g, fill, fill.getHeight() * 0.5f, pair.first, pair.second, 0.92f);
+            // a lit top edge on the fill so it reads as liquid in a groove
+            g.setColour (juce::Colours::white.withAlpha (0.20f));
+            g.drawLine (lo + 1.0f, y - trackH * 0.5f + 1.6f, hi - 1.0f, y - trackH * 0.5f + 1.6f, 1.0f);
+        }
         if (bipolar)
         {
-            g.setColour (Theme::textDim.withAlpha (0.7f));
-            g.fillRect (origin - 0.5f, y - 3.0f, 1.0f, 6.0f);
-        }
-        if (std::abs (x - origin) > 0.6f)
-        {
-            juce::Path fill;
-            fill.startNewSubPath (origin, y);
-            fill.lineTo (x, y);
-            draw::glowPath (g, fill, accent, 2.0f, 9.0f, 0.45f + 0.55f * lit);
+            g.setColour (juce::Colours::black.withAlpha (0.7f));
+            g.fillRect (origin - 0.6f, y - trackH * 0.5f, 1.2f, trackH);
         }
     }
 
-    // white thumb with a soft accent halo
-    draw::glowEllipse (g, juce::Rectangle<float> (x - r, y - r, r * 2, r * 2), accent, r * 1.6f, 0.5f + 0.5f * lit);
-    juce::ColourGradient thumb (juce::Colours::white, x - r * 0.3f, y - r * 0.4f, juce::Colour (0xffc8c8d4), x + r, y + r, true);
-    g.setGradientFill (thumb);
-    g.fillEllipse (x - r, y - r, r * 2, r * 2);
-    g.setColour (juce::Colours::black.withAlpha (0.35f));
-    g.drawEllipse (x - r, y - r, r * 2, r * 2, 1.0f);
+    // The handle: a miniature knob body.
+    const auto handle = juce::Rectangle<float> (x - r, y - r, r * 2.0f, r * 2.0f);
+    draw::glowEllipse (g, handle, pair.second, r * 1.3f, 0.35f + 0.5f * lit);
+    draw::domeBody (g, handle, juce::Colour (0xff9aa0ae).darker (0.15f - 0.1f * lit), 0.5f + 0.5f * lit, 0.9f);
 }
 
 } // namespace am::ui

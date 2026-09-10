@@ -22,23 +22,42 @@ void AMTab::paint (juce::Graphics& g)
     const auto b = getLocalBounds().toFloat();
     const float on = lit.value;
     const float hv = hover.value * (1.0f - on);
+    const auto pair = Theme::accentPair (accent);
     const auto col = Theme::textSecondary.interpolatedWith (Theme::textPrimary, juce::jmax (on, hv * 0.6f));
+    const float corner = juce::jlimit (3.0f, 7.0f, b.getHeight() * 0.11f);
 
     if (on > 0.02f)
     {
-        juce::ColourGradient grad (accent.withAlpha (0.14f * on), b.getX(), b.getBottom(), accent.withAlpha (0.0f), b.getX(), b.getY() + b.getHeight() * 0.2f, false);
-        g.setGradientFill (grad);
-        g.fillRoundedRectangle (b, 4.0f);
+        // The selected page is a key pressed into the rail and lit from below.
+        auto key = b.reduced (1.5f, 1.0f);
+        draw::SlabStyle keyStyle;
+        keyStyle.top    = Theme::panelTop.brighter (0.06f);
+        keyStyle.bottom = Theme::panel.darker (0.2f);
+        keyStyle.shadow = 0.5f * on;
+        keyStyle.bevel  = on;
+        keyStyle.brush  = 0.6f;
+        draw::raisedSlab (g, key, corner, keyStyle);
+
+        juce::ColourGradient wash (pair.first.withAlpha (0.20f * on), key.getX(), key.getBottom(),
+                                   pair.second.withAlpha (0.0f), key.getX(), key.getY() + key.getHeight() * 0.25f, false);
+        g.setGradientFill (wash);
+        g.fillRoundedRectangle (key, corner);
+
         juce::Path line;
-        const float inset = style == Style::Nav ? b.getWidth() * 0.18f : b.getWidth() * 0.12f;
-        line.startNewSubPath (b.getX() + inset, b.getBottom() - 1.5f);
-        line.lineTo (b.getRight() - inset, b.getBottom() - 1.5f);
-        draw::glowPath (g, line, accent.withAlpha (on), 1.5f, 8.0f, 0.9f * on);
+        const float inset = style == Style::Nav ? key.getWidth() * 0.16f : key.getWidth() * 0.1f;
+        line.startNewSubPath (key.getX() + inset, key.getBottom() - 1.5f);
+        line.lineTo (key.getRight() - inset, key.getBottom() - 1.5f);
+        {
+            juce::ColourGradient grad (pair.first, key.getX() + inset, 0.0f, pair.second, key.getRight() - inset, 0.0f, false);
+            g.setGradientFill (grad);
+            g.strokePath (line, juce::PathStrokeType (1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+        draw::glowPath (g, line, pair.second.withAlpha (on), 1.2f, 8.0f, 0.85f * on);
     }
     else if (hv > 0.02f)
     {
-        g.setColour (juce::Colours::white.withAlpha (0.03f * hv));
-        g.fillRoundedRectangle (b, 4.0f);
+        g.setColour (juce::Colours::white.withAlpha (0.035f * hv));
+        g.fillRoundedRectangle (b.reduced (1.5f, 1.0f), corner);
     }
 
     if (style == Style::Nav && icon.has_value() && b.getHeight() > 30.0f)
@@ -47,7 +66,7 @@ void AMTab::paint (juce::Graphics& g)
         auto iconArea = b.withTrimmedBottom (labelH * 2.4f).reduced (0.0f, b.getHeight() * 0.2f);
         const float d = juce::jmin (iconArea.getWidth(), iconArea.getHeight(), 18.0f);
         iconArea = iconArea.withSizeKeepingCentre (d, d);
-        if (on > 0.02f) draw::glowEllipse (g, iconArea, accent, d * 0.6f, 0.5f * on);
+        if (on > 0.02f) draw::glowEllipse (g, iconArea, pair.second, d * 0.6f, 0.45f * on);
         Icons::draw (g, *icon, iconArea, col, 0.75f);
         draw::trackedText (g, upper, b.withTop (iconArea.getBottom() + 4.0f), juce::Justification::centredTop,
                            on > 0.5f ? Theme::labelFontStrong (labelH) : Theme::labelFont (labelH), col);

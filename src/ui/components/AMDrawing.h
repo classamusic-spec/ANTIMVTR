@@ -616,17 +616,14 @@ inline juce::Path textPath (const juce::String& text, juce::Rectangle<float> are
 }
 
 /**
-    Machined lettering: filled with a vertical metal gradient, with a light
-    top edge and a dark bottom edge — the wordmark and its like.
+    Machined metal: a shape filled with a vertical metal gradient and given a
+    fine bevel — a light edge along the top and a dark one along the bottom.
 */
-inline void metallicText (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, juce::Justification just,
-                          const juce::Font& font, juce::Colour tint = Theme::textPrimary, float bevelScale = 1.0f)
+inline void metallicShape (juce::Graphics& g, const juce::Path& path, juce::Colour tint, float bevel)
 {
-    const auto path = textPath (text, area, just, font);
     const auto box = path.getBounds();
     if (box.isEmpty()) return;
-
-    const float bevel = juce::jmax (0.5f, font.getHeight() * 0.05f) * bevelScale;
+    bevel = juce::jmax (0.5f, bevel);
 
     // Dark edge underneath, light edge above: the two halves of the bevel.
     g.setColour (juce::Colours::black.withAlpha (0.70f));
@@ -634,12 +631,20 @@ inline void metallicText (juce::Graphics& g, const juce::String& text, juce::Rec
     g.setColour (tint.brighter (0.9f).withAlpha (0.35f));
     g.fillPath (path, juce::AffineTransform::translation (-bevel * 0.3f, -bevel * 0.75f));
 
-    juce::ColourGradient metal (tint.brighter (0.60f), box.getCentreX(), box.getY(),
-                                tint.darker (0.42f), box.getCentreX(), box.getBottom(), false);
-    metal.addColour (0.44, tint.brighter (0.12f));
-    metal.addColour (0.56, tint.darker (0.14f));
+    juce::ColourGradient metal (tint.brighter (0.85f), box.getCentreX(), box.getY(),
+                                tint.darker (0.18f), box.getCentreX(), box.getBottom(), false);
+    metal.addColour (0.46, tint.brighter (0.25f));
+    metal.addColour (0.56, tint.darker (0.30f));
+    metal.addColour (0.88, tint.darker (0.05f));
     g.setGradientFill (metal);
     g.fillPath (path);
+}
+
+/** Machined lettering — the wordmark and its like. */
+inline void metallicText (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, juce::Justification just,
+                          const juce::Font& font, juce::Colour tint = Theme::textPrimary, float bevelScale = 1.0f)
+{
+    metallicShape (g, textPath (text, area, just, font), tint, font.getHeight() * 0.05f * bevelScale);
 }
 
 /**

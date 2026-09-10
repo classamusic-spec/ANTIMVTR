@@ -172,28 +172,29 @@ void TopBar::resized()
 void TopBar::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
-    // faint separator beneath the bar
-    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.05f), b.getCentreX(), 0.0f, false);
+
+    // The seam where the top rail meets the chassis: a cut line with a lit lower lip.
+    g.setColour (juce::Colours::black.withAlpha (0.55f));
+    g.fillRect (b.withTop (b.getBottom() - 2.0f).withHeight (1.0f));
+    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.07f), b.getCentreX(), 0.0f, false);
     sep.addColour (1.0, juce::Colours::transparentWhite);
     g.setGradientFill (sep);
     g.fillRect (b.withTop (b.getBottom() - 1.0f));
 
-    // Preset pill
+    // Preset window: a readout cut into the chassis, lit from inside.
     auto pill = presetArea.toFloat();
     const float corner = pill.getHeight() * 0.5f;
-    g.setColour (Theme::panelEdge.withAlpha (0.8f));
-    g.drawRoundedRectangle (pill.expanded (0.5f), corner + 0.5f, 1.0f);
-    juce::ColourGradient fill (Theme::panelTop, pill.getX(), pill.getY(), Theme::panelInset, pill.getX(), pill.getBottom(), false);
-    g.setGradientFill (fill);
-    g.fillRoundedRectangle (pill, corner);
-    g.setColour (juce::Colours::white.withAlpha (0.05f));
-    g.drawLine (pill.getX() + corner, pill.getY() + 1.0f, pill.getRight() - corner, pill.getY() + 1.0f, 1.0f);
+    draw::insetWell (g, pill, corner, Theme::panelInset, 1.0f);
+    draw::softLight (g, pill.getCentre(), pill.getWidth() * 0.4f, Theme::blue, 0.05f);
     g.setColour (Theme::border);
-    g.drawRoundedRectangle (pill.reduced (0.5f), corner, 1.0f);
+    g.drawRoundedRectangle (pill.reduced (0.6f), corner - 0.6f, 1.0f);
 
     const float h = juce::jlimit (10.0f, 14.0f, pill.getHeight() * 0.36f);
-    draw::trackedText (g, processor.currentPresetName().toUpperCase(), pill.reduced (pill.getHeight() + 4.0f, 0.0f), juce::Justification::centred,
-                       Theme::displayFont (h, 0.2f), Theme::textPrimary);
+    const auto nameArea = pill.reduced (pill.getHeight() + 4.0f, 0.0f);
+    const auto name = processor.currentPresetName().toUpperCase();
+    const auto font = draw::fitFont (Theme::displayFont (h, 0.2f), name, nameArea.getWidth());
+    draw::trackedText (g, name, nameArea.translated (0.0f, 1.0f), juce::Justification::centred, font, juce::Colours::black.withAlpha (0.7f));
+    draw::trackedText (g, name, nameArea, juce::Justification::centred, font, Theme::textPrimary);
 
     // Tags line
     auto tags = processor.currentPresetTags();
@@ -301,10 +302,14 @@ void NavBar::resized()
 void NavBar::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
-    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.07f), b.getCentreX(), 0.0f, false);
+
+    // The seam above the navigation rail, cut the same way as the top one.
+    g.setColour (juce::Colours::black.withAlpha (0.6f));
+    g.fillRect (b.withHeight (1.0f));
+    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.08f), b.getCentreX(), 0.0f, false);
     sep.addColour (1.0, juce::Colours::transparentWhite);
     g.setGradientFill (sep);
-    g.fillRect (b.withHeight (1.0f));
+    g.fillRect (b.withTop (b.getY() + 1.0f).withHeight (1.0f));
 
     const float h = juce::jlimit (7.5f, 9.5f, b.getHeight() * 0.11f);
     const int pad = juce::jmax (10, getWidth() / 64);

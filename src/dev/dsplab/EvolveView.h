@@ -16,9 +16,9 @@ namespace am::dev
     cents), how the cluster and energy balance changed, and an A/B between
     RAW (Evolve bypassed) and EVOLVED using the DevControls bypass.
 
-    Per-operator bypass is laid out but disabled: the engine publishes a
-    single `bypassEvolve` flag, and adding per-operator flags is the Evolve
-    owner's call, not DSP LAB's.
+    The per-operator toggles write DevControls::evolveBypassMask (one bit per
+    EvolveOperator), and the live table shows what EvolveEngine did to the
+    focus voice in the last block (DiagnosticSnapshot::evolve).
 */
 class EvolveView : public LabView
 {
@@ -30,6 +30,7 @@ public:
 
 private:
     void applyBypass (bool raw);
+    void applyOperatorBypass();
 
     MatterCaptureStore& captures;
     Diagnostics* diagnostics = nullptr;
@@ -37,6 +38,7 @@ private:
     FrequencyDistributionView beforePlot, afterPlot;
     KeyValueTable delta { "Distribution delta" };
     KeyValueTable evolveParams { "Evolve parameters (effective)" };
+    KeyValueTable engineTable { "Evolve engine (focus voice, last block)" };
     LabPanel abPanel { "A / B  raw vs evolved" };
     LabPanel operatorPanel { "Per-operator bypass" };
     juce::TextButton rawButton { "RAW  (bypass)" }, evolvedButton { "EVOLVED" };

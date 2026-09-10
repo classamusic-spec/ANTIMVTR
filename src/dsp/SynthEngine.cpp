@@ -296,11 +296,13 @@ void SynthEngine::publishSnapshots (const float* outL, const float* outR, int nu
             d.numEdges = m.fillEdgeDiagnostics (d.edges, kMaxMatterEdges);
             m.couplingStats (d.averageCoupling, d.maxCoupling);
             d.fundamentalHz = (float) fv->noteState().frequency;
+            fv->evolve().fillDiagnostics (d.evolve);
         }
         else
         {
             d.numNodes = 0; d.numEdges = 0; d.activeNodes = 0; d.clusterCount = 0; d.matterEnergy = 0.0f;
             d.averageCoupling = 0.0f; d.maxCoupling = 0.0f; d.fundamentalHz = 0.0f;
+            d.evolve = EvolveDiag();
         }
         d.materialA = (uint8_t) paramChoice (p, Param::shapeMaterialA);
         d.materialB = (uint8_t) paramChoice (p, Param::shapeMaterialB);

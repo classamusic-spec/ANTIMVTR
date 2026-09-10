@@ -19,9 +19,9 @@ namespace
         { Param::evolveMagnet,  "Magnet" },
         { Param::evolveGravity, "Gravity" },
         { Param::evolveScatter, "Scatter" },
-        { Param::evolveCrush,   "Crush" },
         { Param::evolveFreeze,  "Freeze" },
-    };
+        { Param::evolveCrush,   "Crush" },
+    };   // in EvolveOperator order: the toggle index is the bypass bit
 }
 
 EvolveView::EvolveView (MatterCaptureStore& c) : captures (c)
@@ -35,8 +35,11 @@ EvolveView::EvolveView (MatterCaptureStore& c) : captures (c)
     delta.setLabelWidthFraction (0.62f);
     evolveParams.setRowHeight (14.0f);
     evolveParams.setLabelWidthFraction (0.5f);
+    engineTable.setRowHeight (14.0f);
+    engineTable.setLabelWidthFraction (0.5f);
     addAndMakeVisible (delta);
     addAndMakeVisible (evolveParams);
+    addAndMakeVisible (engineTable);
 
     styleButton (rawButton, Theme::magenta);
     styleButton (evolvedButton, Theme::violet);
@@ -50,12 +53,21 @@ EvolveView::EvolveView (MatterCaptureStore& c) : captures (c)
     {
         auto toggle = std::make_unique<juce::ToggleButton> (juce::String (p.label));
         styleToggle (*toggle, Theme::violet);
-        toggle->setEnabled (false);
-        toggle->setTooltip ("Per-operator bypass needs a per-operator flag in DevControls; the engine only exposes bypassEvolve today.");
+        toggle->setTooltip ("Bypass this operator in the engine (DevControls::evolveBypassMask)");
+        toggle->onClick = [this] { applyOperatorBypass(); };
         operatorPanel.addAndMakeVisible (*toggle);
         operatorToggles.push_back (std::move (toggle));
     }
     addAndMakeVisible (operatorPanel);
+}
+
+void EvolveView::applyOperatorBypass()
+{
+    if (diagnostics == nullptr) return;
+    uint32_t mask = 0;
+    for (size_t i = 0; i < operatorToggles.size() && i < (size_t) kNumEvolveOperators; ++i)
+        if (operatorToggles[i]->getToggleState()) mask |= evolveBypassBit ((EvolveOperator) i);
+    diagnostics->dev.evolveBypassMask.store (mask, std::memory_order_relaxed);
 }
 
 void EvolveView::applyBypass (bool raw)
@@ -73,6 +85,10 @@ void EvolveView::updateFrame (const LabFrame& f)
     const bool raw = f.diagnostics.dev.bypassEvolve.load (std::memory_order_relaxed);
     rawButton.setToggleState (raw, juce::dontSendNotification);
     evolvedButton.setToggleState (! raw, juce::dontSendNotification);
+
+    const uint32_t mask = f.diagnostics.dev.evolveBypassMask.load (std::memory_order_relaxed);
+    for (size_t i = 0; i < operatorToggles.size() && i < (size_t) kNumEvolveOperators; ++i)
+        operatorToggles[i]->setToggleState ((mask & evolveBypassBit ((EvolveOperator) i)) != 0u, juce::dontSendNotification);
 
     const auto& before = captures.before;
     const auto& after  = captures.after;
@@ -155,6 +171,27 @@ void EvolveView::updateFrame (const LabFrame& f)
     rows.push_back ({ "", "" });
     rows.push_back ({ "Engine bypassEvolve", raw ? "TRUE (raw)" : "false" });
     evolveParams.setRows (std::move (rows));
+
+    // What the engine actually did to the focus voice's nodes in the last block.
+    const auto& ev = f.snapshot.evolve;
+    std::vector<KeyValueTable::Row> engineRows;
+    for (int op = 0; op < kNumEvolveOperators; ++op)
+    {
+        const bool bypassed = (ev.bypassMask & evolveBypassBit ((EvolveOperator) op)) != 0u;
+        engineRows.push_back ({ juce::String (evolveOperatorName ((EvolveOperator) op)) + " applied",
+                                bypassed ? juce::String ("BYPASSED") : juce::String (ev.amount[op], 3) });
+    }
+    engineRows.push_back ({ "Nodes moved / active", juce::String (ev.nodesMoved) + " / " + juce::String (ev.activeNodes) });
+    engineRows.push_back ({ "Mean / max detune", juce::String (ev.meanAbsCents, 1) + " / " + juce::String (ev.maxAbsCents, 1) + " cents" });
+    engineRows.push_back ({ "Magnet locked", juce::String (ev.magnetLocked) });
+    engineRows.push_back ({ "Tear pairs / Crush dropped", juce::String (ev.tearPairs) + " / " + juce::String (ev.crushDropped) });
+    engineRows.push_back ({ "Freeze", ev.freeze != 0 ? "FROZEN" : "off" });
+    engineRows.push_back ({ "Motion phase / rate", juce::String (ev.motionPhase, 3) + " / " + juce::String (ev.motionRateHz, 3) + " Hz" });
+    engineRows.push_back ({ "Fundamental", juce::String (ev.fundamentalHz, 1) + " Hz" });
+    engineTable.setRows (std::move (engineRows));
+    engineTable.clearRowColours();
+    if (ev.nodesMoved > 0) engineTable.setRowColour (kNumEvolveOperators, Theme::violet);
+    if (ev.freeze != 0) engineTable.setRowColour (kNumEvolveOperators + 4, Theme::magenta);
 }
 
 void EvolveView::resized()
@@ -191,7 +228,9 @@ void EvolveView::resized()
     }
     right.removeFromTop (5);
 
-    delta.setBounds (right.removeFromTop (juce::jmax (170, right.getHeight() * 58 / 100)));
+    delta.setBounds (right.removeFromTop (juce::jmax (170, right.getHeight() * 40 / 100)));
+    right.removeFromTop (5);
+    engineTable.setBounds (right.removeFromTop (juce::jmax (150, right.getHeight() * 55 / 100)));
     right.removeFromTop (5);
     evolveParams.setBounds (right);
 

@@ -221,7 +221,7 @@ void SampleWaveView::paintRuler (juce::Graphics& g)
         const juce::String label = step < 1.0 ? juce::String (juce::roundToInt (t * 1000.0)) : juce::String (t, t < 10.0 ? 1 : 0);
         const auto box = juce::Rectangle<float> (x - 26.0f, ruler.getY() + ruler.getHeight() * 0.3f, 52.0f, ruler.getHeight() * 0.7f);
         if (box.getRight() > area.getRight() + 4.0f) continue;
-        draw::trackedText (g, label, box, juce::Justification::centred, Theme::valueFont (h), Theme::textDim);
+        draw::trackedText (g, label, box, juce::Justification::centred, Theme::valueFont (h), Theme::textSecondary.withAlpha (0.75f));
     }
     draw::trackedText (g, step < 1.0 ? "MS" : "S", ruler.withTrimmedLeft (ruler.getWidth() - 22.0f),
                        juce::Justification::centredRight, Theme::captionFont (h * 0.92f), Theme::textDim.withAlpha (0.8f));

@@ -766,6 +766,244 @@ manager.addFactory ({ "Copper Winter", "EVOLVING", { "cold", "metallic", "plucke
     sharedMacros (r, Param::fractureDecay, Param::impactRandom);
     r.commit (s);
 }});
+
+manager.addFactory ({ "Marrow Drift", "EVOLVING", { "organic", "granular", "vocal", "morphing", "huge" }, [] (PatchState& s)
+{
+    // Weather that turns out to have someone in it. A sparse dust cloud holds
+    // the first seconds; underneath it a granular breath grows its grains and
+    // its level until the formants are the foreground and the weather is gone.
+    set (s, Param::sourceMode, 1 /* LAYER */);
+    set (s, Param::waveLevel, 0.0f);
+    set (s, Param::impactLevel, 0.0f);
+    set (s, Param::gestureLevel, 0.0f);
+    sample (s, BuiltInSamples::Kind::Breath, 3 /* GRANULAR */, 0.10f, 0.86f, 0.22f, 0.60f, 60, 0.16f);
+    dust (s, 7 /* CLOUD */, 0.54f, 0.72f, 0.36f, 0.44f, 0.66f, 0.74f, 3847, 0.60f);
+    amp (s, 0.60f, 6.0f, 0.86f, 2.60f, 0.55f);
+    shape (s, 0.60f, 0.34f, 0.46f, 0.44f, 0.72f, 0.28f);
+    material (s, MaterialType::Organic, MaterialType::Membrane, 0.34f);
+    topology (s, 2 /* CLUSTERS */, 0.50f, 0.52f, 3851);
+    matter (s, 0.72f, 0.56f, 0.16f, 0.86f);
+    evolve (s, 0.0f, 0.10f, 0.0f, 0.0f, 0.52f, 0.20f, 0.0f, 0.12f, 0.34f);
+    space (s, SpacePresets::Void, 0.50f, 0.84f, 0.46f, 0.42f);
+
+    env (s, 2, 4.60f, 6.0f, 1.0f, 4.0f, 0.6f);
+    lfo (s, 1, 0.07f, 0 /* SINE */, 1.0f, true, 2.0f);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.12f, 0.45f, 0.80f, 0.5f, 3853);
+    macros (s, 0.45f, 0.40f, 0.55f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env2,      Param::sampleLevel,     0.700f)
+     .uni (ModSource::Env2,      Param::dustLevel,      -0.520f)
+     .uni (ModSource::Env2,      Param::sampleGrain,     0.420f)
+     .uni (ModSource::Env2,      Param::dustDensity,    -0.300f)
+     .bi  (ModSource::LFO1,      Param::sampleStart,     0.110f)
+     .bi  (ModSource::Chaos1,    Param::dustColor,       0.150f)
+     .uni (ModSource::Velocity,  Param::sampleSpread,    0.200f)
+     .uni (ModSource::NoteRandom, Param::dustJitter,     0.220f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,    0.340f)
+     .uni (ModSource::Macro2,    Param::dustColor,       0.320f)
+     .uni (ModSource::Macro3,    Param::spaceMix,        0.300f)
+     .uni (ModSource::Macro4,    Param::sampleGrain,     0.300f)
+     .uni (ModSource::Macro4,    Param::evolveMelt,      0.220f);
+    sharedMacros (r, Param::spaceSize, Param::sampleSpread);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Salt Mirror", "EVOLVING", { "cold", "glassy", "morphing", "wide", "high" }, [] (PatchState& s)
+{
+    // One object pulled into two. BEND levers the partials around a pivot in
+    // the middle of the spectrum: everything above it climbs almost an octave
+    // while everything below sinks, and the note splits open as you hold it.
+    wave (s, 0 /* BASIC */, 0.20f, 0.16f, 0.04f, 4, 0.18f, 0.78f, 0, 0.86f);
+    amp (s, 0.32f, 6.0f, 0.84f, 2.20f, 0.5f);
+    shape (s, 0.56f, 0.54f, 0.28f, 0.64f, 0.82f, 0.20f);
+    material (s, MaterialType::Crystal, MaterialType::Void, 0.46f);
+    topology (s, 4 /* RANDOM */, 0.38f, 0.58f, 3877);
+    matter (s, 0.88f, 0.62f, 0.24f, 0.86f);
+    evolve (s, 0.05f, 0.0f, 0.0f, 0.0f, 0.46f, 0.10f, 0.0f, 0.16f, 0.28f);
+    set (s, Param::evolveBendPivot, 0.46f);
+    set (s, Param::evolveBendRange, 0.90f);
+    set (s, Param::evolveBendCurve, 0.62f);
+    space (s, SpacePresets::Orbit, 0.42f, 0.68f, 0.58f, 0.36f);
+
+    env (s, 2, 5.0f, 6.0f, 1.0f, 4.0f, 0.6f);
+    env (s, 3, 2.80f, 6.0f, 0.90f, 3.0f);
+    lfo (s, 1, 0.10f, 0 /* SINE */, 1.0f, true, 2.0f);
+    macros (s, 0.40f, 0.45f, 0.45f, 0.55f);
+
+    Routings r;
+    r.uni (ModSource::Env2,      Param::evolveBend,      0.840f)
+     .uni (ModSource::Env2,      Param::shapeDensity,    0.260f)
+     .uni (ModSource::Env3,      Param::evolveBendPivot, 0.220f)
+     .uni (ModSource::Env3,      Param::waveDetune,      0.240f)
+     .bi  (ModSource::LFO1,      Param::wavePosition,    0.080f)
+     .uni (ModSource::Velocity,  Param::waveMorph,       0.220f)
+     .bi  (ModSource::KeyTrack,  Param::evolveBendPivot, -0.180f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,    0.360f)
+     .uni (ModSource::Macro2,    Param::wavePosition,    0.300f)
+     .uni (ModSource::Macro3,    Param::spaceMix,        0.300f)
+     .uni (ModSource::Macro4,    Param::evolveBend,      0.300f)
+     .uni (ModSource::Macro4,    Param::evolveBendRange, 0.240f);
+    sharedMacros (r, Param::spaceSize, Param::evolveBendCurve);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Thaw Machine", "EVOLVING", { "cold", "metallic", "unstable", "noisy", "drift" }, [] (PatchState& s)
+{
+    // A frozen additive texture coming loose. The jitter and the grain of the
+    // frozen dust rise while MAGNET lets go of the grid and the material turns
+    // to liquid, so a rigid ice tone slumps into something wet and wandering.
+    dust (s, 8 /* FROZEN */, 0.46f, 0.64f, 0.16f, 0.04f, 0.50f, 0.62f, 3907, 0.86f);
+    amp (s, 0.20f, 6.0f, 0.88f, 2.0f, 0.5f);
+    shape (s, 0.54f, 0.60f, 0.32f, 0.62f, 0.78f, 0.18f);
+    material (s, MaterialType::Metal, MaterialType::Liquid, 0.12f);
+    topology (s, 1 /* RING */, 0.44f, 0.50f, 3911);
+    matter (s, 0.84f, 0.58f, 0.20f, 0.80f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.66f, 0.18f, 0.06f, 0.0f, 0.20f, 0.32f);
+    set (s, Param::evolveMagnetTarget, 4 /* CHROMATIC */);
+    space (s, SpacePresets::Nebula, 0.44f, 0.66f, 0.52f, 0.38f);
+
+    env (s, 2, 4.80f, 6.0f, 1.0f, 3.0f, 0.55f);
+    lfo (s, 1, 0.13f, 5 /* SMOOTH RANDOM */, 1.0f, true, 1.5f);
+    chaos (s, 1, 2 /* LOGISTIC */, 0.26f, 0.50f, 0.55f, 0.5f, 3917);
+    macros (s, 0.50f, 0.40f, 0.45f, 0.55f);
+
+    Routings r;
+    r.uni (ModSource::Env2,      Param::evolveMagnet,   -0.600f)
+     .uni (ModSource::Env2,      Param::evolveGravity,   0.760f)
+     .uni (ModSource::Env2,      Param::shapeBlend,      0.780f)
+     .uni (ModSource::Env2,      Param::shapeMix,       -0.260f)
+     .uni (ModSource::Env2,      Param::dustJitter,      0.640f)
+     .uni (ModSource::Env2,      Param::dustGrain,       0.240f)
+     .uni (ModSource::Env2,      Param::shapeSurface,   -0.120f)
+     .bi  (ModSource::LFO1,      Param::dustColor,       0.120f)
+     .bi  (ModSource::Chaos1,    Param::dustPitch,       0.060f)
+     .uni (ModSource::Velocity,  Param::dustDensity,     0.220f)
+     .bi  (ModSource::KeyTrack,  Param::dustColor,       0.160f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,    0.360f)
+     .uni (ModSource::Macro2,    Param::dustColor,       0.320f)
+     .uni (ModSource::Macro3,    Param::spaceMix,        0.300f)
+     .uni (ModSource::Macro4,    Param::dustJitter,      0.300f)
+     .uni (ModSource::Macro4,    Param::shapeBlend,      0.240f);
+    sharedMacros (r, Param::spaceSize, Param::dustStereo);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Vellum Throat", "EVOLVING", { "vocal", "warm", "scraped", "morphing", "roomy" }, [] (PatchState& s)
+{
+    // A rubbed skin that finds a voice. The contact point walks along the
+    // surface while FRACTURE opens a minor terrace over the top of it, so a
+    // dull rub grows formants and ends singing a chord it did not start with.
+    gesture (s, 2 /* RUB */, 0.46f, 0.30f, 0.44f, 0.20f, 0.28f, 0.34f, 0.78f);
+    amp (s, 0.36f, 6.0f, 0.82f, 2.0f, 0.55f);
+    shape (s, 0.58f, 0.30f, 0.44f, 0.50f, 0.74f, 0.30f);
+    material (s, MaterialType::Membrane, MaterialType::Organic, 0.30f);
+    topology (s, 2 /* CLUSTERS */, 0.46f, 0.54f, 3919);
+    matter (s, 0.86f, 0.58f, 0.18f, 0.78f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.20f, 0.44f, 0.14f, 0.0f, 0.16f, 0.32f);
+    set (s, Param::evolveMagnetTarget, 3 /* MINOR */);
+    fracture (s, 0 /* SPECTRAL */, 0.08f, 0.46f, 0.58f, 0.42f, 0.28f, 0.52f, 0.62f, 0.60f, 0.28f,
+              1 /* 16 */, 2 /* 1/4 */, 8, 0.0f, 0 /* FORWARD */, 1.0f, 0.18f, 3923,
+              FractureShape { 16, 0.14f, 0.62f, 0.18f, 0.50f, 0.48f, 0.76f, 0.28f, 0.88f,
+                              1.0f, 0.82f, 0.66f, 1.0f, kMinorTerrace, "XXLXXHXX", nullptr });
+    space (s, SpacePresets::Dream, 0.46f, 0.70f, 0.58f, 0.36f);
+
+    env (s, 2, 4.40f, 6.0f, 1.0f, 4.0f, 0.6f);
+    env (s, 3, 2.40f, 6.0f, 0.90f, 3.0f);
+    lfo (s, 1, 0.08f, 0 /* SINE */, 1.0f, true, 2.0f);
+    macros (s, 0.45f, 0.45f, 0.50f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env2,      Param::fractureAmount,  0.700f)
+     .uni (ModSource::Env2,      Param::gesturePosition, 0.560f)
+     .uni (ModSource::Env2,      Param::evolveMagnet,    0.380f)
+     .uni (ModSource::Env3,      Param::gestureBandwidth, 0.420f)
+     .uni (ModSource::Env3,      Param::shapeBlend,      0.400f)
+     .bi  (ModSource::LFO1,      Param::gesturePressure, 0.090f)
+     .uni (ModSource::Velocity,  Param::gestureSpeed,    0.240f)
+     .bi  (ModSource::KeyTrack,  Param::gesturePosition, 0.180f)
+     .uni (ModSource::Macro1,    Param::gestureMotion,   0.360f)
+     .uni (ModSource::Macro2,    Param::fractureTone,    0.300f)
+     .uni (ModSource::Macro3,    Param::spaceMix,        0.300f)
+     .uni (ModSource::Macro4,    Param::fractureAmount,  0.300f)
+     .uni (ModSource::Macro4,    Param::gestureRoughness, 0.240f);
+    sharedMacros (r, Param::fractureDecay, Param::gestureRoughness);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Ferric Swell", "EVOLVING", { "metallic", "resonant", "evolving", "struck", "huge" }, [] (PatchState& s)
+{
+    // The opposite of a bridge tightening: one welded body comes apart. The
+    // coupling falls from nearly full to almost nothing while the strikes get
+    // harder, so a single fused ring separates into individual iron strings.
+    impact (s, 4 /* METAL STRIKE */, 0.44f, 0.38f, 0.28f, 0.72f, 0.50f, 0.12f, 0.26f);
+    amp (s, 0.004f, 6.0f, 0.70f, 3.0f, 0.45f);
+    shape (s, 0.62f, 0.48f, 0.40f, 0.50f, 0.82f, 0.24f);
+    material (s, MaterialType::Metal, MaterialType::String, 0.30f);
+    topology (s, 3 /* LATTICE */, 0.92f, 0.46f, 3929);
+    matter (s, 0.94f, 0.56f, 0.50f, 0.82f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.46f, 0.14f, 0.0f, 0.18f, 0.32f);
+    space (s, SpacePresets::Void, 0.48f, 0.82f, 0.50f, 0.42f);
+
+    env (s, 2, 4.20f, 6.0f, 1.0f, 4.0f, 0.55f);
+    env (s, 3, 2.0f, 6.0f, 0.90f, 3.0f);
+    lfo (s, 1, 0.11f, 1 /* TRIANGLE */, 1.0f, true, 1.5f);
+    macros (s, 0.45f, 0.45f, 0.55f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env2,      Param::shapeCoupling,  -0.840f)
+     .uni (ModSource::Env2,      Param::impactHardness,  0.420f)
+     .uni (ModSource::Env2,      Param::shapeMass,      -0.300f)
+     .uni (ModSource::Env3,      Param::shapeDistribution, 0.320f)
+     .uni (ModSource::Env3,      Param::impactBrightness, 0.360f)
+     .bi  (ModSource::LFO1,      Param::shapeStereo,     0.100f)
+     .uni (ModSource::Velocity,  Param::impactHardness,  0.260f)
+     .bi  (ModSource::KeyTrack,  Param::shapeCoupling,  -0.160f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,    0.340f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro3,    Param::spaceMix,        0.320f)
+     .uni (ModSource::Macro4,    Param::shapeCoupling,   0.300f)
+     .uni (ModSource::Macro4,    Param::shapeDistribution, 0.220f);
+    sharedMacros (r, Param::spaceSize, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Lantern Tide", "EVOLVING", { "glassy", "bright", "drift", "air", "distant" }, [] (PatchState& s)
+{
+    // The tide going out from under a lantern. GRAVITY tips from the bottom of
+    // the object to the top, so the body and its ring time drain away and the
+    // note is left standing on its own lit upper partials, two octaves up.
+    sample (s, BuiltInSamples::Kind::GlassStrike, 1 /* LOOP */, 0.0f, 0.24f, 0.24f, 0.44f, 60, 0.94f);
+    amp (s, 0.44f, 6.0f, 0.84f, 3.0f, 0.55f);
+    shape (s, 0.50f, 0.68f, 0.34f, 0.70f, 0.84f, 0.16f);
+    material (s, MaterialType::Crystal, MaterialType::Membrane, 0.30f);
+    topology (s, 5 /* STAR */, 0.32f, 0.60f, 3931);
+    matter (s, 0.86f, 0.60f, 0.22f, 0.84f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.58f, 0.10f, 0.0f, 0.12f, 0.26f);
+    space (s, SpacePresets::Shimmer, 0.48f, 0.78f, 0.62f, 0.38f);
+
+    env (s, 2, 5.20f, 6.0f, 1.0f, 4.0f, 0.6f);
+    env (s, 3, 3.0f, 6.0f, 0.90f, 4.0f);
+    lfo (s, 1, 0.06f, 0 /* SINE */, 1.0f, true, 2.5f);
+    macros (s, 0.35f, 0.50f, 0.55f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env2,      Param::evolveGravity,  -0.480f)
+     .uni (ModSource::Env2,      Param::shapeMass,      -0.300f)
+     .uni (ModSource::Env2,      Param::shapeBlend,     -0.280f)
+     .uni (ModSource::Env3,      Param::sampleEnd,      -0.160f)
+     .uni (ModSource::Env3,      Param::shapeSurface,    0.180f)
+     .bi  (ModSource::LFO1,      Param::sampleSpread,    0.120f)
+     .uni (ModSource::Velocity,  Param::sampleLevel,     0.180f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,     -0.140f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,    0.340f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,     0.300f)
+     .uni (ModSource::Macro3,    Param::spaceMix,        0.320f)
+     .uni (ModSource::Macro4,    Param::evolveGravity,  -0.280f)
+     .uni (ModSource::Macro4,    Param::shapeBlend,      0.300f);
+    sharedMacros (r, Param::spaceSize, Param::sampleGrain);
+    r.commit (s);
+}});
 }
 
 } // namespace am::FactoryContent

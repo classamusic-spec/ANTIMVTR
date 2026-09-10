@@ -1,4 +1,5 @@
 #include "Controls.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
@@ -86,11 +87,15 @@ void layoutGrid (juce::Rectangle<int> area, const std::vector<juce::Component*>&
     if (n == 0 || columns <= 0) return;
     const int rows = (n + columns - 1) / columns;
     const int cellW = (area.getWidth() - gapX * (columns - 1)) / columns;
-    const int cellH = (area.getHeight() - gapY * (rows - 1)) / rows;
+    // A tall area centres its rows rather than stretching them apart, so the slack
+    // becomes an even border instead of a dead band across the panel's middle.
+    const auto vertical = layout::gridRows (area.getHeight(), rows, cellW, gapY);
     for (int i = 0; i < n; ++i)
     {
         const int r = i / columns, c = i % columns;
-        comps[(size_t) i]->setBounds (area.getX() + c * (cellW + gapX), area.getY() + r * (cellH + gapY), cellW, cellH);
+        comps[(size_t) i]->setBounds (area.getX() + c * (cellW + gapX),
+                                      area.getY() + vertical.top + r * (vertical.cellHeight + gapY),
+                                      cellW, vertical.cellHeight);
     }
 }
 

@@ -354,6 +354,98 @@ public:
 };
 
 //==============================================================================
+class KnobFootprintTests : public juce::UnitTest
+{
+public:
+    KnobFootprintTests() : juce::UnitTest ("Knob footprint", "uilayout") {}
+
+    void runTest() override
+    {
+        const float widths[]  = { 40.0f, 70.0f, 110.0f, 155.0f, 215.0f, 320.0f };
+        const float heights[] = { 46.0f, 80.0f, 130.0f, 180.0f, 260.0f, 340.0f };
+
+        beginTest ("The circle and its caption always fit the cell");
+        for (float w : widths)
+            for (float h : heights)
+                for (bool hero : { false, true })
+                    for (bool label : { false, true })
+                    {
+                        const auto f = knobFootprint (w, h, hero, label);
+                        const juce::String at = " at " + juce::String (w) + "x" + juce::String (h) + (hero ? " hero" : "");
+                        expect (f.diameter > 0.0f, "the knob vanished" + at);
+                        expect (f.diameter <= w + 0.01f, "the circle is wider than its cell" + at);
+                        expect (f.top >= -0.01f, "the group starts above its cell" + at);
+                        expect (f.top + f.groupHeight() <= h + 0.01f, "the caption falls out of the cell" + at);
+                        expect (f.labelHeight == 0.0f || label, "a caption band without a caption" + at);
+                    }
+
+        beginTest ("A knob never grows past its ceiling");
+        for (bool hero : { false, true })
+        {
+            const auto f = knobFootprint (900.0f, 900.0f, hero, true);
+            expect (f.diameter <= knobDiameterCap (hero), "the knob passed its cap");
+            expect (f.diameter > knobDiameterCap (hero) * 0.9f, "the knob did not reach its cap in a huge cell");
+        }
+        expect (knobDiameterCap (true) > knobDiameterCap (false), "a hero knob is not allowed to be the bigger one");
+
+        beginTest ("The group is centred in the cell it is given");
+        {
+            const auto f = knobFootprint (120.0f, 300.0f, false, true);
+            expectWithinAbsoluteError (f.top, (300.0f - f.groupHeight()) * 0.5f, 0.01f);
+        }
+
+        beginTest ("Degenerate cells stay finite");
+        for (auto f : { knobFootprint (0.0f, 0.0f, true, true), knobFootprint (-20.0f, 40.0f, false, true), knobFootprint (10.0f, 6.0f, true, true) })
+        {
+            expect (std::isfinite (f.diameter) && f.diameter >= 0.0f);
+            expect (std::isfinite (f.top) && f.top >= 0.0f);
+        }
+    }
+};
+
+//==============================================================================
+class GridRowTests : public juce::UnitTest
+{
+public:
+    GridRowTests() : juce::UnitTest ("Grid rows", "uilayout") {}
+
+    void runTest() override
+    {
+        beginTest ("Rows always fit the area they are given");
+        for (int areaH : { 60, 120, 240, 400, 668, 900 })
+            for (int rows : { 1, 2, 3, 4 })
+                for (int cellW : { 40, 90, 150, 213, 400 })
+                {
+                    const auto g = gridRows (areaH, rows, cellW, 2);
+                    const juce::String at = " for " + juce::String (rows) + " rows of " + juce::String (cellW) + " in " + juce::String (areaH);
+                    expect (g.cellHeight >= 1, "a row with no height" + at);
+                    expect (g.top >= 0, "the block starts above the area" + at);
+                    expect (g.top + g.cellHeight * rows + 2 * (rows - 1) <= areaH + 1, "the block runs past the area" + at);
+                }
+
+        beginTest ("A tall area centres its rows instead of stretching them");
+        {
+            const auto tall = gridRows (700, 2, 213, 2);
+            expect (tall.cellHeight < 349, "the rows were stretched over the whole height");
+            expect (tall.top > 20, "the slack did not become a border");
+        }
+
+        beginTest ("A short area still shares out every pixel it has");
+        {
+            const auto tight = gridRows (200, 2, 213, 2);
+            expectEquals (tight.cellHeight, 99);
+            expectEquals (tight.top, 0);
+        }
+
+        beginTest ("Degenerate grids stay finite and ordered");
+        for (auto g : { gridRows (0, 2, 100, 2), gridRows (300, 0, 100, 2), gridRows (300, 2, -50, 2) })
+        {
+            expect (g.cellHeight >= 0 && g.top >= 0);
+        }
+    }
+};
+
+//==============================================================================
 class SourceSelectorLayoutTests : public juce::UnitTest
 {
 public:
@@ -508,6 +600,8 @@ static GridColumnTests gridColumnTests;
 static KnobGeometryTests knobGeometryTests;
 static PanelHardwareTests panelHardwareTests;
 static SliderRowTests sliderRowTests;
+static KnobFootprintTests knobFootprintTests;
+static GridRowTests gridRowTests;
 static SourceSelectorLayoutTests sourceSelectorLayoutTests;
 static WaveRulerTests waveRulerTests;
 static EnvelopeStageTests envelopeStageTests;

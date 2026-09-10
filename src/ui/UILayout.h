@@ -232,6 +232,61 @@ struct KnobRadii
     float moat() const noexcept { return (orbit - arc) * 0.5f - trackWidth * 0.5f; }
 };
 
+/**
+    Vertical placement of a grid of equal controls.
+
+    A control is a round body with a caption under it, so it can never use more
+    height than a little over its own width. A cell taller than that stretches
+    the rows apart and leaves a dead band across the middle of the panel, so the
+    rows are capped and the block is centred: the slack becomes an even border
+    instead of a hole.
+*/
+struct GridRows
+{
+    int cellHeight = 0;
+    int top = 0;        ///< y of the first row, relative to the area's top
+};
+
+inline GridRows gridRows (int areaHeight, int rows, int cellWidth, int gapY) noexcept
+{
+    GridRows g;
+    if (rows <= 0 || areaHeight <= 0) return g;
+    const int spread  = juce::jmax (1, (areaHeight - gapY * (rows - 1)) / rows);
+    const int natural = juce::jmax (1, juce::roundToInt ((float) juce::jmax (0, cellWidth) * 1.22f) + 12);
+    g.cellHeight = juce::jmin (spread, natural);
+    g.top = juce::jmax (0, (areaHeight - (g.cellHeight * rows + gapY * (rows - 1))) / 2);
+    return g;
+}
+
+/**
+    The largest a knob may grow, whatever room its cell has. A hero knob is the
+    subject of its panel and is allowed to be much bigger than an ordinary one;
+    without a ceiling a lone control in a tall panel would swell to fill it, and
+    with too low a ceiling the panel is left with a dead band across its middle.
+*/
+inline float knobDiameterCap (bool hero) noexcept { return hero ? 200.0f : 118.0f; }
+
+/** How a knob's circle and its caption share the cell they are given. */
+struct KnobFootprint
+{
+    float diameter = 0.0f;
+    float top = 0.0f;          ///< y of the circle, relative to the cell's top
+    float labelHeight = 0.0f;  ///< the caption band under the circle (0 without one)
+
+    /** Total height of the circle and its caption together. */
+    float groupHeight() const noexcept { return diameter + (labelHeight > 0.0f ? labelHeight + 2.0f : 0.0f); }
+};
+
+inline KnobFootprint knobFootprint (float width, float height, bool hero, bool withLabel) noexcept
+{
+    KnobFootprint f;
+    if (width <= 0.0f || height <= 0.0f) return f;
+    f.labelHeight = withLabel ? juce::jlimit (10.0f, 22.0f, height * 0.19f) : 0.0f;
+    f.diameter = juce::jmax (0.0f, juce::jmin (width, height - f.labelHeight - 2.0f, knobDiameterCap (hero)) * 0.99f);
+    f.top = juce::jmax (0.0f, (height - f.groupHeight()) * 0.5f);
+    return f;
+}
+
 inline KnobRadii knobRadii (float diameter, bool hero) noexcept
 {
     KnobRadii r;

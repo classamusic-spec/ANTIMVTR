@@ -201,17 +201,23 @@ inline void contactShadow (juce::Graphics& g, juce::Rectangle<float> bounds, flo
     }
 }
 
-/** Contact shadow beneath a circular control. */
+/**
+    Contact shadow beneath a circular control.
+
+    The reach is deliberately short and grows slowly, because a shadow that
+    scales with the control turns into a hard crescent offset from it — a
+    second, misaligned ring rather than the thing sitting on the panel.
+*/
 inline void contactShadowEllipse (juce::Graphics& g, juce::Rectangle<float> circle, float radius, float strength = 1.0f)
 {
     if (radius < 0.5f || strength <= 0.01f) return;
-    const int steps = juce::jlimit (3, 9, (int) (radius * 0.8f));
+    const int steps = juce::jlimit (4, 10, (int) (radius * 1.6f));
     for (int i = steps; i >= 1; --i)
     {
         const float t = (float) i / (float) steps;
         const float spread = radius * t;
-        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.22f * strength * (1.0f - t) * (1.0f - t) + 0.02f * strength)));
-        g.fillEllipse (circle.expanded (spread * 0.55f).translated (spread * 0.28f, spread * 0.55f));
+        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.16f * strength * (1.0f - t) * (1.0f - t) + 0.012f * strength)));
+        g.fillEllipse (circle.expanded (spread * 0.45f).translated (spread * 0.16f, spread * 0.34f));
     }
 }
 
@@ -472,7 +478,7 @@ inline void domeBody (juce::Graphics& g, juce::Rectangle<float> circle, juce::Co
     if (r < 1.0f) return;
 
     if (shadow > 0.01f)
-        contactShadowEllipse (g, circle, juce::jlimit (2.5f, 18.0f, r * 0.34f), shadow * 1.25f);
+        contactShadowEllipse (g, circle, juce::jlimit (2.0f, 6.5f, r * 0.16f), shadow);
 
     // The dome. The light strikes the upper left of the cap and the surface turns
     // away from it toward the lower right, so the two sides must be a long way

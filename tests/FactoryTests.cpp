@@ -55,15 +55,20 @@ namespace
     };
 
     MutationRender renderPatch (SynthEngine& engine, const PatchState& patch,
-                                const PresetValidatorOptions& options, int midiNote)
+                                const PresetValidatorOptions& options, int midiNote, bool prepared = false)
     {
         MutationRender out;
         const double sr = options.sampleRate;
         const int blockSize = options.blockSize;
-        const int holdSamples = (int) (options.holdSeconds * sr);
+
+        // Hold the note long enough for its own attack: a two second swell is
+        // not silent, it is slow, and the window has to be able to tell them apart.
+        const double hold = juce::jmax (options.holdSeconds,
+                                        (double) paramValue (patch.params, Param::ampAttack) + 0.30);
+        const int holdSamples = (int) (hold * sr);
         const int totalSamples = holdSamples + (int) (options.releaseSeconds * sr);
 
-        engine.prepare (sr, blockSize);
+        if (! prepared) engine.prepare (sr, blockSize);
         engine.reset();
         engine.control().resetTo (patch.params);
         {
@@ -474,33 +479,50 @@ public:
             expect (shapeMoved, "a SHAPE mutation must change SHAPE");
         }
 
-        beginTest ("200 mutated patches render safely and audibly");
+        beginTest ("every preset survives 200 random mutations, rendered");
         {
             auto engine = std::make_unique<SynthEngine>();
-            auto options = quickOptions();
+            PresetValidatorOptions options;
+            options.holdSeconds = 0.28;
+            options.releaseSeconds = 0.20;
+            options.blockSize = 512;
+            engine->prepare (options.sampleRate, options.blockSize);
+
             juce::Random random ((juce::int64) 0xB10D5EEDLL);
             juce::StringArray failures;
+            float worstPeak = 0.0f, quietestRms = 1.0f;
+            const auto started = juce::Time::getMillisecondCounter();
 
-            for (int n = 0; n < 200; ++n)
+            for (int i = 0; i < count; ++i)
             {
-                const int index = n % count;
-                auto patch = presets.buildFactory (index);
-                const auto strength = strengths[n % 3];
-                const uint32_t seed = (uint32_t) random.nextInt();
-                MutationEngine::mutate (patch.params, strength, seed);
+                const auto base = presets.buildFactory (i);
+                for (int n = 0; n < 200; ++n)
+                {
+                    auto patch = base;
+                    const auto strength = strengths[n % 3];
+                    const uint32_t seed = (uint32_t) random.nextInt();
+                    MutationEngine::mutate (patch.params, strength, seed);
 
-                const auto r = renderPatch (*engine, patch, options, 60);
-                juce::StringArray problems;
-                if (r.nonFinite > 0)         problems.add ("non-finite " + juce::String (r.nonFinite));
-                if (r.peak > 1.0f)           problems.add ("peak " + juce::String (r.peak, 3));
-                if (r.rms < 1.0e-4f)         problems.add ("silent (rms " + juce::String (r.rms, 8) + ")");
-                if (std::abs (r.dc) > 0.02f) problems.add ("dc " + juce::String (r.dc, 4));
-                if (r.safety > 0)            problems.add ("safety " + juce::String ((int) r.safety));
+                    const auto r = renderPatch (*engine, patch, options, 60, true);
+                    worstPeak = juce::jmax (worstPeak, r.peak);
+                    quietestRms = juce::jmin (quietestRms, r.rms);
 
-                if (! problems.isEmpty())
-                    failures.add (patch.meta.name + " strength " + juce::String ((int) strength)
-                                  + " seed " + juce::String ((int) seed) + ": " + problems.joinIntoString (", "));
+                    juce::StringArray problems;
+                    if (r.nonFinite > 0)         problems.add ("non-finite " + juce::String (r.nonFinite));
+                    if (r.peak > 1.0f)           problems.add ("peak " + juce::String (r.peak, 3));
+                    if (r.rms < 1.0e-4f)         problems.add ("silent (rms " + juce::String (r.rms, 8) + ")");
+                    if (std::abs (r.dc) > 0.02f) problems.add ("dc " + juce::String (r.dc, 4));
+                    if (r.safety > 0)            problems.add ("safety " + juce::String ((int) r.safety));
+
+                    if (! problems.isEmpty())
+                        failures.add (base.meta.name + " strength " + juce::String ((int) strength)
+                                      + " seed " + juce::String ((int) seed) + ": " + problems.joinIntoString (", "));
+                }
             }
+
+            logMessage (juce::String (count * 200) + " mutations rendered in "
+                        + juce::String ((juce::Time::getMillisecondCounter() - started) / 1000) + " s: worst peak "
+                        + juce::String (worstPeak, 3) + ", quietest rms " + juce::String (quietestRms, 6));
             expect (failures.isEmpty(), "mutations failed the gate:\n   " + failures.joinIntoString ("\n   "));
         }
 

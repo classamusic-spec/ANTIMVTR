@@ -174,6 +174,18 @@ namespace
         if (value (Param::ampSustain) < 0.25f)
             write (Param::ampAttack, juce::jmin (value (Param::ampAttack), 1.0f));
 
+        // The amplitude envelope gates the *excitation*, so a source whose energy
+        // arrives at note-on is erased by a slow attack. IMPACT is always such a
+        // source and a SAMPLE usually is: when the attack outlasts the transient,
+        // the object's own strike has to carry the note.
+        if (value (Param::ampAttack) > 0.05f)
+        {
+            if (source == 2 /* IMPACT */)
+                write (Param::shapeStrike, juce::jmax (0.30f, value (Param::shapeStrike)));
+            else if (source == 3 /* SAMPLE */)
+                write (Param::shapeStrike, juce::jmax (0.15f, value (Param::shapeStrike)));
+        }
+
         // A long ring plus heavy coupling plus heavy surface is a screaming resonator.
         if (value (Param::shapeDecay) > 0.85f)
         {

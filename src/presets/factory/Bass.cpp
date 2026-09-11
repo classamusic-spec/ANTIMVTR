@@ -155,7 +155,7 @@ manager.addFactory ({ "Cable Pull", "BASS", { "metallic", "plucked", "dirty", "c
     r.uni (ModSource::Env1,       Param::shapeSurface,    0.280f)
      .uni (ModSource::Env1,       Param::fractureMix,     0.180f)
      .bi  (ModSource::LFO1,       Param::shapeTension,    0.030f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,     0.320f)
+     .uni (ModSource::Velocity,   Param::impactVelocity,  0.320f)
      .uni (ModSource::Velocity,   Param::impactBrightness, 0.240f)
      .bi  (ModSource::KeyTrack,   Param::shapeMass,      -0.180f)
      .uni (ModSource::NoteRandom, Param::impactRandom,    0.140f)
@@ -183,7 +183,7 @@ manager.addFactory ({ "Plank Drop", "BASS", { "wooden", "struck", "dark", "sub",
     set (s, Param::sampleLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.003f, 0.80f, 0.70f, 0.28f, 0.30f);
-    set (s, Param::masterGain, -3.0f);
+    set (s, Param::masterGain, -4.5f);
     shape (s, 0.30f, 0.22f, 0.80f, 0.38f, 0.44f, 0.30f);
     material (s, MaterialType::Wood, MaterialType::Membrane, 0.42f);
     topology (s, 2 /* CLUSTERS */, 0.28f, 0.34f, 173);
@@ -202,7 +202,7 @@ manager.addFactory ({ "Plank Drop", "BASS", { "wooden", "struck", "dark", "sub",
     r.uni (ModSource::Env1,     Param::impactHardness,  0.300f)
      .uni (ModSource::Env1,     Param::shapeSurface,    0.220f)
      .uni (ModSource::Env2,     Param::waveLevel,       0.180f)
-     .uni (ModSource::Velocity, Param::shapeStrike,     0.320f)
+     .uni (ModSource::Velocity, Param::impactVelocity,  0.320f)
      .uni (ModSource::Velocity, Param::impactHardness,  0.240f)
      .bi  (ModSource::KeyTrack, Param::waveLevel,      -0.260f)
      .uni (ModSource::Macro1,   Param::evolveMotion,    0.280f)
@@ -309,11 +309,11 @@ manager.addFactory ({ "Well Stone", "BASS", { "hollow", "struck", "dark", "dista
 {
     sample (s, BuiltInSamples::Kind::StoneDrop, 0 /* ONE SHOT */, 0.0f, 0.80f, 0.22f, 0.30f, 48, 0.90f);
     amp (s, 0.004f, 0.90f, 0.72f, 0.38f, 0.3f);
-    set (s, Param::masterGain, 0.0f);
+    set (s, Param::masterGain, -2.0f);
     shape (s, 0.32f, 0.28f, 0.82f, 0.30f, 0.52f, 0.26f);
     material (s, MaterialType::Wood, MaterialType::Void, 0.46f);
     topology (s, 2 /* CLUSTERS */, 0.32f, 0.30f, 587);
-    matter (s, 0.86f, 0.40f, 0.36f, 0.40f);
+    matter (s, 0.86f, 0.56f, 0.36f, 0.40f);
     evolve (s, 0.0f, 0.14f, 0.0f, 0.0f, 0.66f, 0.10f, 0.0f, 0.16f, 0.18f);
     set (s, Param::masterMode, 1 /* MONO */);
     set (s, Param::masterGlide, 0.03f);
@@ -327,7 +327,7 @@ manager.addFactory ({ "Well Stone", "BASS", { "hollow", "struck", "dark", "dista
     r.uni (ModSource::Env1,     Param::shapeSurface,   0.240f)
      .uni (ModSource::Env1,     Param::sampleGrain,    0.180f)
      .bi  (ModSource::LFO1,     Param::sampleStart,    0.050f)
-     .uni (ModSource::Velocity, Param::shapeStrike,    0.300f)
+     .uni (ModSource::Velocity, Param::shapeSurface,   0.280f)
      .uni (ModSource::Velocity, Param::sampleLevel,    0.200f)
      .bi  (ModSource::KeyTrack, Param::shapeDecay,    -0.240f)
      .uni (ModSource::Macro1,   Param::evolveMotion,   0.300f)
@@ -350,7 +350,7 @@ manager.addFactory ({ "Bridge Iron", "BASS", { "metallic", "struck", "harsh", "c
 {
     impact (s, 4 /* METAL STRIKE */, 0.70f, 0.64f, 0.34f, 0.76f, 0.35f, 0.16f);
     amp (s, 0.002f, 0.80f, 0.76f, 0.28f, 0.3f);
-    set (s, Param::masterGain, -1.5f);
+    set (s, Param::masterGain, -3.0f);
     shape (s, 0.40f, 0.58f, 0.70f, 0.56f, 0.52f, 0.40f);
     material (s, MaterialType::Metal, MaterialType::Wood, 0.48f);
     topology (s, 5 /* STAR */, 0.44f, 0.36f, 743);
@@ -382,7 +382,7 @@ manager.addFactory ({ "Bridge Iron", "BASS", { "metallic", "struck", "harsh", "c
     Routings r;
     r.uni (ModSource::Env1,       Param::shapeSurface,    0.300f)
      .uni (ModSource::Env1,       Param::fractureMix,     0.200f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,     0.320f)
+     .uni (ModSource::Velocity,   Param::impactVelocity,  0.320f)
      .uni (ModSource::Velocity,   Param::spaceDistDrive,  0.200f)
      .uni (ModSource::NoteRandom, Param::impactHardness,  0.180f)
      .bi  (ModSource::KeyTrack,   Param::shapeDecay,     -0.220f)
@@ -424,7 +424,7 @@ manager.addFactory ({ "Gut String", "BASS", { "wooden", "plucked", "warm", "clos
     Routings r;
     r.uni (ModSource::Env1,       Param::shapeSurface,    0.220f)
      .uni (ModSource::Env2,       Param::shapeCoupling,   0.200f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,     0.300f)
+     .uni (ModSource::Velocity,   Param::impactVelocity,  0.300f)
      .uni (ModSource::Velocity,   Param::impactHardness,  0.260f)
      .uni (ModSource::NoteRandom, Param::impactCurve,     0.160f)
      .bi  (ModSource::KeyTrack,   Param::shapeMass,      -0.200f)
@@ -511,7 +511,7 @@ manager.addFactory ({ "Anchor Line", "BASS", { "clean", "cold", "static", "dry",
     Routings r;
     r.uni (ModSource::Env1,     Param::shapeSurface,  0.200f)
      .uni (ModSource::Env2,     Param::evolveMagnet,  0.300f)
-     .uni (ModSource::Velocity, Param::shapeStrike,   0.320f)
+     .uni (ModSource::Velocity, Param::shapeBlend,    0.260f)
      .uni (ModSource::Velocity, Param::shapeExcite,   0.220f)
      .bi  (ModSource::KeyTrack, Param::shapeMass,    -0.200f)
      .uni (ModSource::Macro1,   Param::evolveMotion,  0.260f)
@@ -597,7 +597,7 @@ manager.addFactory ({ "Split Cable", "BASS", { "metallic", "unstable", "plucked"
     r.uni (ModSource::Env1,       Param::shapeSurface,  0.220f)
      .uni (ModSource::Env2,       Param::evolveTear,    0.300f)
      .bi  (ModSource::LFO1,       Param::shapeStereo,   0.140f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,   0.300f)
+     .uni (ModSource::Velocity,   Param::impactVelocity, 0.300f)
      .uni (ModSource::NoteRandom, Param::evolveScatter, 0.180f)
      .bi  (ModSource::KeyTrack,   Param::evolveTear,   -0.200f)
      .uni (ModSource::Macro1,     Param::evolveMotion,  0.320f)
@@ -640,7 +640,7 @@ manager.addFactory ({ "Sagging Iron", "BASS", { "dark", "morphing", "struck", "r
      .uni (ModSource::Env2,     Param::evolveMelt,    0.320f)
      .bi  (ModSource::LFO1,     Param::shapeMass,     0.060f)
      .uni (ModSource::Velocity, Param::evolveMelt,   -0.240f)
-     .uni (ModSource::Velocity, Param::shapeStrike,   0.280f)
+     .uni (ModSource::Velocity, Param::impactVelocity, 0.280f)
      .bi  (ModSource::KeyTrack, Param::shapeDecay,   -0.220f)
      .uni (ModSource::Macro1,   Param::evolveMotion,  0.300f)
      .uni (ModSource::Macro1,   Param::evolveSpeed,   0.220f)
@@ -840,7 +840,7 @@ manager.addFactory ({ "Struck Rope", "BASS", { "organic", "plucked", "scraped", 
     r.uni (ModSource::Env1,       Param::impactHardness,  0.260f)
      .uni (ModSource::Env2,       Param::gesturePressure, 0.240f)
      .uni (ModSource::Env2,       Param::gestureSpeed,    0.180f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,     0.300f)
+     .uni (ModSource::Velocity,   Param::impactVelocity,  0.300f)
      .uni (ModSource::Velocity,   Param::impactBrightness, 0.240f)
      .uni (ModSource::NoteRandom, Param::gesturePosition, 0.180f)
      .bi  (ModSource::KeyTrack,   Param::gestureLevel,   -0.220f)
@@ -863,18 +863,18 @@ manager.addFactory ({ "Knuckle Wood", "BASS", { "wooden", "granular", "rhythmic"
 {
     sample (s, BuiltInSamples::Kind::WoodKnock, 3 /* GRANULAR */, 0.0f, 0.70f, 0.58f, 0.46f, 48, 0.95f);
     amp (s, 0.004f, 1.10f, 0.86f, 0.30f, 0.35f);
-    set (s, Param::masterGain, 2.5f);
-    shape (s, 0.36f, 0.12f, 0.72f, 0.42f, 0.56f, 0.30f);
+    set (s, Param::masterGain, -0.5f);
+    shape (s, 0.36f, 0.12f, 0.72f, 0.42f, 0.66f, 0.30f);
     material (s, MaterialType::Wood, MaterialType::Membrane, 0.38f);
     topology (s, 1 /* RING */, 0.40f, 0.42f, 11003);
-    matter (s, 0.86f, 0.54f, 0.34f, 0.34f);
+    matter (s, 0.86f, 0.80f, 0.42f, 0.34f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.24f, 0.56f, 0.10f, 0.0f, 0.26f, 0.16f);
     set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
     set (s, Param::masterMode, 1 /* MONO */);
     set (s, Param::masterGlide, 0.03f);
     space (s, SpacePresets::Dust, 0.18f, 0.30f, 0.44f, 0.20f);
     set (s, Param::spaceCompOn, 1.0f);
-    set (s, Param::spaceCompAmount, 0.55f);   // knocks arrive in gusts; a bass part cannot
+    set (s, Param::spaceCompAmount, 0.75f);   // knocks arrive in gusts; a bass part cannot
 
     FractureShape f;
     f.fragments = 8;
@@ -896,7 +896,7 @@ manager.addFactory ({ "Knuckle Wood", "BASS", { "wooden", "granular", "rhythmic"
     Routings r;
     r.uni (ModSource::Env1,       Param::sampleGrain,    0.240f)
      .bi  (ModSource::LFO1,       Param::sampleStart,    0.060f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,    0.300f)
+     .uni (ModSource::Velocity,   Param::shapeSurface,   0.280f)
      .uni (ModSource::Velocity,   Param::sampleGrain,   -0.220f)
      .uni (ModSource::NoteRandom, Param::sampleStart,    0.150f)
      .bi  (ModSource::KeyTrack,   Param::fractureDelay, -0.180f)
@@ -924,7 +924,7 @@ manager.addFactory ({ "Tar Drum", "BASS", { "dark", "soft", "struck", "distant",
     set (s, Param::impactLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.006f, 1.00f, 0.72f, 0.42f, 0.3f);
-    set (s, Param::masterGain, -1.0f);
+    set (s, Param::masterGain, -2.5f);
     shape (s, 0.28f, 0.20f, 0.84f, 0.32f, 0.52f, 0.22f);
     material (s, MaterialType::Void, MaterialType::Membrane, 0.48f);
     topology (s, 5 /* STAR */, 0.30f, 0.28f, 13001);
@@ -944,7 +944,7 @@ manager.addFactory ({ "Tar Drum", "BASS", { "dark", "soft", "struck", "distant",
     r.uni (ModSource::Env1,     Param::shapeSurface,  0.200f)
      .uni (ModSource::Env2,     Param::evolveMelt,    0.240f)
      .uni (ModSource::Velocity, Param::sampleLevel,   0.280f)
-     .uni (ModSource::Velocity, Param::shapeStrike,   0.240f)
+     .uni (ModSource::Velocity, Param::shapeSurface,  0.260f)
      .bi  (ModSource::KeyTrack, Param::waveLevel,    -0.260f)
      .uni (ModSource::Macro1,   Param::evolveMotion,  0.260f)
      .uni (ModSource::Macro1,   Param::evolveMelt,    0.220f)
@@ -968,7 +968,7 @@ manager.addFactory ({ "Rubber Vault", "BASS", { "organic", "morphing", "soft", "
     set (s, Param::waveModRatio, 1.25f);
     set (s, Param::wavePhaseRandom, 0.0f);   // one voice, one phase: a sub that beats against itself is not a sub
     amp (s, 0.010f, 1.10f, 0.90f, 0.36f, 0.4f);
-    set (s, Param::masterGain, 1.5f);
+    set (s, Param::masterGain, -0.5f);
     shape (s, 0.44f, 0.36f, 0.68f, 0.36f, 0.50f, 0.34f);
     material (s, MaterialType::Liquid, MaterialType::Membrane, 0.44f);
     topology (s, 4 /* RANDOM */, 0.38f, 0.48f, 14009);
@@ -1043,7 +1043,7 @@ manager.addFactory ({ "Kiln Floor", "BASS", { "hollow", "evolving", "wooden", "c
     Routings r;
     r.uni (ModSource::Env1,     Param::shapeSurface,   0.220f)
      .uni (ModSource::Env2,     Param::shapeForm,      0.420f)
-     .uni (ModSource::Velocity, Param::shapeStrike,    0.300f)
+     .uni (ModSource::Velocity, Param::impactVelocity, 0.300f)
      .uni (ModSource::Velocity, Param::impactHardness, 0.240f)
      .bi  (ModSource::KeyTrack, Param::shapeForm,      0.180f)
      .uni (ModSource::NoteRandom, Param::impactRandom, 0.160f)
@@ -1085,7 +1085,7 @@ manager.addFactory ({ "Frozen Piling", "BASS", { "cold", "static", "struck", "cl
     Routings r;
     r.uni (ModSource::Env1,       Param::shapeSurface,   0.200f)
      .bi  (ModSource::LFO1,       Param::spaceTone,      0.120f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,    0.340f)
+     .uni (ModSource::Velocity,   Param::impactVelocity, 0.340f)
      .uni (ModSource::Velocity,   Param::impactBrightness, 0.240f)
      .uni (ModSource::NoteRandom, Param::impactHardness, 0.180f)
      .bi  (ModSource::KeyTrack,   Param::impactLength,  -0.220f)

@@ -25,20 +25,26 @@ void registerPercussion (PresetManager& manager)
 // PERCUSSION — struck objects, tuned across the keyboard
 //==========================================================================
 
-manager.addFactory ({ "Bone Marimba", "PERCUSSION", { "percussion", "mallet", "wood", "dry" }, [] (PatchState& s)
+manager.addFactory ({ "Bone Marimba", "PERCUSSION", { "struck", "wooden", "warm", "resonant", "roomy" }, [] (PatchState& s)
 {
-    impact (s, 6 /* MEMBRANE HIT */, 0.45f, 0.40f, 0.10f, 0.85f, 0.45f, 0.14f, 0.0f, 0.85f);
-    amp (s, 0.001f, 0.45f, 0.0f, 0.35f, 0.25f);
+    // A bar, not a head. This was a MEMBRANE HIT into a wood/membrane chain in a
+    // small room, which put it within a whisker of two other marimbas and of a
+    // hand drum on the uniqueness gate — the exciter a drum uses, on a patch
+    // whose name says bar. It is now a soft mallet landing on bone-hard wood
+    // over an open resonator: an IMPULSE, a cluster of bars rather than a
+    // chain, a ring twice as long, and a hall instead of a room.
+    impact (s, 0 /* IMPULSE */, 0.34f, 0.46f, 0.30f, 0.85f, 0.45f, 0.14f, 0.0f, 0.85f);
+    amp (s, 0.001f, 0.95f, 0.0f, 0.75f, 0.30f);
     set (s, Param::masterGain, -3.0f);   // struck material has a hot transient: keep headroom at the bottom of the keyboard
-    shape (s, 0.28f, 0.20f, 0.42f, 0.48f, 0.42f, 0.22f);
-    material (s, MaterialType::Wood, MaterialType::Membrane, 0.30f);
-    topology (s, 0 /* CHAIN */, 0.30f, 0.40f, 311);
+    shape (s, 0.28f, 0.20f, 0.42f, 0.48f, 0.62f, 0.22f);
+    material (s, MaterialType::Wood, MaterialType::Void, 0.34f);
+    topology (s, 2 /* CLUSTERS */, 0.30f, 0.40f, 311);
     matter (s, 1.0f, 0.52f, 0.55f, 0.45f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.34f, 0.52f, 0.10f, 0.0f, 0.25f, 0.12f);
     set (s, Param::evolveMagnetTarget, 6 /* CUSTOM (harmonic) */);
-    space (s, SpacePresets::Chamber, 0.26f, 0.28f, 0.50f, 0.20f);
+    space (s, SpacePresets::Void, 0.30f, 0.55f, 0.42f, 0.26f);
 
-    env (s, 1, 0.001f, 0.16f, 0.0f, 0.14f, 0.25f);
+    env (s, 1, 0.001f, 0.34f, 0.0f, 0.28f, 0.30f);
     macros (s, 0.15f, 0.40f, 0.28f, 0.40f);
 
     Routings r;
@@ -407,7 +413,6 @@ manager.addFactory ({ "Rattle Cage", "PERCUSSION", { "granular", "wooden", "dirt
     // granularly, then thrown through a random lattice and a 1/16 Fracture grid.
     sample (s, BuiltInSamples::Kind::WoodKnock, 3 /* GRANULAR */, 0.0f, 0.85f, 0.34f, 0.70f, 60, 0.90f);
     amp (s, 0.004f, 0.70f, 0.22f, 0.45f, 0.35f);
-    set (s, Param::masterGain, 1.5f);
     shape (s, 0.60f, 0.50f, 0.32f, 0.50f, 0.24f, 0.52f);
     material (s, MaterialType::Wood, MaterialType::Organic, 0.45f);
     topology (s, 4 /* RANDOM */, 0.40f, 0.62f, 461);

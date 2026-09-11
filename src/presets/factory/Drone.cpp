@@ -388,7 +388,6 @@ manager.addFactory ({ "Marrow Pipe", "DRONE", { "scraped", "hollow", "organic", 
     material (s, MaterialType::Wood, MaterialType::Organic, 0.44f);
     topology (s, 0 /* CHAIN */, 0.40f, 0.52f, 887);
     matter (s, 1.0f, 0.70f, 0.20f, 0.60f);
-    set (s, Param::masterGain, 1.0f);
     evolve (s, 0.0f, 0.18f, 0.0f, 0.0f, 0.42f, 0.34f, 0.0f, 0.28f, 0.50f);
     set (s, Param::evolveScatterSeed, 907);
     space (s, SpacePresets::Chamber, 0.32f, 0.40f, 0.60f, 0.30f);
@@ -815,13 +814,12 @@ manager.addFactory ({ "Tungsten Thread", "DRONE", { "metallic", "bright", "morph
     // looped envelope quantises the node frequencies onto a coarse grid and
     // then releases them, so the thread steps between a handful of pitches and
     // a continuous line and back, four or five times a minute.
-    wave (s, 4 /* METALLIC */, 0.52f, 0.30f, 0.0f, 3, 0.06f, 0.80f, 1, 0.82f);
-    amp (s, 1.30f, 3.0f, 0.90f, 3.5f, 0.58f);
-    set (s, Param::masterGain, 4.0f);
+    wave (s, 4 /* METALLIC */, 0.52f, 0.30f, 0.0f, 3, 0.06f, 0.80f, 1, 1.0f);
+    amp (s, 1.30f, 3.0f, 0.95f, 3.5f, 0.58f);
     shape (s, 0.46f, 0.68f, 0.18f, 0.72f, 0.80f, 0.22f);
     material (s, MaterialType::Metal, MaterialType::Crystal, 0.52f);
     topology (s, 5 /* STAR */, 0.30f, 0.32f, 1103);
-    matter (s, 0.94f, 0.56f, 0.16f, 0.82f);
+    matter (s, 1.0f, 0.56f, 0.16f, 0.82f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.44f, 0.20f, 0.30f, 0.12f, 0.40f);
     fracture (s, 0 /* SPECTRAL */, 0.34f, 0.30f, 0.72f, 0.30f, 0.44f, 0.58f, 0.76f, 0.66f, 0.35f,
               2 /* 32 */, 1 /* 1/2 */, 8, 0.0f, 2 /* PINGPONG */, 0.80f, 0.30f, 1109,
@@ -903,13 +901,13 @@ manager.addFactory ({ "Moth Static", "DRONE", { "granular", "cold", "unstable", 
     // random graph of dry organic matter and crystal, and a SPECTRAL Fracture
     // with long feedback keeps catching them and letting them go, so the
     // flutter is never the same twice and never quite stops.
-    dust (s, 5 /* CRACKLE */, 0.74f, 0.66f, 0.44f, 0.62f, 0.66f, 0.75f, 1151, 1.0f);
-    amp (s, 0.60f, 2.0f, 0.88f, 2.4f, 0.52f);
-    set (s, Param::masterGain, 5.0f);
+    dust (s, 5 /* CRACKLE */, 0.82f, 0.66f, 0.44f, 0.62f, 0.66f, 0.75f, 1151, 1.0f);
+    amp (s, 0.60f, 2.0f, 0.95f, 2.4f, 0.52f);
+    set (s, Param::masterGain, 2.0f);
     shape (s, 0.58f, 0.56f, 0.22f, 0.68f, 0.66f, 0.50f);
     material (s, MaterialType::Organic, MaterialType::Crystal, 0.52f);
     topology (s, 4 /* RANDOM */, 0.42f, 0.60f, 1153);
-    matter (s, 0.96f, 0.64f, 0.20f, 0.78f);
+    matter (s, 1.0f, 0.64f, 0.20f, 0.78f);
     evolve (s, 0.0f, 0.0f, 0.18f, 0.0f, 0.40f, 0.42f, 0.0f, 0.34f, 0.52f);
     set (s, Param::evolveScatterSeed, 1163);
     fracture (s, 0 /* SPECTRAL */, 0.42f, 0.38f, 0.78f, 0.34f, 0.52f, 0.35f, 0.66f, 0.72f, 0.30f,
@@ -1049,7 +1047,6 @@ manager.addFactory ({ "Ember Bed", "DRONE", { "warm", "dirty", "granular", "chao
     sample (s, BuiltInSamples::Kind::NoiseBurst, 3 /* GRANULAR */, 0.05f, 0.80f, 0.52f, 0.60f, 45, 0.80f);
     layerSources (s, 1 /* DUST */, 3 /* SAMPLE */);
     amp (s, 1.40f, 3.0f, 0.90f, 3.5f, 0.58f);
-    set (s, Param::masterGain, 1.5f);
     shape (s, 0.50f, 0.30f, 0.66f, 0.42f, 0.74f, 0.48f);
     material (s, MaterialType::Custom, MaterialType::Organic, 0.44f);
     topology (s, 3 /* LATTICE */, 0.48f, 0.48f, 1231);

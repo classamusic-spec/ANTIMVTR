@@ -623,12 +623,14 @@ inline void accentUnderline (juce::Graphics& g, juce::Rectangle<float> line, juc
     A key: the small raised slab a button, a tab or a stepper is made of. White at
     the top, floating on its own shadow; `lit` brightens it for hover.
 */
-inline void keySlab (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float lit = 0.0f, float shadow = 0.85f)
+inline void keySlab (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float lit = 0.0f, float shadow = 0.85f,
+                     float shadowRadius = 0.0f)
 {
     SlabStyle style;
     style.top    = juce::Colours::white;
     style.bottom = Theme::panelTop.interpolatedWith (Theme::panel, 0.85f - 0.55f * juce::jlimit (0.0f, 1.0f, lit));
     style.shadow = shadow;
+    style.shadowRadius = shadowRadius;   // 0 chooses from the size; pass the margin you have
     style.brush  = 0.45f;
     style.sheen  = 0.9f;
     raisedSlab (g, bounds, corner, style);
@@ -640,13 +642,13 @@ inline void keySlab (juce::Graphics& g, juce::Rectangle<float> bounds, float cor
     underline and a soft glow beneath it.
 */
 inline void selectedCell (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, juce::Colour accent,
-                          float amount = 1.0f, bool underline = true)
+                          float amount = 1.0f, bool underline = true, float shadowRadius = 0.0f)
 {
     if (amount <= 0.01f || bounds.getWidth() < 3.0f || bounds.getHeight() < 3.0f) return;
     const auto pair = Theme::accentPair (accent);
 
     glowRoundedRect (g, bounds, corner, pair.second, juce::jmin (bounds.getHeight() * 0.5f, 10.0f), 0.35f * amount);
-    keySlab (g, bounds, corner, 0.55f, 0.9f * amount);
+    keySlab (g, bounds, corner, 0.55f, 0.9f * amount, shadowRadius);
 
     if (! underline) return;
     const float h = juce::jlimit (1.5f, 3.0f, bounds.getHeight() * 0.055f);
@@ -664,7 +666,7 @@ inline void selectedCell (juce::Graphics& g, juce::Rectangle<float> bounds, floa
     `selected` / `hover` are eased values so a change of selection reads as motion.
 */
 inline void sidebarPill (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, juce::Colour accent,
-                         float selected, float hover = 0.0f)
+                         float selected, float hover = 0.0f, float shadowRadius = 0.0f)
 {
     if (bounds.getWidth() < 4.0f || bounds.getHeight() < 4.0f) return;
     const auto pair = Theme::accentPair (accent);
@@ -679,7 +681,7 @@ inline void sidebarPill (juce::Graphics& g, juce::Rectangle<float> bounds, float
     }
 
     if (selected <= 0.02f) return;
-    keySlab (g, bounds, corner, 0.5f, 0.95f * selected);
+    keySlab (g, bounds, corner, 0.5f, 0.95f * selected, shadowRadius);
 
     // The accent runs down the left edge, which is the edge the eye tracks in a
     // vertical list — an underline would be lost between the rows.

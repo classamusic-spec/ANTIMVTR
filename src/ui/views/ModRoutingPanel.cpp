@@ -588,7 +588,7 @@ void ModRoutingPanel::paintEmptyState (juce::Graphics& g)
     inner.removeFromTop (unit * 0.5f);
 
     draw::trackedText (g, headline, inner.removeFromTop (unit * 1.6f), juce::Justification::centred,
-                       Theme::labelFontStrong (unit * 0.95f), armed ? Theme::amber : Theme::textSecondary);
+                       Theme::labelFontStrong (unit * 0.95f), armed ? Theme::amber.darker (0.5f) : Theme::textSecondary);
     inner.removeFromTop (unit * 0.5f);
 
     // The three steps share one left edge so they read as a list, not as three centred lines.
@@ -599,11 +599,11 @@ void ModRoutingPanel::paintEmptyState (juce::Graphics& g)
     {
         auto line = listArea_.removeFromTop (unit * 1.7f);
         auto disk = line.removeFromLeft (diskD).withSizeKeepingCentre (diskD, diskD);
-        g.setColour (Theme::amber.withAlpha (0.16f));
+        g.setColour (Theme::amber.withAlpha (0.22f));
         g.fillEllipse (disk);
-        draw::trackedText (g, juce::String (i + 1), disk, juce::Justification::centred, Theme::labelFontStrong (diskD * 0.6f), Theme::amber);
+        draw::trackedText (g, juce::String (i + 1), disk, juce::Justification::centred, Theme::labelFontStrong (diskD * 0.6f), Theme::amber.darker (0.6f));
         draw::trackedText (g, steps[i], line.withTrimmedLeft (unit * 0.7f), juce::Justification::centredLeft,
-                           Theme::captionFont (unit * 0.8f), Theme::textDim);
+                           Theme::captionFont (unit * 0.8f), Theme::textSecondary);
     }
 }
 

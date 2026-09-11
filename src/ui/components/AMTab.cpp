@@ -27,10 +27,11 @@ void AMTab::paint (juce::Graphics& g)
     const float corner = juce::jlimit (4.0f, 11.0f, b.getHeight() * 0.17f);
 
     // The active page is a raised white pill with an accent underline (SPEC section 6).
-    const auto key = b.reduced (juce::jmax (1.5f, b.getWidth() * 0.035f), juce::jmax (1.0f, b.getHeight() * 0.05f));
+    const float margin = juce::jmax (2.0f, juce::jmin (b.getWidth() * 0.05f, b.getHeight() * 0.09f));
+    const auto key = b.reduced (juce::jmax (margin, b.getWidth() * 0.035f), margin);
     if (on > 0.02f)
     {
-        draw::selectedCell (g, key, corner, accent, on);
+        draw::selectedCell (g, key, corner, accent, on, true, margin);
     }
     else if (hv > 0.02f)
     {

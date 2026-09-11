@@ -245,7 +245,8 @@ void AMSourceSelector::paint (juce::Graphics& g)
             // The whole row is the target, so a lit entry reads as a selected list
             // item: the sidebar pill of SPEC section 3.
             if (on > 0.01f || hv > 0.01f)
-                draw::sidebarPill (g, row, juce::jlimit (5.0f, 12.0f, row.getHeight() * 0.24f), item.accent, on, hv);
+                draw::sidebarPill (g, row.reduced (pad * 0.5f, 0.0f), juce::jlimit (5.0f, 12.0f, row.getHeight() * 0.24f),
+                                   item.accent, on, hv, pad * 0.5f);
 
             auto inner = row.withTrimmedLeft (juce::jlimit (8.0f, 20.0f, cell.getWidth() * 0.06f));
             circle = inner.removeFromLeft (d).withSizeKeepingCentre (d, d);

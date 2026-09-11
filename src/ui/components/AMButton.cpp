@@ -15,7 +15,11 @@ void AMButton::mouseExit (const juce::MouseEvent& e)  { anim.animate (hover, 0.0
 
 void AMButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
-    const auto b = getLocalBounds().toFloat().reduced (1.0f);
+    // The key is drawn a margin inside the component so its shadow has somewhere to
+    // land: a shadow clipped by the component's own edge reads as a grey step.
+    const auto outer = getLocalBounds().toFloat();
+    const float margin = juce::jlimit (1.5f, 5.0f, juce::jmin (outer.getWidth(), outer.getHeight()) * 0.11f);
+    const auto b = outer.reduced (margin);
     const float corner = chip ? b.getHeight() * 0.5f : juce::jmin (10.0f, b.getHeight() * 0.32f);
     const bool on = getToggleState();
     const float lit = juce::jlimit (0.0f, 1.0f, juce::jmax (hover.value, highlighted ? 0.6f : 0.0f) + (down ? 0.4f : 0.0f));
@@ -30,12 +34,12 @@ void AMButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     }
     else if (on || filled)
     {
-        draw::selectedCell (g, b, corner, accent, 1.0f, ! chip);
+        draw::selectedCell (g, b, corner, accent, 1.0f, ! chip, margin);
         if (chip) draw::gradientCapsule (g, b.reduced (1.2f), corner - 1.2f, pair.first, pair.second, 0.20f);
     }
     else
     {
-        draw::keySlab (g, b, corner, lit, 0.85f);
+        draw::keySlab (g, b, corner, lit, 0.85f, margin);
         if (lit > 0.02f)
         {
             g.setColour (pair.second.withAlpha (0.10f * lit));
@@ -85,13 +89,15 @@ void AMIconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     const float s = juce::jmin (b.getWidth(), b.getHeight());
     const auto circle = b.withSizeKeepingCentre (s, s);
     const auto pair = Theme::accentPair (accent);
+    const float margin = juce::jlimit (1.0f, 4.0f, s * 0.09f);
 
     if (outlined)
     {
         // A small round key of the same glass as the panels, on its own shadow —
-        // pressed into a shallow light seat while it is held.
-        if (down) draw::capsuleTrack (g, circle.reduced (0.5f), s * 0.5f, 0.9f);
-        else      draw::keySlab (g, circle.reduced (1.0f), s * 0.5f, lit, 0.8f);
+        // pressed into a shallow light seat while it is held. The key is inset by the
+        // reach of that shadow so none of it is clipped by the component's edge.
+        if (down) draw::capsuleTrack (g, circle.reduced (margin), s * 0.5f, 0.9f);
+        else      draw::keySlab (g, circle.reduced (margin), s * 0.5f, lit, 0.8f, margin);
     }
     if (lit > 0.02f)
     {
@@ -158,8 +164,9 @@ void AMSegment::paint (juce::Graphics& g)
 
     // The selected cell is a raised white slab that glides between the cells.
     {
-        auto pill = juce::Rectangle<float> (b.getX() + w * thumb.value, b.getY(), w, b.getHeight()).reduced (2.0f);
-        draw::selectedCell (g, pill, juce::jmax (1.0f, corner - 2.0f), accent, 1.0f);
+        const float inset = juce::jlimit (1.5f, 3.5f, b.getHeight() * 0.09f);
+        auto pill = juce::Rectangle<float> (b.getX() + w * thumb.value, b.getY(), w, b.getHeight()).reduced (inset);
+        draw::selectedCell (g, pill, juce::jmax (1.0f, corner - inset), accent, 1.0f, true, inset);
     }
 
     for (int i = 0; i < items.size(); ++i)

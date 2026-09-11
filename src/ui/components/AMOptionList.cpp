@@ -74,7 +74,7 @@ void AMOptionList::paint (juce::Graphics& g)
     if (rowH < 6.0f) return;
 
     const float inset = juce::jlimit (1.0f, 3.0f, rowH * 0.07f);
-    const float corner = juce::jlimit (3.0f, 7.0f, rowH * 0.2f);
+    const float corner = juce::jlimit (4.0f, 10.0f, rowH * 0.24f);
     const float fontHeight = juce::jlimit (9.0f, 13.0f, rowH * 0.4f);
     const float textInset = juce::jlimit (9.0f, 18.0f, list.getWidth() * 0.07f);
 
@@ -82,22 +82,33 @@ void AMOptionList::paint (juce::Graphics& g)
     // white slab with the accent down its left edge, and it glides between the rows
     // so a change of selection reads as motion.
     {
-        auto row = juce::Rectangle<float> (list.getX(), list.getY() + lit.value * rowH, list.getWidth(), rowH).reduced (0.0f, inset);
-        draw::sidebarPill (g, row, corner, accent, 1.0f);
+        auto row = juce::Rectangle<float> (list.getX(), list.getY() + lit.value * rowH, list.getWidth(), rowH).reduced (inset, inset);
+        draw::sidebarPill (g, row, corner, accent, 1.0f, 0.0f, inset);
     }
 
     for (int i = 0; i < names.size(); ++i)
     {
-        auto row = juce::Rectangle<float> (list.getX(), list.getY() + (float) i * rowH, list.getWidth(), rowH).reduced (0.0f, inset);
+        auto row = juce::Rectangle<float> (list.getX(), list.getY() + (float) i * rowH, list.getWidth(), rowH).reduced (inset, inset);
         const bool isSelected = i == selected;
         const bool isHovered = i == hovered && ! isSelected;
 
-        if (isHovered) draw::sidebarPill (g, row, corner, accent, 0.0f, 1.0f);
+        if (isHovered) draw::sidebarPill (g, row, corner, accent, 0.0f, 1.0f, inset);
 
         auto text = row.withTrimmedLeft (textInset).withTrimmedRight (textInset * 0.5f);
+        const auto ink = isSelected ? Theme::textPrimary : (isHovered ? Theme::textPrimary.withAlpha (0.72f) : Theme::textSecondary);
+
+        if (i < (int) icons.size())
+        {
+            const float d = juce::jmin (text.getHeight() * 0.62f, rowH * 0.5f);
+            auto glyph = text.removeFromLeft (d).withSizeKeepingCentre (d, d);
+            Icons::draw (g, icons[(size_t) i], glyph,
+                         isSelected ? accent.interpolatedWith (Theme::textPrimary, 0.3f) : ink, 0.9f);
+            text.removeFromLeft (textInset * 0.6f);
+        }
+
         draw::trackedText (g, names[i], text, juce::Justification::centredLeft,
                            draw::fitFont (isSelected ? Theme::labelFontStrong (fontHeight) : Theme::labelFont (fontHeight), names[i], text.getWidth()),
-                           isSelected ? Theme::textPrimary : (isHovered ? Theme::textPrimary.withAlpha (0.72f) : Theme::textSecondary));
+                           ink);
     }
 
     auto desc = descriptionBounds();

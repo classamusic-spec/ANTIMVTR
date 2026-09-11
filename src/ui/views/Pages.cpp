@@ -12,6 +12,38 @@ namespace
     {
         return seconds < 1.0f ? juce::String (juce::roundToInt (seconds * 1000.0f)) + " ms" : juce::String (seconds, 2) + " s";
     }
+
+    /** The three columns of a deep page, as rectangles inside `area`. */
+    struct Columns { juce::Rectangle<int> sidebar, centre, controls; };
+
+    Columns pageColumns (juce::Rectangle<int> area, int gap, float sidebarFraction = 0.165f, float controlsFraction = 0.295f)
+    {
+        const auto spans = layout::pageColumns (area.getWidth(), gap, sidebarFraction, controlsFraction);
+        auto at = [&area] (const layout::Span& s)
+        {
+            return juce::Rectangle<int> (area.getX() + s.start, area.getY(), s.size, area.getHeight());
+        };
+        return { at (spans.sidebar), at (spans.centre), at (spans.controls) };
+    }
+
+    /**
+        Lays a sidebar panel out: the pill list fills the panel, with any footer
+        controls (a MAIN / ADVANCED segment, an OFF / ON switch, a mode stepper)
+        anchored to the bottom of it.
+    */
+    void layoutSidebar (AMPanel& panel, AMSidebar& list, const std::vector<juce::Component*>& footer, int gap)
+    {
+        auto c = panel.contentBounds();
+        for (auto it = footer.rbegin(); it != footer.rend(); ++it)
+        {
+            if (*it == nullptr || ! (*it)->isVisible()) continue;
+            const int h = juce::jlimit (28, 56, c.getHeight() / 9);
+            (*it)->setBounds (c.removeFromBottom (h));
+            c.removeFromBottom (gap / 2);
+        }
+        const int want = list.preferredHeight (c.getWidth());
+        list.setBounds (c.getHeight() > want ? c.withHeight (want) : c);
+    }
 }
 
 //==============================================================================
@@ -19,19 +51,75 @@ ParamPanel::ParamPanel (AntiMatrProcessor& p, const juce::String& title, const j
                         std::vector<Param> params, int cols, const juce::String& labelPrefix)
     : AMPanel (title, subtitle, accent), processor (p), columns (cols)
 {
-    const juce::String prefix = (labelPrefix.isNotEmpty() ? labelPrefix : title).trim().toUpperCase() + " ";
+    defaultPrefix = labelPrefix.isNotEmpty() ? labelPrefix : title;
+    setParams (std::move (params), cols, defaultPrefix);
+}
+
+std::unique_ptr<BoundControl> ParamPanel::makeControl (Param param, const juce::String& prefix)
+{
+    juce::String label (ParameterRegistry::get (param).name);
+    const juce::String p = prefix.trim().toUpperCase() + " ";
+    if (label.toUpperCase().startsWith (p) && label.length() > p.length()) label = label.substring (p.length());
+    return std::make_unique<BoundControl> (processor.parameters(), param, getAccent(), label);
+}
+
+void ParamPanel::setParams (std::vector<Param> params, int cols, const juce::String& labelPrefix)
+{
+    for (auto& c : controls) removeChildComponent (&c->component());
+    controls.clear();
+    columns = cols;
+    const juce::String prefix = labelPrefix.isNotEmpty() ? labelPrefix : defaultPrefix;
     for (auto param : params)
     {
-        juce::String label (ParameterRegistry::get (param).name);
-        if (label.toUpperCase().startsWith (prefix) && label.length() > prefix.length()) label = label.substring (prefix.length());
-        controls.push_back (std::make_unique<BoundControl> (processor.parameters(), param, accent, label));
+        controls.push_back (makeControl (param, prefix));
         addAndMakeVisible (controls.back()->component());
     }
+    resized();
+}
+
+void ParamPanel::setFooterRows (std::vector<std::vector<Param>> rows, const juce::String& labelPrefix)
+{
+    for (auto& c : footer) removeChildComponent (&c->component());
+    footer.clear();
+    footerRowSizes.clear();
+    const juce::String prefix = labelPrefix.isNotEmpty() ? labelPrefix : defaultPrefix;
+    for (const auto& row : rows)
+    {
+        if (row.empty()) continue;
+        footerRowSizes.push_back ((int) row.size());
+        for (auto param : row)
+        {
+            footer.push_back (makeControl (param, prefix));
+            addAndMakeVisible (footer.back()->component());
+        }
+    }
+    resized();
+}
+
+void ParamPanel::setTopRows (std::vector<std::vector<Param>> rows, const juce::String& labelPrefix)
+{
+    for (auto& c : topControls) removeChildComponent (&c->component());
+    topControls.clear();
+    topRowSizes.clear();
+    const juce::String prefix = labelPrefix.isNotEmpty() ? labelPrefix : defaultPrefix;
+    for (const auto& row : rows)
+    {
+        if (row.empty()) continue;
+        topRowSizes.push_back ((int) row.size());
+        for (auto param : row)
+        {
+            topControls.push_back (makeControl (param, prefix));
+            addAndMakeVisible (topControls.back()->component());
+        }
+    }
+    resized();
 }
 
 BoundControl* ParamPanel::control (Param p)
 {
     for (auto& c : controls) if (c->param() == p) return c.get();
+    for (auto& c : footer) if (c->param() == p) return c.get();
+    for (auto& c : topControls) if (c->param() == p) return c.get();
     return headerToggle != nullptr && headerToggle->param() == p ? headerToggle.get() : nullptr;
 }
 
@@ -77,6 +165,8 @@ void ParamPanel::setAccentFor (Param p, juce::Colour colour)
 void ParamPanel::refreshModRings (const ModulationSnapshot& snapshot)
 {
     for (auto& c : controls) c->refreshModRing (snapshot);
+    for (auto& c : footer) c->refreshModRing (snapshot);
+    for (auto& c : topControls) c->refreshModRing (snapshot);
 }
 
 void ParamPanel::resized()
@@ -93,110 +183,138 @@ void ParamPanel::resized()
         const int w = juce::jlimit (88, 130, h.getWidth() / 2);
         headerSwitch->setBounds (h.removeFromRight (w).withSizeKeepingCentre (w, juce::jlimit (22, 30, h.getHeight())));
     }
-    std::vector<juce::Component*> comps;
-    for (auto& c : controls) comps.push_back (&c->component());
-    if (comps.empty()) return;
     auto area = contentBounds();
+    if (area.isEmpty()) return;
+    const int gap = juce::jmax (3, area.getHeight() / 40);
+
+    if (! topRowSizes.empty())
+    {
+        int index = 0;
+        for (int r = 0; r < (int) topRowSizes.size(); ++r)
+        {
+            const int rowH = juce::jlimit (30, 66, juce::roundToInt ((float) area.getHeight() * 0.16f));
+            auto row = area.removeFromTop (rowH);
+            area.removeFromTop (gap);
+            std::vector<juce::Component*> comps;
+            for (int i = 0; i < topRowSizes[(size_t) r]; ++i, ++index)
+                if (index < (int) topControls.size()) comps.push_back (&topControls[(size_t) index]->component());
+            layoutGrid (row, comps, (int) juce::jmax ((size_t) 1, comps.size()), gap, 0);
+        }
+    }
+
     if (display != nullptr && displayFraction > 0.0f && area.getHeight() > 90)
     {
         display->setBounds (area.removeFromTop (juce::roundToInt ((float) area.getHeight() * displayFraction)));
         area.removeFromTop (juce::jmax (4, area.getHeight() / 24));
     }
+
+    // The footer rows take the height they need from the bottom; the grid keeps the rest,
+    // so a stepper row never steals a knob's diameter and never leaves a band of empty panel.
+    if (! footerRowSizes.empty())
+    {
+        const int rows = (int) footerRowSizes.size();
+        const int rowH = juce::jlimit (30, 76, juce::roundToInt ((float) area.getHeight() * (1.0f - gridFraction) / (float) rows));
+        auto band = area.removeFromBottom (juce::jmin (area.getHeight() - 10, rowH * rows + gap * (rows - 1)));
+        int index = 0;
+        for (int r = 0; r < rows; ++r)
+        {
+            auto row = band.removeFromTop (rowH);
+            if (r + 1 < rows) band.removeFromTop (gap);
+            std::vector<juce::Component*> comps;
+            for (int i = 0; i < footerRowSizes[(size_t) r]; ++i, ++index)
+                if (index < (int) footer.size()) comps.push_back (&footer[(size_t) index]->component());
+            layoutGrid (row, comps, (int) juce::jmax ((size_t) 1, comps.size()), gap, 0);
+        }
+        area.removeFromBottom (gap);
+    }
+
+    std::vector<juce::Component*> comps;
+    for (auto& c : controls) comps.push_back (&c->component());
+    if (comps.empty()) return;
     const int n = (int) comps.size();
     const int cols = columns > 0 ? columns : layout::gridColumns (n, area.getWidth(), area.getHeight());
     layoutGrid (area, comps, cols, 2, 2);
 }
 
 //==============================================================================
-/** Explains the selected source: name, tagline and a short description. */
-class SourcePage::SourceInfo : public juce::Component
+namespace
 {
-public:
-    void setSource (int s)
+    /** What each source puts on the right of the SOURCE page. */
+    struct SourceCluster
     {
-        source = juce::jlimit (0, 4, s);
-        repaint();
-    }
-    void paint (juce::Graphics& g) override
+        std::vector<Param> knobs;                 ///< six, two rows of three
+        std::vector<std::vector<Param>> rows;     ///< stepper rows under them
+        std::vector<Param> advanced;              ///< the ADVANCED tab, empty when there is none
+    };
+
+    SourceCluster sourceCluster (int source)
     {
-        static const char* names[]    = { "WAVE", "DUST", "IMPACT", "SAMPLE", "GESTURE" };
-        static const char* taglines[] = { "FRACTURED FORMS", "PARTICLE FIELD", "STRIKE FIELD", "IMPORTED MATTER", "LIVING GESTURE" };
-        static const char* bodies[] = {
-            "Wavetables scanned, morphed and stacked in unison. Cross-modulate with FM, PM, AM, ring and sync for hollow and metallic forms.",
-            "Coloured noise, crackle and impulse clouds. Density and grain set how many particles strike the matter; colour tilts the spectrum.",
-            "Short excitations: clicks, plucks, strikes and membrane hits. Hardness and brightness shape the transient, length its tail.",
-            "Any audio as energy: one-shot, looped, reversed or granular, pitched and spread across the field.",
-            "Bowed, scraped and rubbed excitation. Pressure, speed and roughness turn friction into motion." };
-        static const juce::Colour accents[] = { Theme::violet, Theme::blue, Theme::cyan, Theme::ivory, Theme::magenta };
-
-        juce::ignoreUnused (taglines);
-        auto b = getLocalBounds().toFloat();
-        draw::insetSurface (g, b, 8.0f);
-        auto area = b.reduced (juce::jlimit (10.0f, 18.0f, b.getWidth() * 0.05f), juce::jlimit (9.0f, 16.0f, b.getHeight() * 0.09f));
-
-        // The selector above already names the source and its tagline, so the card
-        // carries the accent rule and the description only.
-        const float titleH = juce::jlimit (10.0f, 14.0f, area.getHeight() * 0.13f);
-        auto rule = area.removeFromTop (titleH * 1.5f);
-        draw::trackedText (g, "ABOUT  " + juce::String (names[source]), rule, juce::Justification::centredLeft,
-                           Theme::captionFont (titleH * 0.78f), accents[source].withAlpha (0.85f));
+        switch (source)
         {
-            juce::Path line;
-            const float y = rule.getBottom() - 1.0f;
-            line.startNewSubPath (rule.getX(), y);
-            line.lineTo (rule.getX() + juce::jmin (rule.getWidth() * 0.3f, 54.0f), y);
-            draw::glowPath (g, line, accents[source], 1.0f, 5.0f, 0.35f);
+            case 1:  return { { Param::dustDensity, Param::dustColor, Param::dustGrain,
+                                Param::dustJitter, Param::dustSpread, Param::dustLevel },
+                              { { Param::dustMode, Param::dustSeed },
+                                { Param::dustPosition, Param::dustStereo, Param::dustPitch } },
+                              {} };
+            case 2:  return { { Param::impactHardness, Param::impactBrightness, Param::impactLength,
+                                Param::impactVelocity, Param::impactCurve, Param::impactLevel },
+                              { { Param::impactMode },
+                                { Param::impactRandom, Param::impactRate } },
+                              {} };
+            default: return { { Param::wavePosition, Param::waveScan, Param::waveMorph,
+                                Param::waveDetune, Param::waveSpread, Param::waveLevel },
+                              { { Param::waveTable, Param::waveUnison },
+                                { Param::waveOctave, Param::waveSemi, Param::waveFine } },
+                              { Param::waveFM, Param::wavePM, Param::waveAM,
+                                Param::waveRing, Param::waveSync, Param::waveModRatio,
+                                Param::wavePhase, Param::wavePhaseRandom } };
         }
-        area.removeFromTop (juce::jmax (6.0f, titleH * 0.5f));
-
-        juce::AttributedString text;
-        text.append (bodies[source], Theme::bodyFont (juce::jlimit (10.5f, 13.5f, area.getHeight() * 0.13f)), Theme::textSecondary.brighter (0.15f));
-        text.setLineSpacing (3.5f);
-        juce::TextLayout layout;
-        layout.createLayout (text, area.getWidth());
-        layout.draw (g, area);
     }
-private:
-    int source = 0;
-};
+
+    const juce::Colour& sourceAccent (int source)
+    {
+        static const juce::Colour accents[] = { Theme::violet, Theme::blue, Theme::cyan, Theme::ivory, Theme::magenta };
+        return accents[juce::jlimit (0, 4, source)];
+    }
+}
+
+Param SourcePage::modeParam (int source)
+{
+    static const Param modes[] = { Param::waveTable, Param::dustMode, Param::impactMode, Param::sampleMode, Param::gestureMode };
+    return modes[juce::jlimit (0, 4, source)];
+}
 
 SourcePage::SourcePage (AntiMatrProcessor& p)
     : processor (p),
-      selector ({ { "Wave", Icon::Wave, Theme::violet, "Fractured forms" }, { "Dust", Icon::Dust, Theme::blue, "Particle field" },
-                  { "Impact", Icon::Impact, Theme::cyan, "Strike field" }, { "Sample", Icon::Sample, Theme::ivory, "Imported matter" },
-                  { "Gesture", Icon::Gesture, Theme::magenta, "Living gesture" } })
+      sidebar ({ { "Wave", Icon::Wave, "Fractured forms", Theme::violet },
+                 { "Dust", Icon::Dust, "Particle field", Theme::blue },
+                 { "Impact", Icon::Impact, "Strike field", Theme::cyan },
+                 { "Sample", Icon::Sample, "Imported matter", Theme::ivory },
+                 { "Gesture", Icon::Gesture, "Living gesture", Theme::magenta } }, Theme::blue)
 {
-    selector.setOrientation (AMSourceSelector::Orientation::Column);
-    selector.setTooltip ("Source: what creates the energy Matter is struck with.");
-    addAndMakeVisible (sourcePanel);
-    addAndMakeVisible (wavePanel);
-    wavePanel.setCompact (true);
-    sourcePanel.addAndMakeVisible (selector);
-    wavePanel.addAndMakeVisible (wave);
-    modeControl = std::make_unique<BoundControl> (processor.parameters(), Param::sourceMode, Theme::blue, "Mode");
-    sourcePanel.addAndMakeVisible (modeControl->component());
-    info = std::make_unique<SourceInfo>();
-    sourcePanel.addAndMakeVisible (*info);
+    addAndMakeVisible (sidebarPanel);
+    addAndMakeVisible (mesh);
+    sidebarPanel.addAndMakeVisible (sidebar);
+    sidebarPanel.addAndMakeVisible (tabs);
+    sidebar.setTooltip ("Source: what creates the energy Matter is struck with.");
+    tabs.setTooltip ("MAIN: the six controls that shape this source. ADVANCED: everything else it can do.");
+    tabs.onChange = [this] (int i) { advanced = i == 1; applyTab(); };
+
+    sourceModeControl = std::make_unique<BoundControl> (processor.parameters(), Param::sourceMode, Theme::blue, "Mode");
+    sidebarPanel.addAndMakeVisible (sourceModeControl->component());
+
+    cluster = std::make_unique<ParamPanel> (processor, "Wavetable", "Fractured forms", Theme::blue, std::vector<Param> {}, 3, " ");
+    addAndMakeVisible (*cluster);
 
     auto* param = processor.parameters().getParameter (ParameterRegistry::get (Param::sourceSelected).id);
     selectorAttachment = std::make_unique<juce::ParameterAttachment> (*param, [this] (float v)
     {
-        selector.setSelected ((int) std::lround (v), juce::dontSendNotification);
+        sidebar.setSelected ((int) std::lround (v), juce::dontSendNotification);
         rebuild ((int) std::lround (v));
     });
-    selector.onChange = [this] (int i) { selectorAttachment->setValueAsCompleteGesture ((float) i); };
+    sidebar.onChange = [this] (int i) { selectorAttachment->setValueAsCompleteGesture ((float) i); };
     selectorAttachment->sendInitialUpdate();
     if (currentSource < 0) rebuild (0);
-
-    wave.onArrow = [this] (int dir)
-    {
-        static const Param modeParams[] = { Param::waveTable, Param::dustMode, Param::impactMode, Param::sampleMode, Param::gestureMode };
-        const Param mp = modeParams[juce::jlimit (0, 4, currentSource)];
-        auto* modeParam = processor.parameters().getParameter (ParameterRegistry::get (mp).id);
-        const int n = ParameterRegistry::get (mp).numChoices();
-        const int cur = (int) std::lround (modeParam->convertFrom0to1 (modeParam->getValue()));
-        modeParam->setValueNotifyingHost (modeParam->convertTo0to1 ((float) (((cur + dir) % n + n) % n)));
-    };
     startTimerHz (30);
 }
 
@@ -208,109 +326,110 @@ SourcePage::~SourcePage()
 void SourcePage::rebuild (int source)
 {
     if (source == currentSource) return;
-    currentSource = source;
-    sections.clear();
+    currentSource = juce::jlimit (0, 4, source);
     samplePanel.reset();
     gesturePanel.reset();
-    auto add = [this] (const juce::String& title, const juce::String& subtitle, std::vector<Param> params, float weight, int cols = 0)
+
+    const bool dedicated = currentSource == 3 || currentSource == 4;
+    if (currentSource == 3) { samplePanel = std::make_unique<SamplePanel> (processor); addAndMakeVisible (*samplePanel); }
+    if (currentSource == 4) { gesturePanel = std::make_unique<GesturePanel> (processor); addAndMakeVisible (*gesturePanel); }
+
+    mesh.setVisible (! dedicated);
+    cluster->setVisible (! dedicated);
+
+    // The table selector under the screen names whatever the selected source calls its shapes.
+    tableSelector.reset();
+    tableAttachment.reset();
+    if (! dedicated)
     {
-        Section s;
-        s.panel = std::make_unique<ParamPanel> (processor, title, subtitle, Theme::blue, std::move (params), cols);
-        s.weight = weight;
-        addAndMakeVisible (*s.panel);
-        sections.push_back (std::move (s));
-    };
-    Param level = Param::waveLevel;
-    switch (source)
-    {
-        case 1:
-            add ("Dust", "Particle field", { Param::dustMode, Param::dustDensity, Param::dustColor, Param::dustGrain, Param::dustJitter, Param::dustPosition, Param::dustSpread, Param::dustStereo }, 0.72f, 4);
-            add ("Pitch & seed", "", { Param::dustPitch, Param::dustSeed }, 0.28f, 2);
-            level = Param::dustLevel;
-            break;
-        case 2:
-            add ("Impact", "Strike field", { Param::impactMode, Param::impactHardness, Param::impactBrightness, Param::impactLength, Param::impactVelocity, Param::impactCurve, Param::impactRandom, Param::impactRate }, 1.0f, 4);
-            level = Param::impactLevel;
-            break;
-        case 3:
-            samplePanel = std::make_unique<SamplePanel> (processor);
-            addAndMakeVisible (*samplePanel);
-            level = Param::sampleLevel;
-            break;
-        case 4:
-            gesturePanel = std::make_unique<GesturePanel> (processor);
-            addAndMakeVisible (*gesturePanel);
-            level = Param::gestureLevel;
-            break;
-        default:
-            add ("Wavetable", "Fractured forms", { Param::waveTable, Param::wavePosition, Param::waveScan, Param::waveMorph, Param::waveUnison, Param::waveDetune, Param::waveSpread, Param::wavePhase, Param::wavePhaseRandom }, 0.5f, 5);
-            add ("Pitch", "", { Param::waveOctave, Param::waveSemi, Param::waveFine }, 0.17f, 1);
-            add ("Modulation", "Cross-modulation", { Param::waveFM, Param::wavePM, Param::waveAM, Param::waveRing, Param::waveSync, Param::waveModRatio }, 0.33f, 3);
-            break;
+        const auto mp = modeParam (currentSource);
+        tableSelector = std::make_unique<AMChoice> (juce::String (ParameterRegistry::get (mp).name),
+                                                    paramChoices (mp), sourceAccent (currentSource));
+        tableSelector->setShowLabel (false);
+        tableSelector->setTooltip (paramTooltip (mp));
+        addAndMakeVisible (*tableSelector);
+        auto* modeParameter = processor.parameters().getParameter (ParameterRegistry::get (mp).id);
+        auto* raw = tableSelector.get();
+        tableAttachment = std::make_unique<juce::ParameterAttachment> (*modeParameter, [raw] (float v)
+        {
+            raw->setSelected ((int) std::lround (v), juce::dontSendNotification);
+        });
+        tableSelector->onChange = [this] (int i) { tableAttachment->setValueAsCompleteGesture ((float) i); };
+        tableAttachment->sendInitialUpdate();
     }
-    levelControl = std::make_unique<BoundControl> (processor.parameters(), level, Theme::blue, "Level");
-    sourcePanel.addAndMakeVisible (levelControl->component());
-    info->setSource (source);
-    static const juce::Colour accents[] = { Theme::violet, Theme::blue, Theme::cyan, Theme::ivory, Theme::magenta };
-    wave.setAccent (accents[juce::jlimit (0, 4, source)]);
+
+    const auto set = sourceCluster (currentSource);
+    mainParams = set.knobs;
+    mainRows = set.rows;
+    advancedParams = set.advanced;
+
+    static const char* names[]    = { "Wavetable", "Dust", "Impact", "Sample", "Gesture" };
+    static const char* taglines[] = { "Fractured forms", "Particle field", "Strike field", "Imported matter", "Living gesture" };
+    cluster->setTitle (names[currentSource]);
+    cluster->setSubtitle (taglines[currentSource]);
+    cluster->setAccent (sourceAccent (currentSource));
+    mesh.setAccent (sourceAccent (currentSource));
+    mesh.setTitle (juce::String (names[currentSource]) + "  ·  " + juce::String (taglines[currentSource]));
+    sidebar.setAccent (sourceAccent (currentSource));
+
+    // ADVANCED only exists where a source has more than its six shaping controls.
+    tabs.setVisible (! advancedParams.empty() && ! dedicated);
+    if (advancedParams.empty()) { advanced = false; tabs.setSelected (0, juce::dontSendNotification); }
+    applyTab();
     resized();
+}
+
+void SourcePage::applyTab()
+{
+    if (cluster == nullptr) return;
+    static const char* prefixes[] = { "Wave", "Dust", "Impact", "Sample", "Gesture" };
+    const juce::String prefix (prefixes[juce::jlimit (0, 4, currentSource)]);
+    if (advanced && ! advancedParams.empty())
+    {
+        cluster->setFooterRows ({}, prefix);
+        cluster->setParams (advancedParams, 3, prefix);
+        cluster->setSubtitle ("Cross-modulation & phase");
+    }
+    else
+    {
+        cluster->setParams (mainParams, 3, prefix);
+        cluster->setFooterRows (mainRows, prefix);
+        cluster->setGridFraction (mainRows.empty() ? 1.0f : 0.56f);
+    }
+    const juce::Colour ring[] = { Theme::cyan, Theme::blue, Theme::violet, Theme::cyan, Theme::blue, Theme::ivory };
+    const auto& shown = advanced && ! advancedParams.empty() ? advancedParams : mainParams;
+    for (size_t i = 0; i < shown.size(); ++i) cluster->setAccentFor (shown[i], ring[i % 6]);
+    cluster->setHeroKnobs (! advanced);
 }
 
 void SourcePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    auto left = area.removeFromLeft (juce::roundToInt ((float) area.getWidth() * 0.26f));
-    area.removeFromLeft (gap);
-    sourcePanel.setBounds (left);
+    const auto cols = pageColumns (area, gap);
+
+    sidebarPanel.setBounds (cols.sidebar);
+    layoutSidebar (sidebarPanel, sidebar,
+                   { &tabs, sourceModeControl != nullptr ? &sourceModeControl->component() : nullptr }, gap);
+
+    // SAMPLE and GESTURE bring their own display, so they take the middle and the right together.
+    if (samplePanel != nullptr || gesturePanel != nullptr)
     {
-        // Selector at the top, description anchored to the bottom, MODE / LEVEL centred between
-        // them: the panel fills edge to edge instead of leaving a band under the thumbnails.
-        // A column of energies fills the panel: thumbnail, name and tagline per row,
-        // then MODE / LEVEL and the description of whatever is selected.
-        auto c = sourcePanel.contentBounds();
-        if (info != nullptr)
-        {
-            info->setBounds (c.removeFromBottom (juce::jlimit (130, 210, juce::roundToInt ((float) c.getHeight() * 0.27f))));
-            c.removeFromBottom (gap);
-        }
-        auto row = c.removeFromBottom (juce::jlimit (66, 96, juce::roundToInt ((float) c.getHeight() * 0.2f)));
-        c.removeFromBottom (gap);
-        if (modeControl != nullptr) modeControl->component().setBounds (row.removeFromLeft (row.getWidth() / 2));
-        if (levelControl != nullptr) levelControl->component().setBounds (row);
-        selector.setBounds (c);
-    }
-    // SAMPLE owns the whole right side: its own waveform carries the start/end handles.
-    wavePanel.setVisible (samplePanel == nullptr);
-    if (samplePanel != nullptr)
-    {
-        samplePanel->setBounds (area);
+        auto wide = cols.centre.getUnion (cols.controls);
+        if (samplePanel != nullptr) samplePanel->setBounds (wide);
+        if (gesturePanel != nullptr) gesturePanel->setBounds (wide);
         return;
     }
 
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.38f));
-    area.removeFromTop (gap);
-    wavePanel.setBounds (top);
-    wave.setBounds (wavePanel.contentBounds());
+    auto centre = cols.centre;
+    const int selectorH = juce::jlimit (30, 46, centre.getHeight() / 15);
+    auto selectorArea = centre.removeFromBottom (selectorH);
+    centre.removeFromBottom (gap);
+    mesh.setBounds (centre);
+    if (tableSelector != nullptr)
+        tableSelector->setBounds (selectorArea.withSizeKeepingCentre (juce::jmin (selectorArea.getWidth(), juce::jmax (180, selectorArea.getWidth() / 2)), selectorH));
 
-    if (gesturePanel != nullptr)
-    {
-        gesturePanel->setBounds (area);
-        return;
-    }
-
-    // Widths are fractions of the whole row: measuring against the shrinking remainder
-    // squeezed every section after the first (PITCH ended up half the width it asked for).
-    float total = 0.0f;
-    for (auto& s : sections) total += s.weight;
-    const int usable = area.getWidth() - gap * (int) juce::jmax ((size_t) 1, sections.size()) + gap;
-    for (size_t i = 0; i < sections.size(); ++i)
-    {
-        const bool last = i + 1 == sections.size();
-        const int w = last ? area.getWidth() : juce::roundToInt ((float) usable * sections[i].weight / juce::jmax (0.001f, total));
-        sections[i].panel->setBounds (area.removeFromLeft (w));
-        area.removeFromLeft (gap);
-    }
+    cluster->setBounds (cols.controls);
 }
 
 void SourcePage::timerCallback()
@@ -318,95 +437,197 @@ void SourcePage::timerCallback()
     if (! isShowing()) return;
     auto& diag = processor.diagnostics();
     const auto& vs = diag.visualSnapshots.latest();
-    diag.taps[(int) Stage::Source].readLatest (tapL.data(), tapR.data(), (int) tapL.size());
-    wave.setSamples (tapL.data(), (int) tapL.size());
-    wave.setEnergy (juce::jlimit (0.0f, 1.0f, vs.sourceRms * 4.0f));
-    selector.setEnergy (juce::jlimit (0.0f, 1.0f, vs.sourceRms * 4.0f));
-    sourcePanel.setActivity (juce::jlimit (0.0f, 1.0f, vs.sourceRms * 2.0f));
-    static const Param modeParams[] = { Param::waveTable, Param::dustMode, Param::impactMode, Param::sampleMode, Param::gestureMode };
-    const Param mp = modeParams[juce::jlimit (0, 4, currentSource)];
-    const auto choices = paramChoices (mp);
-    wave.setCaption (choices[juce::jlimit (0, choices.size() - 1, paramChoice (processor.currentParamValues(), mp))]);
+    const float energy = juce::jlimit (0.0f, 1.0f, vs.sourceRms * 4.0f);
+    const auto values = processor.currentParamValues();
+
+    if (mesh.isVisible())
+    {
+        const auto mp = modeParam (currentSource);
+        const auto choices = paramChoices (mp);
+        const int index = juce::jlimit (0, juce::jmax (0, choices.size() - 1), paramChoice (values, mp));
+        const Param posParam[] = { Param::wavePosition, Param::dustDensity, Param::impactHardness, Param::sampleStart, Param::gesturePressure };
+        const Param scanParam[] = { Param::waveScan, Param::dustJitter, Param::impactRandom, Param::sampleGrain, Param::gestureMotion };
+        const Param morphParam[] = { Param::waveMorph, Param::dustColor, Param::impactBrightness, Param::sampleSpread, Param::gestureRoughness };
+        mesh.setShape (index, paramValue (values, posParam[currentSource]),
+                       paramValue (values, scanParam[currentSource]),
+                       paramValue (values, morphParam[currentSource]));
+        mesh.setCaption (choices[index]);
+        mesh.setEnergy (energy);
+        mesh.advance (1.0f / 30.0f);
+    }
+    sidebarPanel.setActivity (juce::jlimit (0.0f, 1.0f, vs.sourceRms * 2.0f));
 
     const auto& mod = latestModulation (processor);
-    if (levelControl != nullptr) levelControl->refreshModRing (mod);
-    for (auto& section : sections) section.panel->refreshModRings (mod);
+    if (cluster != nullptr) cluster->refreshModRings (mod);
 }
 
 //==============================================================================
 ShapePage::ShapePage (AntiMatrProcessor& p)
     : processor (p),
-      matter (p, "Matter", "Turn matter into sound", Theme::cyan, { Param::shapeDensity, Param::shapeForm, Param::shapeMass, Param::shapeTension, Param::shapeDecay, Param::shapeSurface }, 3),
-      materials (p, "Materials", "Blend two physical models", Theme::cyan, { Param::shapeMaterialA, Param::shapeMaterialB, Param::shapeBlend }, 3),
-      topology (p, "Topology", "Node distribution & coupling", Theme::cyan, { Param::shapeTopology, Param::shapeCoupling, Param::shapeDistribution, Param::shapeSeed }, 4),
-      response (p, "Response", "Excitation, pitch & output", Theme::cyan, { Param::shapeExcite, Param::shapeStrike, Param::shapeMix, Param::shapeStereo, Param::shapeKeytrack, Param::shapePitch }, 3)
+      sidebar ({ { "Simple", Icon::Shape, "The six macros", Theme::cyan },
+                 { "Advanced", Icon::Settings, "Excitation & output", Theme::blue },
+                 { "Material", Icon::Dna, "Models & topology", Theme::violet } }, Theme::cyan)
 {
-    matter.setHeroKnobs (true);
+    addAndMakeVisible (sidebarPanel);
+    addAndMakeVisible (lattice);
+    addAndMakeVisible (blendPanel);
+    sidebarPanel.addAndMakeVisible (sidebar);
+    sidebar.setTooltip ("SIMPLE: the six Matter macros. ADVANCED: excitation, pitch and output. MATERIAL: the two physical models and how their nodes are wired.");
+    sidebar.onChange = [this] (int i) { showTab (i); };
+
+    // The blend selector under the screen: the two models and the crossfade between them.
+    materialA = std::make_unique<BoundControl> (processor.parameters(), Param::shapeMaterialA, Theme::cyan, "Material A");
+    materialB = std::make_unique<BoundControl> (processor.parameters(), Param::shapeMaterialB, Theme::violet, "Material B");
+    blendPanel.setCompact (true);
+    blendPanel.addAndMakeVisible (materialA->component());
+    blendPanel.addAndMakeVisible (materialB->component());
+    blendPanel.addAndMakeVisible (blend);
+    blend.setTooltip (paramTooltip (Param::shapeBlend));
+    blendAttachment = std::make_unique<SliderAttachment> (processor.parameters(), ParameterRegistry::get (Param::shapeBlend).id, blend);
+    blend.setDoubleClickReturnValue (true, ParameterRegistry::get (Param::shapeBlend).defaultValue);
+
+    cluster = std::make_unique<ParamPanel> (processor, "Matter", "Turn matter into sound", Theme::cyan,
+                                            std::vector<Param> {}, 3, "Shape");
+    addAndMakeVisible (*cluster);
+    lattice.setTitle ("Matter · node lattice");
+    showTab (0);
+    startTimerHz (24);
+}
+
+void ShapePage::showTab (int index)
+{
+    current = juce::jlimit (0, 2, index);
+    sidebar.setSelected (current, juce::dontSendNotification);
+    switch (current)
+    {
+        case 1:
+            cluster->setTitle ("Response");
+            cluster->setSubtitle ("Excitation, pitch & output");
+            cluster->setParams ({ Param::shapeExcite, Param::shapeStrike, Param::shapeMix,
+                                  Param::shapeStereo, Param::shapeKeytrack, Param::shapePitch }, 3, "Shape");
+            cluster->setFooterRows ({}, "Shape");
+            break;
+        case 2:
+            cluster->setTitle ("Topology");
+            cluster->setSubtitle ("Node distribution & coupling");
+            cluster->setParams ({ Param::shapeCoupling, Param::shapeDistribution, Param::shapeSeed }, 3, "Shape");
+            cluster->setFooterRows ({ { Param::shapeTopology } }, "Shape");
+            cluster->setGridFraction (0.62f);
+            break;
+        default:
+            cluster->setTitle ("Matter");
+            cluster->setSubtitle ("Turn matter into sound");
+            cluster->setParams ({ Param::shapeDensity, Param::shapeForm, Param::shapeMass,
+                                  Param::shapeTension, Param::shapeDecay, Param::shapeSurface }, 3, "Shape");
+            cluster->setFooterRows ({}, "Shape");
+            cluster->setHeroKnobs (true);
+            break;
+    }
     const Param mp[] = { Param::shapeDensity, Param::shapeForm, Param::shapeMass, Param::shapeTension, Param::shapeDecay, Param::shapeSurface };
     const juce::Colour accents[] = { Theme::cyan, Theme::blue, Theme::violet, Theme::cyan, Theme::magenta, Theme::ivory };
-    for (int i = 0; i < 6; ++i) matter.setAccentFor (mp[i], accents[i]);
-    for (auto* panel : { &matter, &materials, &topology, &response }) addAndMakeVisible (*panel);
-    startTimerHz (20);
+    for (int i = 0; i < 6; ++i) cluster->setAccentFor (mp[i], accents[i]);
+    resized();
 }
 
 void ShapePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    auto left = area.removeFromLeft (juce::roundToInt ((float) area.getWidth() * 0.46f));
-    area.removeFromLeft (gap);
-    matter.setBounds (left);
+    const auto cols = pageColumns (area, gap);
 
-    // The right column is shared out by what each panel holds — a row of pickers needs far
-    // less height than two rows of knobs — so no panel carries a band of empty graphite.
-    const float weights[] = { 1.0f, 1.15f, 1.85f };   // materials, topology, response
-    const int usable = area.getHeight() - gap * 2;
-    float total = 0.0f;
-    for (float w : weights) total += w;
-    const int materialsH = juce::roundToInt ((float) usable * weights[0] / total);
-    const int topologyH  = juce::roundToInt ((float) usable * weights[1] / total);
+    sidebarPanel.setBounds (cols.sidebar);
+    layoutSidebar (sidebarPanel, sidebar, {}, gap);
 
-    materials.setBounds (area.removeFromTop (materialsH));
-    area.removeFromTop (gap);
-    topology.setBounds (area.removeFromTop (topologyH));
-    area.removeFromTop (gap);
-    response.setBounds (area);
+    auto centre = cols.centre;
+    const int blendH = juce::jlimit (74, 116, centre.getHeight() / 7);
+    blendPanel.setBounds (centre.removeFromBottom (blendH));
+    centre.removeFromBottom (gap);
+    lattice.setBounds (centre);
+    {
+        auto c = blendPanel.contentBounds();
+        const int stepper = juce::jlimit (120, 230, c.getWidth() / 4);
+        materialA->component().setBounds (c.removeFromLeft (stepper));
+        materialB->component().setBounds (c.removeFromRight (stepper));
+        blend.setBounds (c.reduced (gap, juce::jmax (0, (c.getHeight() - juce::jlimit (22, 34, c.getHeight())) / 2)));
+    }
+
+    cluster->setBounds (cols.controls);
 }
 
 void ShapePage::timerCallback()
 {
     if (! isShowing()) return;
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
+    const auto values = processor.currentParamValues();
+    lattice.setMatter (vs.density, vs.form, vs.mass, vs.tension, vs.surface,
+                       paramChoice (values, Param::shapeTopology), (int) paramValue (values, Param::shapeSeed));
+    lattice.setEnergy (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
+    lattice.setCaption (paramChoices (Param::shapeMaterialA)[juce::jlimit (0, 8, paramChoice (values, Param::shapeMaterialA))]
+                        + juce::String ("  /  ")
+                        + paramChoices (Param::shapeMaterialB)[juce::jlimit (0, 8, paramChoice (values, Param::shapeMaterialB))]);
+    lattice.advance (1.0f / 24.0f);
+    sidebarPanel.setActivity (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
+
     const auto& mod = latestModulation (processor);
-    for (auto* panel : { &matter, &materials, &topology, &response }) panel->refreshModRings (mod);
+    cluster->refreshModRings (mod);
+    if (materialA != nullptr) materialA->refreshModRing (mod);
+    if (materialB != nullptr) materialB->refreshModRing (mod);
 
     // Without a routing the ring still shows where the engine's effective value sits.
     const Param mp[] = { Param::shapeDensity, Param::shapeForm, Param::shapeMass, Param::shapeTension, Param::shapeDecay, Param::shapeSurface };
-    const float values[] = { vs.density, vs.form, vs.mass, vs.tension, vs.decay, vs.surface };
+    const float live[] = { vs.density, vs.form, vs.mass, vs.tension, vs.decay, vs.surface };
     for (int i = 0; i < 6; ++i)
         if (! mod.isModulated (mp[i]))
-            if (auto* c = matter.control (mp[i])) if (auto* k = c->knob()) k->modRing().setCurrent (values[i]);
-    matter.setActivity (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
+            if (auto* c = cluster->control (mp[i])) if (auto* k = c->knob()) k->modRing().setCurrent (live[i]);
 }
 
 //==============================================================================
 EvolvePage::EvolvePage (AntiMatrProcessor& p)
     : processor (p),
-      operators (p, "Operators", "Movement & change", Theme::violet, { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet }, 4),
-      bend (p, "Bend", "Deformation detail", Theme::violet, { Param::evolveBendPivot, Param::evolveBendRange, Param::evolveBendCurve }, 3),
-      motion (p, "Motion", "Speed of change", Theme::violet, { Param::evolveSpeed, Param::evolveMotion, Param::evolveScatterSeed }, 3)
+      sidebar ({ { "Main", Icon::Evolve, "The four operators", Theme::violet },
+                 { "Advanced", Icon::Settings, "Deformation detail", Theme::indigo },
+                 { "Motion", Icon::Swirl, "Gravity & speed", Theme::blue } }, Theme::violet)
 {
-    operators.setHeroKnobs (true);
-    for (auto* panel : { &operators, &bend, &motion }) addAndMakeVisible (*panel);
-    addAndMakeVisible (magnetPanel);
-    addAndMakeVisible (fieldPanel);
+    addAndMakeVisible (sidebarPanel);
+    addAndMakeVisible (ribbon);
+    addAndMakeVisible (operatorPanel);
+    addChildComponent (magnetPanel);
+    addChildComponent (fieldPanel);
+    sidebarPanel.addAndMakeVisible (sidebar);
+    sidebar.setTooltip ("MAIN: bend, melt, tear and magnet. ADVANCED: the deformation detail. MOTION: how fast it all moves.");
+    sidebar.onChange = [this] (int i) { showTab (i); };
+    ribbon.setTitle ("Evolve · deformation");
+
+    // The four operators: a knob each, the selected one also driven by the AMOUNT slider.
+    const Param ops[] = { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet };
+    const juce::Colour accents[] = { Theme::violet, Theme::indigo, Theme::magenta, Theme::blue };
+    for (int i = 0; i < 4; ++i)
+    {
+        operatorKnobs[(size_t) i] = std::make_unique<BoundControl> (processor.parameters(), ops[i], accents[i]);
+        // Dragging an operator also selects it, so the AMOUNT slider under the row
+        // always drives the operator the hand is already on.
+        if (auto* k = operatorKnobs[(size_t) i]->knob())
+            k->onDragStart = [this, i] { if (selectedAttachment != nullptr) selectedAttachment->setValueAsCompleteGesture ((float) i); };
+        operatorPanel.addAndMakeVisible (operatorKnobs[(size_t) i]->component());
+    }
+    operatorPanel.addAndMakeVisible (amount);
+    operatorPanel.addAndMakeVisible (speed);
+    speed.setTooltip (paramTooltip (Param::evolveSpeed));
+    speedAttachment = std::make_unique<SliderAttachment> (processor.parameters(), ParameterRegistry::get (Param::evolveSpeed).id, speed);
+    speed.setDoubleClickReturnValue (true, ParameterRegistry::get (Param::evolveSpeed).defaultValue);
+
+    auto& apvts = processor.parameters();
+    auto* selParam = apvts.getParameter (ParameterRegistry::get (Param::evolveSelected).id);
+    selectedAttachment = std::make_unique<juce::ParameterAttachment> (*selParam, [this] (float v) { bindAmount ((int) std::lround (v)); });
+    selectedAttachment->sendInitialUpdate();
+    if (amountAttachment == nullptr) bindAmount (0);
 
     // Seven alignment targets: a list shows them all instead of hiding six behind a stepper.
     magnetList = std::make_unique<AMOptionList> (paramChoices (Param::evolveMagnetTarget), Theme::violet);
     magnetList->setTooltip (paramTooltip (Param::evolveMagnetTarget));
     magnetPanel.addAndMakeVisible (*magnetList);
     {
-        auto* target = processor.parameters().getParameter (ParameterRegistry::get (Param::evolveMagnetTarget).id);
+        auto* target = apvts.getParameter (ParameterRegistry::get (Param::evolveMagnetTarget).id);
         magnetAttachment = std::make_unique<juce::ParameterAttachment> (*target, [this] (float v)
         {
             magnetList->setSelected ((int) std::lround (v), juce::dontSendNotification);
@@ -414,119 +635,161 @@ EvolvePage::EvolvePage (AntiMatrProcessor& p)
         magnetList->onChange = [this] (int i) { magnetAttachment->setValueAsCompleteGesture ((float) i); };
         magnetAttachment->sendInitialUpdate();
     }
+
     fieldPanel.addAndMakeVisible (field);
     field.setTooltip ("Drag: gravity (x) and scatter (y). Double-click resets.");
-    for (auto param : { Param::evolveCrush, Param::evolveFreeze })
     {
-        fieldControls.push_back (std::make_unique<BoundControl> (processor.parameters(), param, Theme::violet));
-        fieldPanel.addAndMakeVisible (fieldControls.back()->component());
+        auto* gx = apvts.getParameter (ParameterRegistry::get (Param::evolveGravity).id);
+        auto* gy = apvts.getParameter (ParameterRegistry::get (Param::evolveScatter).id);
+        fieldX = std::make_unique<juce::ParameterAttachment> (*gx, [this] (float v) { field.setPosition (v, field.getY01(), juce::dontSendNotification); });
+        fieldY = std::make_unique<juce::ParameterAttachment> (*gy, [this] (float v) { field.setPosition (field.getX01(), v, juce::dontSendNotification); });
+        field.onDragStart = [this] { fieldX->beginGesture(); fieldY->beginGesture(); };
+        field.onDragEnd   = [this] { fieldX->endGesture(); fieldY->endGesture(); };
+        field.onChange = [this] (float x, float y) { fieldX->setValueAsPartOfGesture (x); fieldY->setValueAsPartOfGesture (y); };
+        field.setDefault (ParameterRegistry::get (Param::evolveGravity).defaultValue, ParameterRegistry::get (Param::evolveScatter).defaultValue);
+        fieldX->sendInitialUpdate();
+        fieldY->sendInitialUpdate();
     }
 
-    const juce::String names[] = { "Bend", "Melt", "Tear", "Magnet" };
-    const Icon icons[] = { Icon::Bend, Icon::Melt, Icon::Tear, Icon::Magnet };
-    for (int i = 0; i < 4; ++i)
-    {
-        cells[(size_t) i] = std::make_unique<EvolvePanel::OperatorCell> (names[i], icons[i]);
-        cells[(size_t) i]->onClick = [this, i] { selectedAttachment->setValueAsCompleteGesture ((float) i); };
-        operators.addAndMakeVisible (*cells[(size_t) i]);
-    }
-    auto& apvts = processor.parameters();
-    auto* selParam = apvts.getParameter (ParameterRegistry::get (Param::evolveSelected).id);
-    selectedAttachment = std::make_unique<juce::ParameterAttachment> (*selParam, [this] (float v)
-    {
-        const int idx = juce::jlimit (0, 3, (int) std::lround (v));
-        for (int i = 0; i < 4; ++i) cells[(size_t) i]->setSelected (i == idx);
-    });
-    selectedAttachment->sendInitialUpdate();
+    cluster = std::make_unique<ParamPanel> (processor, "Bend", "Deformation detail", Theme::violet, std::vector<Param> {}, 3, "Evolve");
+    addChildComponent (*cluster);
+    showTab (0);
+    startTimerHz (24);
+}
 
-    auto* gx = apvts.getParameter (ParameterRegistry::get (Param::evolveGravity).id);
-    auto* gy = apvts.getParameter (ParameterRegistry::get (Param::evolveScatter).id);
-    fieldX = std::make_unique<juce::ParameterAttachment> (*gx, [this] (float v) { field.setPosition (v, field.getY01(), juce::dontSendNotification); });
-    fieldY = std::make_unique<juce::ParameterAttachment> (*gy, [this] (float v) { field.setPosition (field.getX01(), v, juce::dontSendNotification); });
-    field.onDragStart = [this] { fieldX->beginGesture(); fieldY->beginGesture(); };
-    field.onDragEnd   = [this] { fieldX->endGesture(); fieldY->endGesture(); };
-    field.onChange = [this] (float x, float y) { fieldX->setValueAsPartOfGesture (x); fieldY->setValueAsPartOfGesture (y); };
-    field.setDefault (ParameterRegistry::get (Param::evolveGravity).defaultValue, ParameterRegistry::get (Param::evolveScatter).defaultValue);
-    fieldX->sendInitialUpdate();
-    fieldY->sendInitialUpdate();
-    startTimerHz (20);
+void EvolvePage::bindAmount (int op)
+{
+    selectedOperator = juce::jlimit (0, 3, op);
+    static const Param ops[] = { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet };
+    const auto param = ops[selectedOperator];
+    amountAttachment.reset();
+    amountAttachment = std::make_unique<SliderAttachment> (processor.parameters(), ParameterRegistry::get (param).id, amount);
+    amount.setDoubleClickReturnValue (true, ParameterRegistry::get (param).defaultValue);
+    amount.setLabel (juce::String (ParameterRegistry::get (param).name) + " amount");
+    amount.setTooltip (paramTooltip (param));
+}
+
+void EvolvePage::showTab (int index)
+{
+    current = juce::jlimit (0, 2, index);
+    sidebar.setSelected (current, juce::dontSendNotification);
+    operatorPanel.setVisible (current == 0);
+    magnetPanel.setVisible (current == 1);
+    fieldPanel.setVisible (current == 2);
+    cluster->setVisible (current != 0);
+    if (current == 1)
+    {
+        cluster->setTitle ("Bend");
+        cluster->setSubtitle ("Deformation detail");
+        cluster->setParams ({ Param::evolveBendPivot, Param::evolveBendRange, Param::evolveBendCurve,
+                              Param::evolveCrush, Param::evolveFreeze }, 3, "Bend");
+        cluster->setFooterRows ({}, "Evolve");
+    }
+    else if (current == 2)
+    {
+        cluster->setTitle ("Motion");
+        cluster->setSubtitle ("Speed of change");
+        cluster->setParams ({ Param::evolveSpeed, Param::evolveMotion, Param::evolveScatterSeed }, 3, "Evolve");
+        cluster->setFooterRows ({}, "Evolve");
+    }
+    resized();
 }
 
 void EvolvePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    auto right = area.removeFromRight (juce::roundToInt ((float) area.getWidth() * 0.36f));
-    area.removeFromRight (gap);
-    fieldPanel.setBounds (right);
+    const auto cols = pageColumns (area, gap);
+
+    sidebarPanel.setBounds (cols.sidebar);
+    layoutSidebar (sidebarPanel, sidebar, {}, gap);
+    ribbon.setBounds (cols.centre);
+
+    auto right = cols.controls;
+    if (current == 0)
     {
-        // The pad is square, so the slack under it carries the rest of the field state.
-        auto c = fieldPanel.contentBounds();
-        const int extras = juce::jlimit (64, 104, c.getHeight() / 6);
-        auto footer = c.removeFromBottom (extras);
-        field.setBounds (c.withTrimmedBottom (gap / 2));
-        std::vector<juce::Component*> comps;
-        for (auto& f : fieldControls) comps.push_back (&f->component());
-        layoutGrid (footer, comps, (int) comps.size(), gap, 0);
+        operatorPanel.setBounds (right);
+        auto c = operatorPanel.contentBounds();
+        // Two sliders under the operators; they take the height a slider needs, no more.
+        const int sliderH = juce::jlimit (26, 42, c.getHeight() / 8);
+        auto sliders = c.removeFromBottom (sliderH * 2 + gap);
+        c.removeFromBottom (gap);
+        std::vector<juce::Component*> knobs;
+        for (auto& k : operatorKnobs) knobs.push_back (&k->component());
+        layoutGrid (c, knobs, 4, gap / 3, gap / 2);
+        amount.setBounds (sliders.removeFromTop (sliderH));
+        sliders.removeFromTop (gap);
+        speed.setBounds (sliders.removeFromTop (sliderH));
+        return;
     }
 
-    // The bottom row takes only the height its controls need; the operators absorb the rest.
-    const int bottomH = juce::jlimit (150, 218, juce::roundToInt ((float) area.getHeight() * 0.30f));
-    auto top = area.removeFromTop (juce::jmax (120, area.getHeight() - bottomH - gap));
-    area.removeFromTop (gap);
-    operators.setBounds (top);
+    const int clusterH = current == 1 ? juce::roundToInt ((float) right.getHeight() * 0.46f)
+                                      : juce::roundToInt ((float) right.getHeight() * 0.34f);
+    cluster->setBounds (right.removeFromTop (clusterH));
+    right.removeFromTop (gap);
+    if (current == 1)
     {
-        auto c = operators.contentBounds();
-        auto cellRow = c.removeFromTop (juce::roundToInt ((float) c.getHeight() * 0.46f));
-        layoutKnobRow (cellRow, { cells[0].get(), cells[1].get(), cells[2].get(), cells[3].get() });
-        c.removeFromTop (gap / 2);
-        std::vector<juce::Component*> knobs;
-        for (auto param : { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet })
-            if (auto* ctl = operators.control (param)) knobs.push_back (&ctl->component());
-        layoutGrid (c, knobs, 4);
+        magnetPanel.setBounds (right);
+        magnetList->setBounds (magnetPanel.contentBounds());
     }
-    // MAGNET holds a single choice, so it gets a narrow column instead of an empty third.
-    const int magnetW = juce::jlimit (130, 220, juce::roundToInt ((float) area.getWidth() * 0.21f));
-    const int w = (area.getWidth() - gap * 2 - magnetW) / 2;
-    bend.setBounds (area.removeFromLeft (w));
-    area.removeFromLeft (gap);
-    magnetPanel.setBounds (area.removeFromLeft (magnetW));
-    magnetList->setBounds (magnetPanel.contentBounds());
-    area.removeFromLeft (gap);
-    motion.setBounds (area);
+    else
+    {
+        fieldPanel.setBounds (right);
+        auto c = fieldPanel.contentBounds();
+        const int d = juce::jmin (c.getWidth(), c.getHeight());
+        field.setBounds (c.withSizeKeepingCentre (d, d));
+    }
 }
 
 void EvolvePage::timerCallback()
 {
     if (! isShowing()) return;
     const auto values = processor.currentParamValues();
-    const Param ops[] = { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet };
-    float total = 0.0f;
-    for (int i = 0; i < 4; ++i) { const float v = paramValue (values, ops[i]); cells[(size_t) i]->setAmount (v); total += v; }
-    operators.setActivity (juce::jlimit (0.0f, 1.0f, total * 0.5f));
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
+    ribbon.setOperators (paramValue (values, Param::evolveBend), paramValue (values, Param::evolveMelt),
+                         paramValue (values, Param::evolveTear), paramValue (values, Param::evolveMagnet),
+                         paramValue (values, Param::evolveSpeed));
+    ribbon.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 4.0f));
+    ribbon.advance (1.0f / 24.0f);
     field.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 4.0f));
 
+    float total = 0.0f;
+    for (auto p : { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet }) total += paramValue (values, p);
+    sidebarPanel.setActivity (juce::jlimit (0.0f, 1.0f, total * 0.5f));
+    operatorPanel.setActivity (juce::jlimit (0.0f, 1.0f, total * 0.5f));
+
     const auto& mod = latestModulation (processor);
-    for (auto* panel : { &operators, &bend, &motion }) panel->refreshModRings (mod);
+    for (auto& k : operatorKnobs) if (k != nullptr) k->refreshModRing (mod);
+    if (cluster != nullptr) cluster->refreshModRings (mod);
 }
 
 //==============================================================================
 FracturePage::FracturePage (AntiMatrProcessor& p)
     : processor (p),
-      engine (p, "Fracture", "Break into new realities", Theme::magenta, { Param::fractureMode, Param::fractureFragments, Param::fractureMix }, 3),
-      sequencer (p, "Sequencer", "Fragment steps", Theme::magenta, { Param::fractureSteps, Param::fractureRate, Param::fractureSync, Param::fractureDivision, Param::fractureSwing, Param::fractureDirection, Param::fractureProbability, Param::fractureSeed, Param::fractureRetrig }, 9),
-      spectral (p, "Spectral", "Amount, motion & tone", Theme::magenta, { Param::fractureAmount, Param::fractureSpread, Param::fractureSequence, Param::fractureRandom, Param::fractureFeedback, Param::fracturePitch, Param::fractureDelay, Param::fractureDecay, Param::fractureTone, Param::fractureEvolve }, 10)
+      sidebar ({ { "Main", Icon::Fracture, "Mode & amount", Theme::magenta },
+                 { "Sequencer", Icon::Grid, "Fragment steps", Theme::violet },
+                 { "Fragments", Icon::Shuffle, "Tone & feedback", Theme::cyan } }, Theme::magenta)
 {
-    engine.setHeaderToggle (Param::fractureOn, true);
-    for (auto* panel : { &engine, &sequencer, &spectral }) addAndMakeVisible (*panel);
-    engine.addAndMakeVisible (spectrum);
-    sequencer.addAndMakeVisible (steps);
-    steps.setTooltip ("Drag to draw the fragment pattern. Right-click for pattern tools.");
-    const juce::Colour accents[] = { Theme::magenta, Theme::cyan, Theme::violet, Theme::ivory, Theme::magenta, Theme::cyan, Theme::violet, Theme::ivory, Theme::magenta, Theme::cyan };
-    const Param sp[] = { Param::fractureAmount, Param::fractureSpread, Param::fractureSequence, Param::fractureRandom, Param::fractureFeedback, Param::fracturePitch, Param::fractureDelay, Param::fractureDecay, Param::fractureTone, Param::fractureEvolve };
-    for (int i = 0; i < 10; ++i) spectral.setAccentFor (sp[i], accents[i]);
+    addAndMakeVisible (sidebarPanel);
+    addAndMakeVisible (shards);
+    addChildComponent (steps);
+    sidebarPanel.addAndMakeVisible (sidebar);
+    sidebarPanel.addAndMakeVisible (onOff);
+    sidebar.setTooltip ("MAIN: the spectral engine. SEQUENCER: the fragment pattern. FRAGMENTS: tone, feedback and decay.");
+    sidebar.onChange = [this] (int i) { showTab (i); };
+    shards.setTitle ("Fracture · shards");
 
+    onOff.setTooltip ("Fracture on / off");
+    auto* onParam = processor.parameters().getParameter (ParameterRegistry::get (Param::fractureOn).id);
+    onAttachment = std::make_unique<juce::ParameterAttachment> (*onParam, [this] (float v) { onOff.setSelected (v >= 0.5f ? 1 : 0, juce::dontSendNotification); });
+    onOff.onChange = [this] (int i) { onAttachment->setValueAsCompleteGesture (i == 1 ? 1.0f : 0.0f); };
+    onAttachment->sendInitialUpdate();
+
+    cluster = std::make_unique<ParamPanel> (processor, "Spectral", "Amount, motion & tone", Theme::magenta,
+                                            std::vector<Param> {}, 2, "Fracture");
+    addAndMakeVisible (*cluster);
+
+    steps.setTooltip ("Drag to draw the fragment pattern. Right-click for pattern tools.");
     auto* stepsParam = processor.parameters().getParameter (ParameterRegistry::get (Param::fractureSteps).id);
     stepsAttachment = std::make_unique<juce::ParameterAttachment> (*stepsParam, [this] (float v) { steps.setNumSteps ((int) std::lround (v)); });
     stepsAttachment->sendInitialUpdate();
@@ -536,7 +799,55 @@ FracturePage::FracturePage (AntiMatrProcessor& p)
     pullStepsFromProcessor();
     steps.onStepChanged = [this] (int, float) { pushStepsToProcessor(); };
     steps.onPatternChanged = [this] { pushStepsToProcessor(); };
+
+    showTab (0);
     startTimerHz (30);
+}
+
+void FracturePage::showTab (int index)
+{
+    current = juce::jlimit (0, 2, index);
+    sidebar.setSelected (current, juce::dontSendNotification);
+    steps.setVisible (current == 1);
+    switch (current)
+    {
+        case 1:
+            cluster->setDisplay (nullptr, 0.0f);
+            spectrum.setVisible (false);
+            cluster->setTitle ("Sequencer");
+            cluster->setSubtitle ("Fragment steps");
+            cluster->setTopRows ({}, "Fracture");
+            cluster->setParams ({ Param::fractureSteps, Param::fractureRate, Param::fractureSync,
+                                  Param::fractureDivision, Param::fractureSwing, Param::fractureDirection,
+                                  Param::fractureProbability, Param::fractureSeed, Param::fractureRetrig }, 3, "Fracture");
+            cluster->setFooterRows ({}, "Fracture");
+            break;
+        case 2:
+            cluster->setDisplay (nullptr, 0.0f);
+            spectrum.setVisible (false);
+            cluster->setTitle ("Fragments");
+            cluster->setSubtitle ("Tone, feedback & decay");
+            cluster->setTopRows ({ { Param::fractureFragments } }, "Fracture");
+            cluster->setParams ({ Param::fractureMix, Param::fractureFeedback, Param::fracturePitch,
+                                  Param::fractureDelay, Param::fractureDecay, Param::fractureTone,
+                                  Param::fractureEvolve }, 2, "Fracture");
+            cluster->setFooterRows ({}, "Fracture");
+            break;
+        default:
+            cluster->setTitle ("Spectral");
+            cluster->setSubtitle ("Amount, motion & tone");
+            cluster->setTopRows ({ { Param::fractureMode } }, "Fracture");
+            cluster->setParams ({ Param::fractureAmount, Param::fractureSpread,
+                                  Param::fractureSequence, Param::fractureRandom }, 2, "Fracture");
+            cluster->setFooterRows ({}, "Fracture");
+            spectrum.setVisible (true);
+            cluster->setDisplay (&spectrum, 0.32f);
+            break;
+    }
+    const juce::Colour accents[] = { Theme::magenta, Theme::cyan, Theme::violet, Theme::ivory };
+    const Param sp[] = { Param::fractureAmount, Param::fractureSpread, Param::fractureSequence, Param::fractureRandom };
+    for (int i = 0; i < 4; ++i) cluster->setAccentFor (sp[i], accents[i]);
+    resized();
 }
 
 void FracturePage::pushStepsToProcessor()
@@ -578,41 +889,21 @@ void FracturePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    // SPECTRAL carries ten knobs in two rows, so it keeps enough height for them to be
-    // the same size as every other knob in the plug-in instead of shrinking to fit.
-    auto top = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.34f));
-    area.removeFromTop (gap);
-    engine.setBounds (top);
+    const auto cols = pageColumns (area, gap);
+
+    sidebarPanel.setBounds (cols.sidebar);
+    layoutSidebar (sidebarPanel, sidebar, { &onOff }, gap);
+
+    auto centre = cols.centre;
+    if (current == 1)
     {
-        // Three controls beside the spectrum: stacked when the panel is tall enough for
-        // three full-size rows, side by side when it is not, so nothing ever shrinks to a dot.
-        auto c = engine.contentBounds();
-        const bool stacked = c.getHeight() >= 200;
-        auto controls = c.removeFromRight (stacked ? juce::jlimit (240, 360, c.getWidth() / 4)
-                                                   : juce::jlimit (300, 460, c.getWidth() / 3));
-        c.removeFromRight (gap);
-        spectrum.setBounds (c);
-        std::vector<juce::Component*> comps;
-        for (auto param : { Param::fractureMode, Param::fractureFragments, Param::fractureMix })
-            if (auto* ctl = engine.control (param)) comps.push_back (&ctl->component());
-        layoutGrid (controls, comps, stacked ? 1 : 3, gap / 2, 4);
+        // The pattern belongs under the shards: it needs the width, and the screen
+        // above it is what the pattern is doing to the object.
+        steps.setBounds (centre.removeFromBottom (juce::jlimit (90, 190, juce::roundToInt ((float) centre.getHeight() * 0.30f))));
+        centre.removeFromBottom (gap);
     }
-    auto mid = area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.50f));
-    area.removeFromTop (gap);
-    sequencer.setBounds (mid);
-    {
-        // The controls take nearly half the panel so five to a row leaves each cell wide
-        // enough for a choice pill and its caption without either colliding with its neighbour.
-        auto c = sequencer.contentBounds();
-        auto controls = c.removeFromRight (juce::jlimit (360, 720, juce::roundToInt ((float) c.getWidth() * 0.46f)));
-        c.removeFromRight (gap);
-        steps.setBounds (c);
-        std::vector<juce::Component*> comps;
-        for (auto param : { Param::fractureSteps, Param::fractureRate, Param::fractureSync, Param::fractureDivision, Param::fractureSwing, Param::fractureDirection, Param::fractureProbability, Param::fractureSeed, Param::fractureRetrig })
-            if (auto* ctl = sequencer.control (param)) comps.push_back (&ctl->component());
-        layoutGrid (controls, comps, 5, 4, 2);
-    }
-    spectral.setBounds (area);
+    shards.setBounds (centre);
+    cluster->setBounds (cols.controls);
 }
 
 void FracturePage::timerCallback()
@@ -620,18 +911,32 @@ void FracturePage::timerCallback()
     if (! isShowing()) return;
     auto& diag = processor.diagnostics();
     const auto& vs = diag.visualSnapshots.latest();
-    const auto stage = vs.fractureOn ? Stage::PostFracture : Stage::PostMatter;
-    diag.taps[(int) stage].readLatest (tapL.data(), tapR.data(), SpectrumAnalyzer::kSize);
-    for (int i = 0; i < SpectrumAnalyzer::kSize; ++i) tapL[(size_t) i] = 0.5f * (tapL[(size_t) i] + tapR[(size_t) i]);
-    analyzer.compute (tapL.data(), processor.engine().sampleRate(), bands.data(), AMSpectrumView::kBands);
     const auto values = processor.currentParamValues();
-    spectrum.setFragmentCount (8 << juce::jlimit (0, 2, paramChoice (values, Param::fractureFragments)));
-    spectrum.setActivity (vs.fractureOn ? vs.fractureActivity : 0.0f);
-    spectrum.setMagnitudes (bands.data(), AMSpectrumView::kBands);
-    engine.setActivity (vs.fractureOn ? vs.fractureActivity * 0.8f : 0.0f);
+
+    shards.setFracture (8 << juce::jlimit (0, 2, paramChoice (values, Param::fractureFragments)),
+                        paramValue (values, Param::fractureAmount), paramValue (values, Param::fractureSpread),
+                        paramValue (values, Param::fractureRandom), vs.fractureOn,
+                        (int) paramValue (values, Param::fractureSeed));
+    shards.setEnergy (vs.fractureOn ? juce::jlimit (0.0f, 1.0f, vs.fractureActivity) : juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f));
+    shards.setCaption (paramChoices (Param::fractureMode)[juce::jlimit (0, 3, paramChoice (values, Param::fractureMode))]);
+    shards.advance (1.0f / 30.0f);
+    sidebarPanel.setActivity (vs.fractureOn ? vs.fractureActivity * 0.8f : 0.0f);
+
+    if (spectrum.isVisible())
+    {
+        const auto stage = vs.fractureOn ? Stage::PostFracture : Stage::PostMatter;
+        diag.taps[(int) stage].readLatest (tapL.data(), tapR.data(), SpectrumAnalyzer::kSize);
+        for (int i = 0; i < SpectrumAnalyzer::kSize; ++i) tapL[(size_t) i] = 0.5f * (tapL[(size_t) i] + tapR[(size_t) i]);
+        analyzer.compute (tapL.data(), processor.engine().sampleRate(), bands.data(), AMSpectrumView::kBands);
+        spectrum.setFragmentCount (8 << juce::jlimit (0, 2, paramChoice (values, Param::fractureFragments)));
+        spectrum.setActivity (vs.fractureOn ? vs.fractureActivity : 0.0f);
+        spectrum.setMagnitudes (bands.data(), AMSpectrumView::kBands);
+    }
 
     const auto& mod = latestModulation (processor);
-    for (auto* panel : { &engine, &sequencer, &spectral }) panel->refreshModRings (mod);
+    cluster->refreshModRings (mod);
+
+    if (current != 1) return;
 
     // Presets / A/B / undo may have replaced the table underneath the editor.
     if (! steps.isMouseButtonDown()) pullStepsFromProcessor();
@@ -665,16 +970,36 @@ void FracturePage::timerCallback()
 }
 
 //==============================================================================
-SpacePage::SpacePage (AntiMatrProcessor& p) : processor (p)
+SpacePage::SpacePage (AntiMatrProcessor& p)
+    : processor (p),
+      sidebar ({ { "Nebula", Icon::Swirl, "", Theme::violet },
+                 { "Void", Icon::Space, "", juce::Colour (0xff6a6a88) },
+                 { "Chamber", Icon::Grid, "", Theme::amber },
+                 { "Orbit", Icon::Magnet, "", Theme::blue },
+                 { "Dream", Icon::Sparkle, "", Theme::magenta },
+                 { "Machine", Icon::Settings, "", Theme::cyan },
+                 { "Shimmer", Icon::Dna, "", Theme::ivory },
+                 { "Dust", Icon::Dust, "", Theme::textSecondary } }, Theme::ivory)
 {
-    addAndMakeVisible (spacePanel);
-    spacePanel.addAndMakeVisible (picker);
-    picker.setArtOnly (true);
+    addAndMakeVisible (sidebarPanel);
+    addAndMakeVisible (space);
+    addAndMakeVisible (macroPanel);
+    addAndMakeVisible (enginePanel);
+    sidebarPanel.addAndMakeVisible (sidebar);
+    sidebar.setTooltip ("The environment the sound lives in.");
+    space.setTitle ("Space");
+
     auto& apvts = processor.parameters();
     auto* typeParam = apvts.getParameter (ParameterRegistry::get (Param::spaceType).id);
-    typeAttachment = std::make_unique<juce::ParameterAttachment> (*typeParam, [this] (float v) { picker.type = (int) std::lround (v); picker.repaint(); });
-    picker.onArrow = [this] (int dir) { const int n = SpaceArt::kNumTypes; typeAttachment->setValueAsCompleteGesture ((float) (((picker.type + dir) % n + n) % n)); };
-    picker.onSelect = [this] (int i) { typeAttachment->setValueAsCompleteGesture ((float) i); };
+    typeAttachment = std::make_unique<juce::ParameterAttachment> (*typeParam, [this] (float v)
+    {
+        const int t = (int) std::lround (v);
+        sidebar.setSelected (t, juce::dontSendNotification);
+        space.setType (t);
+        space.setAccent (SpaceArt::tint (t));
+        space.setCaption (SpaceArt::name (t));
+    });
+    sidebar.onChange = [this] (int i) { typeAttachment->setValueAsCompleteGesture ((float) i); };
     typeAttachment->sendInitialUpdate();
 
     const juce::Colour accents[] = { Theme::magenta, Theme::cyan, Theme::violet, Theme::ivory };
@@ -682,72 +1007,115 @@ SpacePage::SpacePage (AntiMatrProcessor& p) : processor (p)
     for (int i = 0; i < 4; ++i)
     {
         macros.push_back (std::make_unique<BoundControl> (apvts, mp[i], accents[i]));
-        spacePanel.addAndMakeVisible (macros.back()->component());
+        if (auto* k = macros.back()->knob()) k->setHero (true);
+        macroPanel.addAndMakeVisible (macros.back()->component());
     }
 
-    auto module = [this] (const juce::String& title, const juce::String& subtitle, std::optional<Param> on, std::vector<Param> params, const juce::String& prefix = {})
+    // The rack: every module in the space chain, in the order the signal meets them.
+    // The pip on a tile powers its module; the rest of the tile brings its controls up.
+    auto addModule = [this] (const juce::String& name, Icon icon, std::optional<Param> power,
+                             std::vector<Param> params, const juce::String& prefix)
     {
-        auto m = std::make_unique<ParamPanel> (processor, title, subtitle, Theme::ivory, std::move (params), 0, prefix);
-        m->setCompact (true);
-        if (on.has_value()) m->setHeaderToggle (*on);
-        addAndMakeVisible (*m);
+        auto m = std::make_unique<Module>();
+        m->name = name;
+        m->prefix = prefix.isNotEmpty() ? prefix : name;
+        m->power = power;
+        m->params = std::move (params);
+        m->tile = std::make_unique<AMModuleTile> (name, icon, Theme::ivory);
+        m->tile->setHasPower (power.has_value());
+        m->tile->setTooltip (name + ": click to bring its controls up, click the lamp to switch it "
+                             + (power.has_value() ? "on and off." : "— always on."));
+        const int index = (int) modules.size();
+        m->tile->onSelect = [this, index] { selectModule (index); };
+        if (power.has_value())
+        {
+            auto* raw = m->tile.get();
+            auto* param = processor.parameters().getParameter (ParameterRegistry::get (*power).id);
+            m->attachment = std::make_unique<juce::ParameterAttachment> (*param, [raw] (float v) { raw->setPowered (v >= 0.5f); });
+            auto* att = m->attachment.get();
+            m->tile->onPower = [att] (bool on) { att->setValueAsCompleteGesture (on ? 1.0f : 0.0f); };
+            m->attachment->sendInitialUpdate();
+        }
+        enginePanel.addAndMakeVisible (*m->tile);
         modules.push_back (std::move (m));
     };
-    module ("Distortion", "", Param::spaceDistOn,    { Param::spaceDistMode, Param::spaceDistDrive, Param::spaceDistMix });
-    module ("Chorus", "",     Param::spaceChorusOn,  { Param::spaceChorusRate, Param::spaceChorusDepth, Param::spaceChorusMix });
-    module ("Delay", "",      Param::spaceDelayOn,   { Param::spaceDelayTime, Param::spaceDelaySync, Param::spaceDelayFeedback, Param::spaceDelayTone, Param::spaceDelayMix });
-    module ("Granular", "",   Param::spaceGrainOn,   { Param::spaceGrainSize, Param::spaceGrainDensity, Param::spaceGrainPitch, Param::spaceGrainMix }, "Grain");
-    module ("Shift", "",      Param::spaceShiftOn,   { Param::spaceShiftAmount, Param::spaceShiftMix });
-    module ("Diffusion", "",  Param::spaceDiffuseOn, { Param::spaceDiffuseAmount });
-    module ("Reverb", "",     Param::spaceReverbOn,  { Param::spaceReverbSize, Param::spaceReverbDecay, Param::spaceReverbDamp, Param::spaceReverbPredelay, Param::spaceReverbMod, Param::spaceReverbMix });
-    module ("EQ", "",         std::nullopt,          { Param::spaceEqLow, Param::spaceEqMid, Param::spaceEqHigh });
-    module ("Dynamics", "",   Param::spaceCompOn,    { Param::spaceCompAmount, Param::spaceLimiterOn });
-    for (auto& m : modules) if (auto* c = m->control (Param::spaceLimiterOn)) if (auto* t = c->toggle()) t->setLabel ("Limiter");
+
+    addModule ("Diffusion", Icon::Swirl,    Param::spaceDiffuseOn, { Param::spaceDiffuseAmount }, "Diffusion");
+    addModule ("Delay",     Icon::Lfo,      Param::spaceDelayOn,   { Param::spaceDelayTime, Param::spaceDelaySync, Param::spaceDelayFeedback, Param::spaceDelayTone, Param::spaceDelayMix }, "Delay");
+    addModule ("Reverb",    Icon::Space,    Param::spaceReverbOn,  { Param::spaceReverbSize, Param::spaceReverbDecay, Param::spaceReverbDamp, Param::spaceReverbPredelay, Param::spaceReverbMod, Param::spaceReverbMix }, "Reverb");
+    addModule ("Spectral",  Icon::Dna,      Param::spaceShiftOn,   { Param::spaceShiftAmount, Param::spaceShiftMix, Param::spaceGrainOn, Param::spaceGrainSize, Param::spaceGrainDensity, Param::spaceGrainPitch, Param::spaceGrainMix }, " ");
+    addModule ("Width",     Icon::Scatter,  Param::spaceChorusOn,  { Param::spaceChorusRate, Param::spaceChorusDepth, Param::spaceChorusMix }, "Chorus");
+    addModule ("Comp",      Icon::Macro,    Param::spaceCompOn,    { Param::spaceCompAmount, Param::spaceLimiterOn }, " ");
+    addModule ("Drive",     Icon::Impact,   Param::spaceDistOn,    { Param::spaceDistMode, Param::spaceDistDrive, Param::spaceDistMix }, "Distortion");
+    addModule ("EQ",        Icon::Env,      std::nullopt,          { Param::spaceEqLow, Param::spaceEqMid, Param::spaceEqHigh }, "EQ");
+
+    moduleControls = std::make_unique<ParamPanel> (processor, "Diffusion", "", Theme::ivory, std::vector<Param> {}, 0, "Diffusion");
+    addAndMakeVisible (*moduleControls);
+    selectModule (2);                                   // REVERB is on by default, so it opens on it
     startTimerHz (24);
+}
+
+void SpacePage::selectModule (int index)
+{
+    selectedModule = juce::jlimit (0, (int) modules.size() - 1, index);
+    for (int i = 0; i < (int) modules.size(); ++i) modules[(size_t) i]->tile->setSelected (i == selectedModule);
+    auto& m = *modules[(size_t) selectedModule];
+    moduleControls->setTitle (m.name);
+    moduleControls->setSubtitle (m.power.has_value() ? "Module controls" : "Always on");
+    moduleControls->setParams (m.params, 0, m.prefix);
+    if (m.power.has_value()) moduleControls->setHeaderToggle (*m.power, true);
+    for (auto& c : modules[(size_t) selectedModule]->params)
+        if (auto* limiter = moduleControls->control (c))
+            if (auto* t = limiter->toggle()) t->setLabel (juce::String (ParameterRegistry::get (c).name).replace (" On", ""));
+    resized();
 }
 
 void SpacePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    auto left = area.removeFromLeft (juce::roundToInt ((float) area.getWidth() * 0.3f));
-    area.removeFromLeft (gap);
-    spacePanel.setBounds (left);
+    const auto cols = pageColumns (area, gap, 0.155f, 0.315f);
+
+    sidebarPanel.setBounds (cols.sidebar);
+    layoutSidebar (sidebarPanel, sidebar, {}, gap);
+    space.setBounds (cols.centre);
+
+    auto right = cols.controls;
+    macroPanel.setBounds (right.removeFromTop (juce::roundToInt ((float) right.getHeight() * 0.30f)));
     {
-        auto c = spacePanel.contentBounds();
-        auto knobArea = c.removeFromBottom (juce::jlimit (70, 110, c.getHeight() / 4));
-        c.removeFromBottom (gap);
-        picker.setBounds (c);
         std::vector<juce::Component*> comps;
         for (auto& m : macros) comps.push_back (&m->component());
-        layoutGrid (knobArea, comps, 4);
+        layoutGrid (macroPanel.contentBounds(), comps, 4);
     }
-    // FX rack: 3 columns, rows weighted by the number of controls
-    const int cols = 3;
-    const int rows = ((int) modules.size() + cols - 1) / cols;
-    const int cellW = (area.getWidth() - gap * (cols - 1)) / cols;
-    const int cellH = (area.getHeight() - gap * (rows - 1)) / rows;
-    for (int i = 0; i < (int) modules.size(); ++i)
+    right.removeFromTop (gap);
+
+    const int tileRow = juce::jlimit (54, 76, right.getWidth() / 7);
+    enginePanel.setBounds (right.removeFromTop (tileRow + juce::jlimit (34, 52, right.getHeight() / 9)));
     {
-        const int r = i / cols, c = i % cols;
-        modules[(size_t) i]->setBounds (area.getX() + c * (cellW + gap), area.getY() + r * (cellH + gap), cellW, cellH);
+        auto c = enginePanel.contentBounds();
+        const int n = (int) modules.size();
+        const int cellW = c.getWidth() / juce::jmax (1, n);
+        const int h = juce::jmin (c.getHeight(), juce::roundToInt ((float) cellW * 1.28f));
+        for (int i = 0; i < n; ++i)
+            modules[(size_t) i]->tile->setBounds (c.getX() + i * cellW, c.getY() + (c.getHeight() - h) / 2, cellW, h);
     }
+    right.removeFromTop (gap);
+    moduleControls->setBounds (right);
 }
 
 void SpacePage::timerCallback()
 {
     if (! isShowing()) return;
-    picker.phase += 1.0f / 24.0f;
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
-    picker.activity = juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f);
-    picker.repaint();
-    spacePanel.setActivity (vs.spaceActivity * 0.5f);
+    space.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f));
+    space.advance (1.0f / 24.0f);
+    sidebarPanel.setActivity (vs.spaceActivity * 0.5f);
+    macroPanel.setActivity (vs.spaceActivity * 0.5f);
 
     const auto& mod = latestModulation (processor);
     for (auto& m : macros) m->refreshModRing (mod);
-    for (auto& module : modules) module->refreshModRings (mod);
+    if (moduleControls != nullptr) moduleControls->refreshModRings (mod);
 }
-
 //==============================================================================
 ModPage::ModPage (AntiMatrProcessor& p) : processor (p)
 {

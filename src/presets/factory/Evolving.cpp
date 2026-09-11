@@ -232,19 +232,19 @@ manager.addFactory ({ "Tin Migration", "EVOLVING", { "metallic", "dirty", "morph
     r.commit (s);
 }});
 
-manager.addFactory ({ "Rope Bridge", "EVOLVING", { "wooden", "organic", "bowed", "evolving", "roomy" }, [] (PatchState& s)
+manager.addFactory ({ "Rope Bridge", "EVOLVING", { "hollow", "resonant", "plucked", "evolving", "roomy" }, [] (PatchState& s)
 {
-    // Six loose strings on a chain being tightened. Over six seconds the
-    // coupling closes, the tension comes up, the mass comes off and the modal
-    // set walks off the harmonic series: slack rope becomes a strung deck.
-    gesture (s, 0 /* BOW */, 0.38f, 0.34f, 0.26f, 0.34f, 0.24f, 0.44f, 0.72f);
-    amp (s, 0.42f, 3.0f, 0.66f, 1.60f, 0.5f);
-    shape (s, 0.50f, 0.26f, 0.46f, 0.62f, 0.78f, 0.24f);
-    material (s, MaterialType::String, MaterialType::Wood, 0.36f);
+    // Slack cables over a deck, being tightened while they are plucked. Over
+    // six seconds the coupling closes, the tension comes up and the mass comes
+    // off, so separate loose strings end as one strung, ringing structure.
+    impact (s, 2 /* PLUCK */, 0.46f, 0.38f, 0.22f, 0.70f, 0.45f, 0.16f, 0.26f);
+    amp (s, 0.004f, 6.0f, 0.64f, 2.60f, 0.42f);
+    shape (s, 0.50f, 0.26f, 0.46f, 0.62f, 0.84f, 0.24f);
+    material (s, MaterialType::String, MaterialType::Membrane, 0.20f);
     topology (s, 0 /* CHAIN */, 0.06f, 0.38f, 3361);
-    matter (s, 0.86f, 0.50f, 0.22f, 0.66f);
+    matter (s, 0.92f, 0.54f, 0.36f, 0.66f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.48f, 0.10f, 0.0f, 0.14f, 0.26f);
-    space (s, SpacePresets::Chamber, 0.36f, 0.56f, 0.52f, 0.30f);
+    space (s, SpacePresets::Orbit, 0.40f, 0.68f, 0.48f, 0.38f);
 
     env (s, 2, 5.60f, 6.0f, 1.0f, 4.0f, 0.65f);
     env (s, 3, 2.40f, 5.0f, 0.80f, 3.0f);
@@ -258,16 +258,16 @@ manager.addFactory ({ "Rope Bridge", "EVOLVING", { "wooden", "organic", "bowed",
      .uni (ModSource::Env2,     Param::shapeTension,     0.360f)
      .uni (ModSource::Env2,     Param::shapeMass,       -0.320f)
      .uni (ModSource::Env3,     Param::evolveGravity,   -0.200f)
-     .uni (ModSource::Env3,     Param::gesturePressure,  0.220f)
-     .bi  (ModSource::LFO1,     Param::gestureSpeed,     0.090f)
-     .uni (ModSource::Velocity, Param::gesturePressure,  0.260f)
-     .bi  (ModSource::KeyTrack, Param::gesturePosition,  0.180f)
-     .uni (ModSource::Macro1,   Param::gestureMotion,    0.400f)
-     .uni (ModSource::Macro2,   Param::gestureBandwidth, 0.300f)
+     .uni (ModSource::Env3,     Param::impactRate,       0.180f)
+     .bi  (ModSource::LFO1,     Param::impactHardness,   0.090f)
+     .uni (ModSource::Velocity, Param::impactBrightness, 0.280f)
+     .bi  (ModSource::KeyTrack, Param::impactLength,    -0.180f)
+     .uni (ModSource::Macro1,   Param::evolveMotion,     0.400f)
+     .uni (ModSource::Macro2,   Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro3,   Param::spaceMix,         0.320f)
      .uni (ModSource::Macro4,   Param::shapeCoupling,    0.300f)
      .uni (ModSource::Macro4,   Param::shapeTension,     0.200f);
-    sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
+    sharedMacros (r, Param::spaceSize, Param::impactRandom);
     r.commit (s);
 }});
 

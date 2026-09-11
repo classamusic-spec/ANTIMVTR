@@ -147,6 +147,16 @@ void ParamPanel::setHeaderToggle (Param p, bool asSwitch)
     resized();
 }
 
+void ParamPanel::clearHeaderToggle()
+{
+    if (headerToggle != nullptr) removeChildComponent (&headerToggle->component());
+    headerToggle.reset();
+    if (headerSwitch != nullptr) removeChildComponent (headerSwitch.get());
+    headerSwitchAttachment.reset();
+    headerSwitch.reset();
+    resized();
+}
+
 void ParamPanel::setHeroKnobs (bool hero)
 {
     for (auto& c : controls) if (auto* k = c->knob()) k->setHero (hero);
@@ -1083,9 +1093,7 @@ void SpacePage::selectModule (int index)
     moduleControls->setSubtitle (m.power.has_value() ? "Module controls" : "Always on");
     moduleControls->setParams (m.params, 0, m.prefix);
     if (m.power.has_value()) moduleControls->setHeaderToggle (*m.power, true);
-    for (auto& c : modules[(size_t) selectedModule]->params)
-        if (auto* limiter = moduleControls->control (c))
-            if (auto* t = limiter->toggle()) t->setLabel (juce::String (ParameterRegistry::get (c).name).replace (" On", ""));
+    else moduleControls->clearHeaderToggle();
     resized();
 }
 

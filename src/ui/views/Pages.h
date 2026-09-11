@@ -32,6 +32,8 @@ public:
         `asSwitch` uses a labelled OFF / ON segment instead of the compact pill,
         for panels big enough that an unlabelled pill would read as a mystery. */
     void setHeaderToggle (Param p, bool asSwitch = false);
+    /** Removes whatever the header is carrying (a module with no switch of its own). */
+    void clearHeaderToggle();
     void setColumns (int c) { columns = c; resized(); }
 
     /** Replaces the panel's controls; the deep pages swap these per sidebar tab. */

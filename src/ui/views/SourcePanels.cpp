@@ -230,7 +230,9 @@ void SampleWaveView::paintRuler (juce::Graphics& g)
 void SampleWaveView::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    draw::insetSurface (g, bounds, 8.0f);
+    // SAMPLE's waveform is this page's display, so it is a near-black screen cut into
+    // the panel like every other display in the instrument, not a pale inset.
+    draw::insetWell (g, bounds, 8.0f, juce::Colour (0xff07080d), 1.0f);
 
     if (sample == nullptr || sample->isEmpty())
     {
@@ -375,7 +377,7 @@ SamplePanel::SamplePanel (AntiMatrProcessor& p)
     endAttachment->sendInitialUpdate();
 
     for (auto param : { Param::sampleMode, Param::sampleRoot, Param::samplePitch, Param::sampleGrain,
-                        Param::sampleSpread, Param::sampleKeytrack })
+                        Param::sampleSpread, Param::sampleLevel, Param::sampleKeytrack })
     {
         juce::String label (ParameterRegistry::get (param).name);
         if (label.startsWithIgnoreCase ("Sample ")) label = label.substring (7);

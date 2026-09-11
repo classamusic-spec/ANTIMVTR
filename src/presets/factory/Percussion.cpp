@@ -171,7 +171,7 @@ manager.addFactory ({ "Frame Shell", "PERCUSSION", { "struck", "wooden", "noisy"
     impact (s, 6 /* MEMBRANE HIT */, 0.36f, 0.36f, 0.24f, 0.90f, 0.55f, 0.15f, 0.0f, 0.80f);
     layerSources (s, 1 /* DUST */, 2 /* IMPACT */);
     amp (s, 0.002f, 0.55f, 0.06f, 0.45f, 0.30f);
-    set (s, Param::masterGain, -2.0f);
+    set (s, Param::masterGain, -3.0f);
     shape (s, 0.40f, 0.26f, 0.56f, 0.40f, 0.42f, 0.46f);
     material (s, MaterialType::Membrane, MaterialType::Wood, 0.45f);
     topology (s, 3 /* LATTICE */, 0.42f, 0.50f, 211);
@@ -348,7 +348,7 @@ manager.addFactory ({ "Hollow Log", "PERCUSSION", { "struck", "wooden", "hollow"
     // loop, MASS is most of the sound and the strike is soft and wide.
     impact (s, 6 /* MEMBRANE HIT */, 0.28f, 0.20f, 0.30f, 0.92f, 0.60f, 0.10f, 0.0f, 0.88f);
     amp (s, 0.002f, 0.70f, 0.0f, 0.55f, 0.35f);
-    set (s, Param::masterGain, -2.5f);
+    set (s, Param::masterGain, -3.5f);
     shape (s, 0.22f, 0.36f, 0.74f, 0.34f, 0.36f, 0.28f);
     material (s, MaterialType::Wood, MaterialType::Void, 0.34f);
     topology (s, 1 /* RING */, 0.54f, 0.30f, 443);
@@ -383,7 +383,7 @@ manager.addFactory ({ "Rattle Cage", "PERCUSSION", { "granular", "wooden", "dirt
     // granularly, then thrown through a random lattice and a 1/16 Fracture grid.
     sample (s, BuiltInSamples::Kind::WoodKnock, 3 /* GRANULAR */, 0.0f, 0.85f, 0.34f, 0.70f, 60, 0.90f);
     amp (s, 0.004f, 0.70f, 0.22f, 0.45f, 0.35f);
-    set (s, Param::masterGain, 2.5f);
+    set (s, Param::masterGain, 1.5f);
     shape (s, 0.60f, 0.50f, 0.32f, 0.50f, 0.24f, 0.52f);
     material (s, MaterialType::Wood, MaterialType::Organic, 0.45f);
     topology (s, 4 /* RANDOM */, 0.40f, 0.62f, 461);
@@ -459,6 +459,7 @@ manager.addFactory ({ "Brass Thumb", "PERCUSSION", { "plucked", "metallic", "dir
     // rattle and a short SPECTRAL Fracture smears each note into the plate.
     impact (s, 2 /* PLUCK */, 0.46f, 0.54f, 0.14f, 0.90f, 0.40f, 0.16f, 0.0f, 0.85f);
     amp (s, 0.001f, 0.55f, 0.04f, 0.40f, 0.28f);
+    set (s, Param::masterGain, -1.0f);
     shape (s, 0.42f, 0.48f, 0.34f, 0.60f, 0.44f, 0.62f);
     material (s, MaterialType::Metal, MaterialType::Wood, 0.38f);
     topology (s, 1 /* RING */, 0.62f, 0.44f, 521);
@@ -528,7 +529,7 @@ manager.addFactory ({ "Steel Tongue", "PERCUSSION", { "struck", "warm", "metalli
     // on the OCTAVE grid keeps the hum consonant with whatever you play.
     impact (s, 5 /* DAMPED SINE */, 0.34f, 0.40f, 0.42f, 0.90f, 0.55f, 0.08f, 0.0f, 0.85f);
     amp (s, 0.002f, 1.00f, 0.0f, 0.85f, 0.35f);
-    set (s, Param::masterGain, -2.0f);
+    set (s, Param::masterGain, -3.0f);
     shape (s, 0.28f, 0.40f, 0.54f, 0.48f, 0.62f, 0.22f);
     material (s, MaterialType::Metal, MaterialType::Membrane, 0.46f);
     topology (s, 1 /* RING */, 0.48f, 0.36f, 569);
@@ -802,6 +803,7 @@ manager.addFactory ({ "Bottle Garden", "PERCUSSION", { "struck", "blown", "hollo
     gesture (s, 3 /* BREATH */, 0.42f, 0.34f, 0.30f, 0.36f, 0.34f, 0.44f, 0.42f);
     layerSources (s, 2 /* IMPACT */, 4 /* GESTURE */);
     amp (s, 0.004f, 0.70f, 0.30f, 0.55f, 0.40f);
+    set (s, Param::masterGain, -1.0f);
     shape (s, 0.24f, 0.54f, 0.44f, 0.52f, 0.52f, 0.20f);
     material (s, MaterialType::Crystal, MaterialType::Void, 0.44f);
     topology (s, 2 /* CLUSTERS */, 0.38f, 0.38f, 691);

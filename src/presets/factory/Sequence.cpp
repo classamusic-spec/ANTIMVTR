@@ -208,7 +208,7 @@ manager.addFactory ({ "Cross Weave", "SEQUENCE", { "glassy", "rhythmic", "evolvi
     evolve (s, 0.0f, 0.0f, 0.0f, 0.40f, 0.50f, 0.12f, 0.0f, 0.45f, 0.25f);
     set (s, Param::evolveMagnetTarget, 1 /* FIFTH */);
     // Three steps of an eighth against a four-four bar: the pattern turns over every
-    // three eighths, so the accent walks around the beat and only comes home on bar four.
+    // three eighths, so the accent walks around the beat and only comes home every third bar.
     fracture (s, 1 /* RHYTHMIC */, 1.0f, 1.0f, 0.36f, 1.0f, 0.18f, 0.16f, 0.22f, 0.50f, 0.20f,
               1 /* 16 */, 3 /* 1/8 */, 3, 0.0f, 0 /* FORWARD */, 1.0f, 0.10f, 4021,
               FractureShape { 16, 0.01f, 0.16f, 0.08f, 0.26f, 0.32f, 0.55f, 0.25f, 0.80f,
@@ -407,7 +407,7 @@ manager.addFactory ({ "Breath Pump", "SEQUENCE", { "organic", "breathing", "soft
 
 manager.addFactory ({ "Terrace Climb", "SEQUENCE", { "glassy", "bright", "melodic", "pulsing", "high" }, [] (PatchState& s)
 {
-    // Eight steps that climb a minor eleventh and drop back: the pattern is the tune.
+    // Eight steps that climb two octaves and drop back to the root: the pattern is the tune.
     static constexpr float kClimb[8] = { 0.0f, 3.0f, 7.0f, 10.0f, 12.0f, 15.0f, 19.0f, 24.0f };
 
     wave (s, 0 /* BASIC */, 0.25f, 0.20f, 0.05f, 3, 0.12f, 0.55f);
@@ -537,7 +537,7 @@ manager.addFactory ({ "Stutter Relay", "SEQUENCE", { "synthetic", "unstable", "c
     matter (s, 0.78f, 0.70f, 0.35f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.20f, 0.0f, 0.50f, 0.40f, 0.15f, 0.65f, 0.50f);
     set (s, Param::evolveScatterSeed, 4077);
-    // Locked to the thirty-second grid, but the step randomiser rewrites the gate, the
+    // Locked to the sixteenth grid, but the step randomiser rewrites the gate, the
     // gain and which fragments are open every time round: the same loop never repeats.
     fracture (s, 1 /* RHYTHMIC */, 1.0f, 1.0f, 0.35f, 1.0f, 0.14f, 0.10f, 0.16f, 0.55f, 0.30f,
               2 /* 32 */, 4 /* 1/16 */, 16, 0.0f, 3 /* RANDOM */, 0.80f, 0.35f, 4079,
@@ -908,7 +908,8 @@ manager.addFactory ({ "Reverse Cascade", "SEQUENCE", { "glassy", "cold", "morphi
 
 manager.addFactory ({ "Bit Ladder", "SEQUENCE", { "synthetic", "harsh", "melodic", "close", "high" }, [] (PatchState& s)
 {
-    // Four notes up and three back down: a square-wave arpeggio with the corners filed off.
+    // Up an octave and a fifth in four rungs and back down again: a square-wave arpeggio
+    // with the corners filed off by Evolve crush.
     static constexpr float kBitRungs[8] = { 0.0f, 7.0f, 12.0f, 19.0f, 24.0f, 19.0f, 12.0f, 7.0f };
 
     wave (s, 0 /* BASIC */, 0.70f, 0.15f, 0.0f, 1, 0.04f, 0.30f);

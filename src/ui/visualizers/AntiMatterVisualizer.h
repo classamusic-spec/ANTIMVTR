@@ -5,7 +5,8 @@
 #include "ValueNoise.h"
 #include "Iridescence.h"
 #include "LiquidOrganism.h"
-#include "ParticleSystem.h"
+#include "NodeField.h"
+#include "FieldRenderer.h"
 #include "Porthole.h"
 
 namespace am::ui
@@ -16,30 +17,40 @@ namespace am::ui
 
     This is the identity of the product (VISUAL_SPEC §5). Everything is drawn
     procedurally from `getLocalBounds()`: no bitmaps, no assets, nothing loaded
-    from disk. Layers, back to front:
+    from disk.
 
-      2. The glass well: a deep near-black bowl with a faint Space-tinted haze.
-      3. THE OBJECT, clipped to the glass — a liquid-light organism:
-           · bubbles and sparkles on the far side of the volume,
-           · ribbon spans whose mean depth is behind the core, back to front,
-           · the dark irregular organic core with its violet rim,
-           · ribbon spans in front of the core, each casting a faint shadow,
-           · near sparkles and bubbles.
-         Ribbons are wide tapering strips of liquid light — a molten core with a
-         translucent bloom either side — that shift hue along their length and
-         advect through a slowly evolving 3D flow field (see LiquidOrganism).
-      4. The glass itself: a broad diagonal specular sweep, a crescent under the
+    THE OBJECT IS A VOLUMETRIC FIELD OF LIGHT — thousands of points filling a
+    sphere, painted with real depth, and every one of them bound to a resonator
+    of the physical model that is making the sound (see NodeField). A point
+    behind the core is small, dim, cool and soft; one at the front is large,
+    bright, saturated and sharp. The whole mass drifts and folds through a slow
+    3D flow field rather than spinning rigidly, so it reads as something you
+    could walk around rather than a picture printed on the glass.
+
+    Layers, back to front:
+
+      2. The glass well: a shallow bowl whose colours come from Theme, tinted by
+         the Space type. No chassis colour is baked in here.
+      3. The dark core — the object's own mass — with the violet rim where the
+         light wraps around it. Points behind it are masked out against its
+         silhouette, which is what lets the whole field be accumulated in one
+         additive pass instead of two.
+      4. THE FIELD, clipped to the glass: every point splatted additively into a
+         float buffer (FieldRenderer), tone mapped once and blitted. Overlapping
+         points sum and bloom toward white instead of flat-shading over one
+         another, and a fast point leaves a short comet tail.
+      5. The glass itself: a broad diagonal specular sweep, a crescent under the
          top of the bezel, thickness darkening to the lower right, a chromatic
          fringe at the extreme edge and slow drifting smudges.
-      5. The bezel: brushed gunmetal segmented into plates with seams and bolt
+      6. The bezel: brushed gunmetal segmented into plates with seams and bolt
          heads, an outer shadow onto the panel and an inner shadow onto the glass.
-      6. The two warm amber-white status lamps at nine and three o'clock.
+      7. The two warm status lamps at nine and three o'clock.
       8. The flank captions (INHALE / IDEA, EXHALE / EVOLVE).
 
-    The hardware (bezel, glass highlights) is static geometry, so it is
-    rendered once into cached images and blitted; only the object, the lamp bloom
-    are redrawn each frame. Paint time is measured every
-    frame and the quality level drops when it runs long.
+    The hardware (well, bezel, glass highlights) is static geometry, so it is
+    rendered once into cached images and blitted; only the object and the lamp
+    bloom are redrawn each frame. Paint time is measured every frame and the
+    quality level drops when it runs long.
 
     Reads VisualStateSnapshot only, eased with Mass-dependent inertia. Never
     blocks and never touches the audio thread.
@@ -68,6 +79,9 @@ public:
     /** Current adaptive quality level: 0 = full, 1 = reduced, 2 = minimal. */
     int qualityLevel() const noexcept { return quality; }
 
+    /** How many points of light the field is carrying this frame. */
+    int pointCount() const noexcept { return livePoints; }
+
 private:
     /** Everything derived once per paint from the eased state and the component bounds. */
     struct Frame
@@ -76,50 +90,36 @@ private:
         PortholeLayout port;
         juce::Point<float> centre;      ///< centre of the object (== centre of the porthole)
         float R = 1.0f;                 ///< pixel radius of the implicit sphere
-        float unit = 1.0f;              ///< one reference pixel (outerR / 186)
+        float unit = 1.0f;              ///< one reference pixel (outerR / 170)
         float coreR = 0.3f;             ///< core radius, object units
         float breathe = 1.0f;
         juce::Colour space;
 
         // this frame's budget (quality level capped by the porthole's size)
-        int  maxRibbons = 22, maxSamples = 44, maxSparkles = 130, maxBubbles = 18;
-        bool shadows = true, bloom = true, smudges = true;
+        int   maxPoints = 2400;
+        float bufferScale = 1.0f;       ///< accumulation buffer resolution vs. the glass
+        bool  trails = true, wideHalo = true, smudges = true;
 
         // the object's rotation (yaw then a fixed pitch), precomputed
         float cosYaw = 1.0f, sinYaw = 0.0f, cosPitch = 1.0f, sinPitch = 0.0f;
 
-        LiquidOrganism::Params p;
         float pulse = 0.0f, energy = 0.0f, life = 0.0f, fracture = 0.0f, hue = 0.0f;
-        float surfaceRough = 0.0f, spaceActivity = 0.0f, freezeMix = 0.0f;
-    };
-
-    /** One ribbon sample after projection into the component. */
-    struct Projected
-    {
-        float x = 0.0f, y = 0.0f;       ///< pixels
-        float z = 0.0f;                 ///< rotated depth, −1 far .. +1 near
-        float scale = 1.0f;             ///< perspective scale
-        float nx = 0.0f, ny = 0.0f;     ///< screen-space normal of the ribbon
-        float w0 = 0.0f, w1 = 0.0f;     ///< half-width in pixels of each edge (SURFACE roughens them apart)
+        float spaceActivity = 0.0f, freezeMix = 0.0f, crush = 0.0f;
+        float shock = 0.0f, strike = 0.0f;
     };
 
     void timerCallback() override;
     void integrate (float dt);
     void updateQuality();
     void mark (int layer) noexcept;
+    void computeBudget();
 
     // ---- the object
-    void buildOrganism (const Frame& f);
     void drawWell (juce::Graphics& g, const Frame& f);
     void renderWell (juce::Graphics& g, const Frame& f);
-    void drawSpanRange (juce::Graphics& g, const Frame& f, int from, int to);
-    void drawRibbonSpan (juce::Graphics& g, const Frame& f, const RibbonSpan& span);
+    void buildCoreOutline (const Frame& f);
     void drawCore (juce::Graphics& g, const Frame& f);
-    void drawSparkles (juce::Graphics& g, const Frame& f, bool front);
-    void drawBubbles (juce::Graphics& g, const Frame& f, bool front);
-    void buildSpanPath (juce::Path& path, const RibbonSpan& span, float widthScale,
-                        float offsetX, float offsetY) const;
-    void computeBudget();
+    void drawField (juce::Graphics& g, const Frame& f);
 
     // ---- the hardware (Porthole.cpp)
     void refreshHardware (const Frame& f, float deviceScale);
@@ -136,8 +136,8 @@ private:
     // Animation state
     float time = 0.0f;                  // wall clock
     float flowTime = 0.0f;              // flow-field clock — held still by Freeze
-    float rotation = 0.0f;              // yaw of the organism
-    float hueDrift = 0.0f;              // slow travel along the ribbon ramp
+    float rotation = 0.0f;              // yaw of the field
+    float hueDrift = 0.0f;              // slow travel along the ramp
     float pulse = 0.0f;                 // audio level, fast attack / Decay release
     float energy = 0.0f;                // note envelope, eased
     float life = 0.0f;                  // 0 idle → 1 playing
@@ -148,36 +148,37 @@ private:
 
     // Adaptive quality / profiling
     int   quality = 0;
-    // Per-frame budget: the quality level capped by the porthole's size, computed
-    // once in integrate() so the painter draws exactly what was advanced.
-    int   capRibbons = 22, capSamples = 44, capSparkles = 130, capBubbles = 18;
-    bool  capShadows = true, capBloom = true, capSmudges = true;
-    int   sparklesAlive = 0, bubblesAlive = 0;
+    int   capPoints = 2400;
+    float capBuffer = 1.0f;
+    bool  capTrails = true, capWideHalo = true, capSmudges = true;
+    int   livePoints = 0;
     float paintMsAverage = 0.0f;
     int   framesSinceQualityChange = 0;
     int   recoveryWaitFrames = 150;     // doubles after every drop so a marginal machine does not oscillate
     bool  profileToStderr = false;
     int   pinnedQuality = -1;           // ANTIMATR_VIS_QUALITY pins the level for measurement
-    static constexpr int kLayers = 10;
+    static constexpr int kLayers = 8;
     std::array<double, kLayers> frameLayerMs {}, layerMsAverage {};
     juce::int64 lastTick = 0;
 
     // Procedural sources
     ValueNoise     noise;
     Iridescence    iridescence;
-    LiquidOrganism organism;
-    ParticleSystem particles;
+    NodeField      field;
+    FieldRenderer  renderer;
 
-    // Preallocated geometry: one frame of ribbons, their projection and their spans.
-    std::array<std::array<RibbonSample, LiquidOrganism::kMaxSamples>, LiquidOrganism::kMaxRibbons> samples {};
-    std::array<std::array<Projected, LiquidOrganism::kMaxSamples>, LiquidOrganism::kMaxRibbons> screen {};
-    std::array<int, LiquidOrganism::kMaxRibbons> sampleLength {};
-    std::array<RibbonSpan, LiquidOrganism::kMaxSpans> spans {};
-    int numRibbons = 0, numSpans = 0, firstFrontSpan = 0;
+    /** The object's colour, precomputed: hue around the ramp × depth into the volume. */
+    static constexpr int kHueBins = 96, kDepthBins = 12;
+    std::array<float, (size_t) (kHueBins * kDepthBins * 3)> shade {};
+    void buildShadeTable();
 
-    juce::Path ribbonPath, corePath, scratchPath, glassPath;
-    /** Furthest any part of the object reaches from the centre, in pixels, this frame. */
-    float objectExtent = 0.0f;
+    /** The core silhouette, in pixels, sampled around the circle. Shared by the
+        painter and the depth mask so a point can never show through the mass. */
+    static constexpr int kCoreSegs = 72;
+    std::array<float, (size_t) kCoreSegs> coreOutline {};
+    float coreOutlineMax = 0.0f;
+
+    juce::Path corePath, glassPath;
     juce::ColourGradient gradient;      // reused so a per-segment fill never allocates
 
     // Cached hardware: rendered at device resolution, redrawn only when the size changes.

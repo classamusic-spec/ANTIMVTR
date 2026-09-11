@@ -218,7 +218,7 @@ PresetValidationResult PresetValidator::validateOne (PresetManager& presets, int
     const int releaseSamples = (int) (options.releaseSeconds * sr);
     const int totalSamples = juce::jmax (blockSize, holdSamples + releaseSamples);
 
-    engine.prepare (sr, blockSize);
+    if (! options.engineAlreadyPrepared) engine.prepare (sr, blockSize);
     engine.reset();
     engine.control().resetTo (patch.params);
 
@@ -342,7 +342,7 @@ PresetValidationResult PresetValidator::validateOne (PresetManager& presets, int
                 raised.add (juce::String (SafetyMonitor::eventName ((SafetyEvent) i)) + " x" + juce::String ((int) r.safetyCounts[i]));
         r.issues.add ("Safety: " + raised.joinIntoString (", "));
     }
-    if (r.cpuAvgPercent > options.cpuLimit)
+    if (options.flagCpu && r.cpuAvgPercent > options.cpuLimit)
         r.issues.add ("CPU " + juce::String (r.cpuAvgPercent, 1) + "% above " + juce::String (options.cpuLimit, 0) + "%");
 
     return r;

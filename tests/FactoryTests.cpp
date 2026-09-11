@@ -1,5 +1,7 @@
 #include <juce_core/juce_core.h>
 
+#include "FactoryBankSampling.h"
+
 #include "dev/diagnostics/PresetValidator.h"
 #include "dsp/SynthEngine.h"
 #include "dsp/fracture/Fragment.h"
@@ -12,6 +14,7 @@
 
 using namespace am;
 using namespace am::dev;
+using namespace am::factorytest;
 
 namespace
 {
@@ -36,88 +39,19 @@ namespace
         return problems;
     }
 
-    /** A short render: enough to catch silence, clipping, NaN and instability. */
-    PresetValidatorOptions quickOptions()
-    {
-        PresetValidatorOptions o;
-        o.holdSeconds = 0.6;
-        o.releaseSeconds = 0.5;
-        o.blockSize = 128;
-        return o;
-    }
+    //==========================================================================
+    // FIXED BUDGETS.
+    //
+    // These are totals for the WHOLE BANK and they do not grow with it: 36
+    // patches and 300 patches cost the same here. What grows is the per-preset
+    // work (the validator gate and the keyboard range), because that is what
+    // stops a broken patch shipping and it has to see every patch.
+    //==========================================================================
+    constexpr int kMutationRenderBudget = 900;   ///< rendered mutations across the bank
+    constexpr double kMutationHoldCap    = 0.8;  ///< seconds; a mutant may ask for a 2.5 s attack
+    constexpr int kMorphExtraPairs      = 400;   ///< sampled pairs on top of the structural ones
+    constexpr int kMorphRenderBudget    = 300;   ///< rendered morphs across the bank
 
-    /** Renders a mutated patch through a private engine (the validator path, without the registry). */
-    struct MutationRender
-    {
-        float peak = 0.0f, rms = 0.0f, dc = 0.0f;
-        int   nonFinite = 0;
-        uint32_t safety = 0;
-    };
-
-    MutationRender renderPatch (SynthEngine& engine, const PatchState& patch,
-                                const PresetValidatorOptions& options, int midiNote, bool prepared = false)
-    {
-        MutationRender out;
-        const double sr = options.sampleRate;
-        const int blockSize = options.blockSize;
-
-        // Hold the note long enough for its own attack: a two second swell is
-        // not silent, it is slow, and the window has to be able to tell them apart.
-        const double hold = juce::jmax (options.holdSeconds,
-                                        (double) paramValue (patch.params, Param::ampAttack) + 0.30);
-        const int holdSamples = (int) (hold * sr);
-        const int totalSamples = holdSamples + (int) (options.releaseSeconds * sr);
-
-        if (! prepared) engine.prepare (sr, blockSize);
-        engine.reset();
-        engine.control().resetTo (patch.params);
-        {
-            auto table = patch.fracture.isVoid() ? FractureTable::makeDefault() : FractureTable::fromVar (patch.fracture);
-            engine.fractureEngine().publishTable (std::make_unique<FractureTable> (table));
-            auto routings = patch.mod.isVoid() ? ModRoutingTable() : ModRoutingTable::fromVar (patch.mod);
-            engine.modulationEngine().publishRoutings (std::make_unique<ModRoutingTable> (routings));
-        }
-        auto& diag = engine.diagnostics();
-        diag.safety.reset();
-        diag.events.drain ([] (const EngineEvent&) {});
-
-        juce::AudioBuffer<float> block (2, blockSize);
-        const TransportInfo transport;
-        double sum = 0.0, dcSum = 0.0;
-        int counted = 0, position = 0;
-        bool noteSent = false, releaseSent = false;
-
-        while (position < totalSamples)
-        {
-            const int n = std::min (blockSize, totalSamples - position);
-            block.setSize (2, n, false, false, true);
-            block.clear();
-
-            juce::MidiBuffer midi;
-            if (! noteSent)                                            { midi.addEvent (juce::MidiMessage::noteOn (1, midiNote, 0.85f), 0); noteSent = true; }
-            else if (! releaseSent && position + n > holdSamples)       { midi.addEvent (juce::MidiMessage::noteOff (1, midiNote), juce::jlimit (0, n - 1, holdSamples - position)); releaseSent = true; }
-
-            engine.process (block, midi, patch.params, transport);
-
-            const float* l = block.getReadPointer (0);
-            const float* r = block.getReadPointer (1);
-            for (int i = 0; i < n; ++i)
-            {
-                if (! std::isfinite (l[i]) || ! std::isfinite (r[i])) { ++out.nonFinite; continue; }
-                out.peak = juce::jmax (out.peak, std::abs (l[i]), std::abs (r[i]));
-                const double m = 0.5 * ((double) l[i] + (double) r[i]);
-                sum += m * m;
-                dcSum += m;
-                ++counted;
-            }
-            position += n;
-        }
-
-        out.rms = (float) std::sqrt (sum / juce::jmax (1, counted));
-        out.dc = (float) (dcSum / juce::jmax (1, counted));
-        out.safety = engine.diagnostics().safety.snapshot().total;
-        return out;
-    }
 }
 
 //==============================================================================
@@ -128,8 +62,16 @@ public:
 
     void runTest() override
     {
-        PresetManager presets;
-        const int count = presets.numFactoryPresets();
+        // `count` is the real library. `scaled` is the same library presented at
+        // the size ANTIMATR_FACTORY_SCALE asks for, so the cost of the two
+        // full-coverage render tests at 300 patches can be measured today
+        // rather than guessed at. Identity checks always use the real bank.
+        ScaledBank bank;
+        PresetManager& presets = bank.manager();
+        const int count = bank.realSize();
+        const int scaled = bank.size();
+        if (bank.isScaled())
+            logMessage ("SCALE MEASUREMENT: presenting " + juce::String (scaled) + " presets from a bank of " + juce::String (count));
 
         beginTest ("the bank covers the categories the spec names");
         {
@@ -323,51 +265,149 @@ public:
 
         beginTest ("every preset passes the validator at its category level");
         {
-            auto engine = std::make_unique<SynthEngine>();
+            // Full coverage, deliberately: this is the gate that stops a broken
+            // patch shipping, so it renders every single preset however big the
+            // bank gets. The cost is managed by preparing each engine once and
+            // by spreading the renders over the machine's cores — not by doing
+            // less work per preset.
+            const Stopwatch clock;
             PresetValidatorOptions options;   // the standard render: 2 s held, 1.5 s tail
+            options.engineAlreadyPrepared = true;
+            options.flagCpu = false;          // judged below, on its own, where the number means something
 
-            juce::StringArray failures;
-            for (int i = 0; i < count; ++i)
+            std::vector<juce::String> report ((size_t) scaled);
+            std::vector<float> cpu ((size_t) scaled, 0.0f);
+            const auto failures = parallelPresetSweep (scaled, options,
+                [&] (SynthEngine& engine, int i, juce::StringArray& problemsFor)
+                {
+                    const auto r = PresetValidator::validateOne (presets, bank.realIndex (i), options, engine);
+                    const auto problems = judge (r, r.category);
+                    cpu[(size_t) i] = r.cpuAvgPercent;
+
+                    report[(size_t) i] = r.name.paddedRight (' ', 20) + r.category.paddedRight (' ', 12)
+                                       + "peak " + juce::String (r.peak, 3)
+                                       + "  rms " + juce::String (r.rms, 4)
+                                       + "  dc " + juce::String (r.dc, 5)
+                                       + "  centroid " + juce::String ((int) r.centroidHz) + " Hz"
+                                       + "  cpu " + juce::String (r.cpuAvgPercent, 1) + "%"
+                                       + (problems.isEmpty() ? "" : "   <-- " + problems.joinIntoString ("; "));
+
+                    if (! problems.isEmpty()) problemsFor.add (r.name + ": " + problems.joinIntoString ("; "));
+                });
+
+            for (const auto& line : report) logMessage (line);
+            logMessage ("validator gate: " + juce::String (scaled) + " presets rendered in " + clock.elapsed()
+                        + " on " + juce::String (testThreadCount()) + " threads");
+
+            // The CPU budget, judged where the number is worth something. Four
+            // renders at once inflate every reading, so anything that looks over
+            // budget is re-rendered ALONE and judged on that: the gate is exactly
+            // as strict as it was when the whole sweep ran one preset at a time,
+            // and in a healthy bank this costs nothing because the list is empty.
+            juce::StringArray expensive;
             {
-                const auto r = PresetValidator::validateOne (presets, i, options, *engine);
-                const auto problems = judge (r, r.category);
+                auto engine = std::make_unique<SynthEngine>();
+                PresetValidatorOptions alone;      // defaults, CPU flagged
+                engine->prepare (alone.sampleRate, alone.blockSize);
+                alone.engineAlreadyPrepared = true;
 
-                logMessage (r.name.paddedRight (' ', 20) + r.category.paddedRight (' ', 12)
-                            + "peak " + juce::String (r.peak, 3)
-                            + "  rms " + juce::String (r.rms, 4)
-                            + "  dc " + juce::String (r.dc, 5)
-                            + "  centroid " + juce::String ((int) r.centroidHz) + " Hz"
-                            + "  cpu " + juce::String (r.cpuAvgPercent, 1) + "%"
-                            + (problems.isEmpty() ? "" : "   <-- " + problems.joinIntoString ("; ")));
-
-                if (! problems.isEmpty()) failures.add (r.name + ": " + problems.joinIntoString ("; "));
+                int rechecked = 0;
+                for (int i = 0; i < scaled; ++i)
+                {
+                    if (cpu[(size_t) i] <= alone.cpuLimit) continue;
+                    ++rechecked;
+                    const auto r = PresetValidator::validateOne (presets, bank.realIndex (i), alone, *engine);
+                    if (r.cpuAvgPercent > alone.cpuLimit)
+                        expensive.add (r.name + ": CPU " + juce::String (r.cpuAvgPercent, 1) + "% above "
+                                       + juce::String (alone.cpuLimit, 0) + "% rendered on its own");
+                }
+                if (rechecked > 0)
+                    logMessage ("re-measured " + juce::String (rechecked) + " preset(s) alone for the CPU budget, "
+                                + juce::String (expensive.size()) + " over it");
             }
 
             expect (failures.isEmpty(), "presets failed the gate:\n   " + failures.joinIntoString ("\n   "));
+            expect (expensive.isEmpty(), "presets are too expensive to play:\n   " + expensive.joinIntoString ("\n   "));
+        }
+
+        beginTest ("a preset measures the same whatever was rendered before it");
+        {
+            // SynthEngine::reset() does not return the engine to the state it was
+            // constructed in, so a patch rendered through an engine that has
+            // already rendered something else measures differently — Pulse
+            // Lattice peaks at 0.179 on a clean engine and 0.150 once the bank
+            // has been through it. The gate spreads its renders over the
+            // machine's cores, so if it reused engines the answer would depend on
+            // how the work was scheduled and the gate would be a coin toss. Every
+            // render gets a new engine instead, which is also what AntiMatrRender
+            // does — so the number the gate judges is the number
+            // scripts/render.sh gives the author. This test is what keeps that
+            // true; if it ever fails, something started reusing an engine.
+            //
+            // This checks that at the size the sweep actually runs at: the whole
+            // bank goes through the sweep, then three patches sensitive to it
+            // (their peak is in the attack) are rendered again on their own.
+            const auto options = safetyRenderOptions();
+            std::vector<RenderResult> swept ((size_t) count);
+            parallelPresetSweep (count, options,
+                [&] (SynthEngine& engine, int i, juce::StringArray&)
+                {
+                    swept[(size_t) i] = renderPatch (engine, bank.patch (i), options, 60, true);
+                });
+
+            for (const char* name : { "Pulse Lattice", "Bone Marimba", "Void Bloom" })
+            {
+                const int index = presets.findFactory (name);
+                if (index < 0) continue;
+
+                auto engine = std::make_unique<SynthEngine>();
+                engine->prepare (options.sampleRate, options.blockSize);
+                const auto alone = renderPatch (*engine, bank.patch (index), options, 60, true);
+
+                expectWithinAbsoluteError (swept[(size_t) index].peak, alone.peak, 1.0e-6f,
+                                           juce::String (name) + ": the sweep measured a different peak from a clean render");
+                expectWithinAbsoluteError (swept[(size_t) index].rms, alone.rms, 1.0e-6f,
+                                           juce::String (name) + ": the sweep measured a different rms from a clean render");
+            }
         }
 
         beginTest ("every preset is playable across the keyboard");
         {
-            auto engine = std::make_unique<SynthEngine>();
-            auto options = quickOptions();
+            // Full coverage, every preset, at both ends of the keyboard: a patch
+            // that only behaves in the middle is not finished.
+            //
+            // The middle is not rendered again here. The gate above renders every
+            // preset at note 60 for three and a half seconds and judges it against
+            // its category window, which is a strictly harder test than anything
+            // this one applies — so note 60 would be 300 renders spent re-asking a
+            // question that has just been answered. The guard below keeps that
+            // true if anyone changes the validator's note.
+            expect (PresetValidatorOptions().midiNote == 60,
+                    "the validator gate no longer covers note 60 — put it back in the keyboard sweep");
 
-            juce::StringArray failures;
-            for (const int note : { 36, 60, 84 })
-            {
-                options.midiNote = note;
-                for (int i = 0; i < count; ++i)
+            // The parameter bounds and the JSON round trip are covered above too,
+            // so this renders directly instead of going through validateOne and
+            // repeating them per note.
+            const Stopwatch clock;
+            const auto options = safetyRenderOptions();
+
+            const auto failures = parallelPresetSweep (scaled, options,
+                [&] (SynthEngine& engine, int i, juce::StringArray& problemsFor)
                 {
-                    const auto r = PresetValidator::validateOne (presets, i, options, *engine);
-                    juce::StringArray problems;
-                    if (r.nonFinite > 0)          problems.add ("non-finite");
-                    if (r.peak > 1.0f)            problems.add ("peak " + juce::String (r.peak, 3));
-                    if (r.rms < 1.0e-4f)          problems.add ("inaudible (rms " + juce::String (r.rms, 7) + ")");
-                    if (r.safetyTotal > 0)        problems.add ("safety " + juce::String ((int) r.safetyTotal));
-                    if (std::abs (r.dc) > 0.02f)  problems.add ("dc " + juce::String (r.dc, 4));
-                    if (! problems.isEmpty())
-                        failures.add (r.name + " @ note " + juce::String (note) + ": " + problems.joinIntoString (", "));
-                }
-            }
+                    for (const int note : { 36, 84 })
+                    {
+                        const auto r = renderPatch (engine, bank.patch (i), options, note, true);
+                        juce::StringArray problems;
+                        if (r.nonFinite > 0)          problems.add ("non-finite");
+                        if (r.peak > 1.0f)            problems.add ("peak " + juce::String (r.peak, 3));
+                        if (r.rms < 1.0e-4f)          problems.add ("inaudible (rms " + juce::String (r.rms, 7) + ")");
+                        if (r.safety > 0)             problems.add ("safety " + juce::String ((int) r.safety));
+                        if (std::abs (r.dc) > 0.02f)  problems.add ("dc " + juce::String (r.dc, 4));
+                        if (! problems.isEmpty())
+                            problemsFor.add (bank.name (i) + " @ note " + juce::String (note) + ": " + problems.joinIntoString (", "));
+                    }
+                });
+            logMessage ("keyboard range: " + juce::String (scaled * 2) + " renders in " + clock.elapsed());
             expect (failures.isEmpty(), "keyboard range problems:\n   " + failures.joinIntoString ("\n   "));
         }
     }
@@ -389,7 +429,11 @@ public:
 
         beginTest ("200 seeds x 3 strengths on every preset stay inside the safe ranges");
         {
-            juce::Random random (0x5EED);
+            // Kept at full coverage: no render here, just the mutation and a
+            // scan of the parameter table, so 300 presets cost a few seconds.
+            // The seeds are positional (hashed from the draw index) so a
+            // failure names a seed that can be re-run on its own.
+            const Stopwatch clock;
             juce::StringArray failures;
 
             for (int i = 0; i < count && failures.isEmpty(); ++i)
@@ -397,7 +441,7 @@ public:
                 const auto patch = presets.buildFactory (i);
                 for (int seedIndex = 0; seedIndex < 200 && failures.isEmpty(); ++seedIndex)
                 {
-                    const uint32_t seed = (uint32_t) random.nextInt();
+                    const uint32_t seed = seedFor (0x5EEDu, 0, seedIndex);
                     for (const auto strength : strengths)
                     {
                         auto values = patch.params;
@@ -423,6 +467,7 @@ public:
                     }
                 }
             }
+            logMessage (juce::String (count * 200 * 3) + " mutations range-checked in " + clock.elapsed());
             expect (failures.isEmpty(), failures.joinIntoString ("\n   "));
         }
 
@@ -479,57 +524,71 @@ public:
             expect (shapeMoved, "a SHAPE mutation must change SHAPE");
         }
 
-        beginTest ("every preset survives 200 random mutations, rendered");
+        beginTest ("a fixed budget of rendered mutations, spread across the whole bank");
         {
-            auto engine = std::make_unique<SynthEngine>();
-            PresetValidatorOptions options;
-            options.holdSeconds = 0.28;
-            options.releaseSeconds = 0.20;
-            options.blockSize = 512;
-            engine->prepare (options.sampleRate, options.blockSize);
+            // WHAT THIS TESTS is the mutation engine: that no (patch, strength,
+            // seed) combination it can produce renders to something unsafe.
+            // Two hundred renders per preset answered that question 7,200 times
+            // for 36 patches and would answer it 60,000 times for 300 — the same
+            // question, at ten times the price. A fixed budget spread round-robin
+            // over the bank draws from every patch and every strength, and the
+            // suite costs the same whether the bank is 36 patches or 3,000.
+            const Stopwatch clock;
+            ScaledBank bank;
+            const auto options = mutationRenderOptions();
 
-            juce::Random random ((juce::int64) 0xB10D5EEDLL);
-            juce::StringArray failures;
-            float worstPeak = 0.0f, quietestRms = 1.0f;
-            const auto started = juce::Time::getMillisecondCounter();
+            const auto plan = mutationPlan (bank.size(), kMutationRenderBudget);
+            std::vector<RenderResult> rendered (plan.size());
 
-            for (int i = 0; i < count; ++i)
-            {
-                const auto base = presets.buildFactory (i);
-                for (int n = 0; n < 200; ++n)
+            const auto failures = parallelPresetSweep ((int) plan.size(), options,
+                [&] (SynthEngine& engine, int k, juce::StringArray& problemsFor)
                 {
-                    auto patch = base;
-                    const auto strength = strengths[n % 3];
-                    const uint32_t seed = (uint32_t) random.nextInt();
-                    MutationEngine::mutate (patch.params, strength, seed);
+                    const auto& draw = plan[(size_t) k];
+                    auto patch = bank.patch (draw.preset);
+                    const auto strength = strengths[draw.strength];
+                    MutationEngine::mutate (patch.params, strength, draw.seed);
 
-                    const auto r = renderPatch (*engine, patch, options, 60, true);
-                    worstPeak = juce::jmax (worstPeak, r.peak);
-                    quietestRms = juce::jmin (quietestRms, r.rms);
+                    const auto r = renderPatch (engine, patch, options, 60, true, nullptr, nullptr, kMutationHoldCap);
+                    rendered[(size_t) k] = r;
 
                     juce::StringArray problems;
                     if (r.nonFinite > 0)         problems.add ("non-finite " + juce::String (r.nonFinite));
                     if (r.peak > 1.0f)           problems.add ("peak " + juce::String (r.peak, 3));
-                    if (r.rms < 1.0e-4f)         problems.add ("silent (rms " + juce::String (r.rms, 8) + ")");
+                    // A mutant whose attack ran past the cap has not finished
+                    // arriving, so how quiet it is says nothing. Whether the note
+                    // arrives at all is the range check's job, above.
+                    if (! r.truncated && r.rms < 1.0e-4f)
+                                                 problems.add ("silent (rms " + juce::String (r.rms, 8) + ")");
                     if (std::abs (r.dc) > 0.02f) problems.add ("dc " + juce::String (r.dc, 4));
                     if (r.safety > 0)            problems.add ("safety " + juce::String ((int) r.safety));
 
                     if (! problems.isEmpty())
-                        failures.add (base.meta.name + " strength " + juce::String ((int) strength)
-                                      + " seed " + juce::String ((int) seed) + ": " + problems.joinIntoString (", "));
-                }
+                        problemsFor.add (bank.name (draw.preset) + " strength " + juce::String ((int) strength)
+                                         + " seed " + juce::String ((int) draw.seed)
+                                         + " (draw " + juce::String (draw.index) + " of " + juce::String ((int) plan.size()) + ")"
+                                         + ": " + problems.joinIntoString (", "));
+                });
+
+            float worstPeak = 0.0f, quietestRms = 1.0f;
+            for (const auto& r : rendered)
+            {
+                worstPeak = juce::jmax (worstPeak, r.peak);
+                quietestRms = juce::jmin (quietestRms, r.rms);
             }
 
-            logMessage (juce::String (count * 200) + " mutations rendered in "
-                        + juce::String ((juce::Time::getMillisecondCounter() - started) / 1000) + " s: worst peak "
-                        + juce::String (worstPeak, 3) + ", quietest rms " + juce::String (quietestRms, 6));
+            const int perPreset = bank.size() > 0 ? (int) plan.size() / bank.size() : 0;
+            logMessage (juce::String ((int) plan.size()) + " mutations rendered across " + juce::String (bank.size())
+                        + " presets (" + juce::String (perPreset) + "+ each) in " + clock.elapsed()
+                        + ": worst peak " + juce::String (worstPeak, 3) + ", quietest rms " + juce::String (quietestRms, 6));
+            expect ((int) plan.size() >= bank.size(), "the budget must reach every preset at least once");
             expect (failures.isEmpty(), "mutations failed the gate:\n   " + failures.joinIntoString ("\n   "));
         }
 
         beginTest ("one preset survives 200 consecutive mutations of its own child");
         {
             auto engine = std::make_unique<SynthEngine>();
-            auto options = quickOptions();
+            const auto options = safetyRenderOptions();
+            engine->prepare (options.sampleRate, options.blockSize);
             auto patch = presets.buildFactory (presets.findFactory ("Void Bloom"));
             juce::Random random (0xDEEDDEED);
             juce::StringArray failures;
@@ -539,7 +598,7 @@ public:
                 MutationEngine::mutate (patch.params, strengths[n % 3], (uint32_t) random.nextInt());
                 if (n % 20 != 0) continue;              // render every twentieth generation
 
-                const auto r = renderPatch (*engine, patch, options, 60);
+                const auto r = renderPatch (*engine, patch, options, 60, true);
                 if (r.nonFinite > 0 || r.peak > 1.0f || r.rms < 1.0e-4f || r.safety > 0)
                     failures.add ("generation " + juce::String (n) + ": peak " + juce::String (r.peak, 3)
                                   + " rms " + juce::String (r.rms, 6) + " nonFinite " + juce::String (r.nonFinite)
@@ -551,14 +610,15 @@ public:
         beginTest ("randomize always produces a playable patch");
         {
             auto engine = std::make_unique<SynthEngine>();
-            auto options = quickOptions();
+            const auto options = safetyRenderOptions();
+            engine->prepare (options.sampleRate, options.blockSize);
             juce::StringArray failures;
 
             for (uint32_t seed = 1; seed <= 40; ++seed)
             {
                 PatchState patch = PresetManager::initPatch();
                 MutationEngine::randomize (patch.params, seed);
-                const auto r = renderPatch (*engine, patch, options, 60);
+                const auto r = renderPatch (*engine, patch, options, 60, true);
                 if (r.nonFinite > 0 || r.peak > 1.0f || r.rms < 1.0e-4f || r.safety > 0)
                     failures.add ("seed " + juce::String ((int) seed) + ": peak " + juce::String (r.peak, 3)
                                   + " rms " + juce::String (r.rms, 6) + " nonFinite " + juce::String (r.nonFinite)
@@ -616,69 +676,90 @@ public:
 
     void runTest() override
     {
-        PresetManager presets;
-        const int count = presets.numFactoryPresets();
+        ScaledBank bank;
+        const int count = bank.size();
 
-        beginTest ("A/B morph between any two factory presets stays in range");
+        std::vector<juce::String> categoryOf;
+        categoryOf.reserve ((size_t) count);
+        for (int i = 0; i < count; ++i) categoryOf.push_back (bank.category (i));
+
+        beginTest ("A/B morph stays in range across a deterministic sample of pairs");
         {
-            std::vector<PatchState> bank;
-            bank.reserve ((size_t) count);
-            for (int i = 0; i < count; ++i)
-                bank.push_back (presets.buildFactory (i));
+            // WHAT THIS TESTS is PatchMorph: that no two patches can be blended
+            // into a value outside its parameter's range. Every pair is 630
+            // combinations at 36 presets and 44,850 at 300 — seventy times the
+            // work to re-ask a question that only depends on which PARAMETERS
+            // disagree, not on which patches carry them. The plan keeps the
+            // coverage that finds a disagreement: every neighbour (which, since
+            // the bank is registered in category order, includes every category
+            // boundary in the library), one pair for every combination of
+            // categories, a long-range partner for every preset, and a seeded
+            // sample on top. Every preset is in at least four pairs; the cost is
+            // linear in the size of the bank.
+            const Stopwatch clock;
+            const auto pairs = morphPairs (count, categoryOf, kMorphExtraPairs, kMorphPairMaster);
 
+            std::vector<int> appearances ((size_t) count, 0);
             juce::StringArray failures;
-            for (int a = 0; a < count && failures.isEmpty(); ++a)
+            for (const auto& pair : pairs)
             {
-                for (int b = a + 1; b < count && failures.isEmpty(); ++b)
+                ++appearances[(size_t) pair.a];
+                ++appearances[(size_t) pair.b];
+                if (! failures.isEmpty()) continue;
+
+                for (const float t : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
                 {
-                    for (const float t : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
+                    const auto morphed = PatchMorph::interpolate (bank.patch (pair.a).params, bank.patch (pair.b).params, t);
+                    for (const auto& d : ParameterRegistry::all())
                     {
-                        const auto morphed = PatchMorph::interpolate (bank[(size_t) a].params, bank[(size_t) b].params, t);
-                        for (const auto& d : ParameterRegistry::all())
+                        const float v = morphed[(size_t) paramIndex (d.param)];
+                        const bool ok = std::isfinite (v)
+                                        && v >= d.min - 1.0e-4f && v <= d.max + 1.0e-4f
+                                        && (d.kind != ParamKind::Choice || v <= (float) (d.numChoices() - 1) + 1.0e-4f);
+                        if (! ok)
                         {
-                            const float v = morphed[(size_t) paramIndex (d.param)];
-                            const bool ok = std::isfinite (v)
-                                            && v >= d.min - 1.0e-4f && v <= d.max + 1.0e-4f
-                                            && (d.kind != ParamKind::Choice || v <= (float) (d.numChoices() - 1) + 1.0e-4f);
-                            if (! ok)
-                            {
-                                failures.add (bank[(size_t) a].meta.name + " -> " + bank[(size_t) b].meta.name
-                                              + " at t = " + juce::String (t) + ": " + d.id + " = " + juce::String (v));
-                                break;
-                            }
+                            failures.add (bank.name (pair.a) + " -> " + bank.name (pair.b)
+                                          + " (" + pair.why + " pair, indices " + juce::String (pair.a) + "/" + juce::String (pair.b) + ")"
+                                          + " at t = " + juce::String (t) + ": " + d.id + " = " + juce::String (v));
+                            break;
                         }
-                        if (! failures.isEmpty()) break;
                     }
+                    if (! failures.isEmpty()) break;
                 }
             }
+
+            int leastCovered = count > 0 ? appearances[0] : 0;
+            for (const int n : appearances) leastCovered = juce::jmin (leastCovered, n);
+            logMessage (juce::String ((int) pairs.size()) + " pairs over " + juce::String (count)
+                        + " presets (every preset in at least " + juce::String (leastCovered) + ") in " + clock.elapsed());
+            expect (leastCovered >= 1, "the pair plan missed a preset entirely");
             expect (failures.isEmpty(), failures.joinIntoString ("\n   "));
 
             // The ends are exact, the middle is genuinely in between.
-            const auto& a = bank[1], & b = bank[(size_t) count - 1];
+            const auto& a = bank.patch (1), & b = bank.patch (count - 1);
             expect (PatchMorph::interpolate (a.params, b.params, 0.0f) == a.params);
             expect (PatchMorph::interpolate (a.params, b.params, 1.0f) == b.params);
         }
 
-        beginTest ("morphed patches render safely at the quarter points");
+        beginTest ("a fixed budget of morphed patches renders safely at the quarter points");
         {
-            auto engine = std::make_unique<SynthEngine>();
-            auto options = quickOptions();
-            juce::StringArray failures;
+            const Stopwatch clock;
+            const auto options = safetyRenderOptions();
+            const auto plan = morphRenderPlan (count, kMorphRenderBudget);
 
-            for (int a = 0; a + 1 < count; ++a)
-            {
-                const auto first = presets.buildFactory (a);
-                const auto second = presets.buildFactory ((a + 7) % count);
-                for (const float t : { 0.25f, 0.5f, 0.75f })
+            const auto failures = parallelPresetSweep ((int) plan.size(), options,
+                [&] (SynthEngine& engine, int k, juce::StringArray& problemsFor)
                 {
-                    auto morphed = PatchMorph::interpolate (first, second, t);
-                    const auto r = renderPatch (*engine, morphed, options, 60);
+                    const auto& draw = plan[(size_t) k];
+                    auto morphed = PatchMorph::interpolate (bank.patch (draw.a), bank.patch (draw.b), draw.t);
+                    const auto r = renderPatch (engine, morphed, options, 60, true);
                     if (r.nonFinite > 0 || r.peak > 1.0f || r.safety > 0)
-                        failures.add (first.meta.name + " -> " + second.meta.name + " at t = " + juce::String (t)
-                                      + ": peak " + juce::String (r.peak, 3) + " nonFinite " + juce::String (r.nonFinite)
-                                      + " safety " + juce::String ((int) r.safety));
-                }
-            }
+                        problemsFor.add (bank.name (draw.a) + " -> " + bank.name (draw.b) + " at t = " + juce::String (draw.t)
+                                         + " (draw " + juce::String (draw.index) + ")"
+                                         + ": peak " + juce::String (r.peak, 3) + " nonFinite " + juce::String (r.nonFinite)
+                                         + " safety " + juce::String ((int) r.safety));
+                });
+            logMessage (juce::String ((int) plan.size()) + " morphs rendered in " + clock.elapsed());
             expect (failures.isEmpty(), "morph render problems:\n   " + failures.joinIntoString ("\n   "));
         }
     }

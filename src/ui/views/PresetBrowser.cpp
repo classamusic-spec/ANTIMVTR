@@ -12,7 +12,9 @@ public:
     juce::String selected { "ALL" };
     std::function<void (const juce::String&)> onSelect;
 
-    int rowHeight() const { return juce::jlimit (26, 36, getHeight() / 14); }
+    /** Rows shrink so the whole list always fits: a browser that hides
+        categories below the fold is a browser you cannot navigate. */
+    int rowHeight() const { return browser::categoryRowHeight (getHeight(), (int) entries.size() + 1); }
 
     void paint (juce::Graphics& g) override
     {
@@ -47,7 +49,7 @@ public:
 
     int rowAt (juce::Point<int> p) const
     {
-        const int r = (p.y - rowHeight()) / rowHeight();
+        const int r = (p.y - rowHeight()) / juce::jmax (1, rowHeight());
         return (r >= 0 && r < (int) entries.size()) ? r : -1;
     }
     void mouseMove (const juce::MouseEvent& e) override { const int r = rowAt (e.getPosition()); if (r != hoverRow) { hoverRow = r; repaint(); } }
@@ -66,17 +68,36 @@ private:
 };
 
 //==============================================================================
+/** A viewport that says when it has scrolled, so the card pool can follow it. */
+class PresetBrowser::GridViewport : public juce::Viewport
+{
+public:
+    std::function<void()> onScroll;
+    void visibleAreaChanged (const juce::Rectangle<int>&) override { if (onScroll) onScroll(); }
+};
+
+//==============================================================================
 PresetBrowser::PresetBrowser (AntiMatrProcessor& p) : processor (p)
 {
     setWantsKeyboardFocus (true);
     setOpaque (false);
     categories = std::make_unique<CategoryList>();
-    categories->onSelect = [this] (const juce::String& c) { currentCategory = c; refilter(); };
+    categories->onSelect = [this] (const juce::String& c) { filter.category = c; refilter(); };
     addAndMakeVisible (*categories);
 
     close.setTooltip ("Close (Esc)");
     close.onClick = [this] { if (onClose) onClose(); };
     addAndMakeVisible (close);
+
+    clearFilters.setTooltip ("Clear the search and every tag");
+    clearFilters.setOutlined (true);
+    clearFilters.onClick = [this]
+    {
+        search.setText ({}, juce::dontSendNotification);
+        for (auto& chip : tagChips) chip->setToggleState (false, juce::dontSendNotification);
+        refilter();
+    };
+    addChildComponent (clearFilters);
 
     search.setMultiLine (false);
     search.setReturnKeyStartsNewLine (false);
@@ -88,10 +109,17 @@ PresetBrowser::PresetBrowser (AntiMatrProcessor& p) : processor (p)
     search.addListener (this);
     addAndMakeVisible (search);
 
-    viewport.setViewedComponent (&grid, false);
-    viewport.setScrollBarsShown (true, false);
-    viewport.setScrollBarThickness (6);
-    addAndMakeVisible (viewport);
+    chipViewport.setViewedComponent (&chipStrip, false);
+    chipViewport.setScrollBarsShown (true, false, true, false);
+    chipViewport.setScrollBarThickness (5);
+    addAndMakeVisible (chipViewport);
+
+    viewport = std::make_unique<GridViewport>();
+    viewport->setViewedComponent (&grid, false);
+    viewport->setScrollBarsShown (true, false);
+    viewport->setScrollBarThickness (6);
+    viewport->onScroll = [this] { updateCardWindow (false); };
+    addAndMakeVisible (*viewport);
 
     rebuildCatalogue();
     processor.addChangeListener (this);
@@ -104,7 +132,15 @@ PresetBrowser::~PresetBrowser()
 
 void PresetBrowser::visibilityChanged()
 {
-    if (isVisible()) { rebuildCatalogue(); grabKeyboardFocus(); }
+    if (! isVisible()) return;
+    rebuildCatalogue();
+    // Open on the patch you are playing: at 300 presets the alternative is
+    // landing at the top of the bank and hunting for where you already were.
+    // The overlay is made visible before it is given bounds, so the grid has no
+    // size yet and the scroll has to wait for the layout that follows.
+    pendingScrollTo = processor.currentPresetIndex();
+    scrollToPreset (pendingScrollTo);
+    grabKeyboardFocus();
 }
 
 void PresetBrowser::parentSizeChanged()
@@ -117,6 +153,19 @@ bool PresetBrowser::keyPressed (const juce::KeyPress& key)
     if (key.getKeyCode() == juce::KeyPress::escapeKey) { if (onClose) onClose(); return true; }
     if (key.getKeyCode() == juce::KeyPress::leftKey)  { processor.loadNextPreset (-1); return true; }
     if (key.getKeyCode() == juce::KeyPress::rightKey) { processor.loadNextPreset (1); return true; }
+
+    // Just start typing. At 300 presets that is how you find one, and making a
+    // player aim at the search box first would be the browser's slowest moment.
+    // The arrow keys still audition, because they only mean something here.
+    const auto character = key.getTextCharacter();
+    if (character != 0 && ! juce::CharacterFunctions::isWhitespace (character)
+        && ! search.hasKeyboardFocus (true))
+    {
+        search.grabKeyboardFocus();
+        search.setText (search.getText() + juce::String::charToString (character), juce::sendNotificationSync);
+        search.moveCaretToEnd();
+        return true;
+    }
     return false;
 }
 
@@ -133,89 +182,158 @@ void PresetBrowser::select (int presetIndex)
         processor.loadFactoryPreset (presetIndex);
 }
 
+//==============================================================================
 void PresetBrowser::rebuildCatalogue()
 {
     auto& presets = processor.presets();
     const int n = presets.numFactoryPresets();
-    if ((int) cards.size() != n)
-    {
-        cards.clear();
-        for (int i = 0; i < n; ++i)
-        {
-            auto card = std::make_unique<AMPresetCard>();
-            card->onClick = [this] (int idx) { select (idx); };
-            card->onDoubleClick = [this] (int idx) { select (idx); if (onClose) onClose(); };
-            grid.addAndMakeVisible (*card);
-            cards.push_back (std::move (card));
-        }
-    }
-    std::map<juce::String, int> counts;
-    allTags.clear();
+    if (catalogue.size() == n && ! catalogue.entries.empty()) return;   // nothing new to read
+
+    catalogue.clear();
     for (int i = 0; i < n; ++i)
     {
         const auto& f = presets.factoryPreset (i);
-        cards[(size_t) i]->setPreset (i, f.name, f.category, f.tags);
-        cards[(size_t) i]->setCurrent (i == processor.currentPresetIndex());
-        counts[f.category.toUpperCase()]++;
-        for (const auto& t : f.tags) allTags.addIfNotAlreadyThere (t.toUpperCase());
+        catalogue.add (f.name, f.category, f.tags);
     }
-    allTags.sort (true);
+    catalogue.finish();
+
     categories->entries.clear();
-    categories->entries.push_back ({ "ALL", n });
-    for (auto& [name, count] : counts) categories->entries.push_back ({ name, count });
+    for (int i = 0; i < catalogue.categories.size(); ++i)
+        categories->entries.push_back ({ catalogue.categories[i], catalogue.categoryCounts[(size_t) i] });
+    if (! catalogue.categories.contains (filter.category, true)) filter.category = "ALL";
+    categories->selected = filter.category;
     categories->repaint();
 
+    // One chip per distinct tag, in the vocabulary's own order so the strip
+    // reads as CHARACTER, MOTION, SPACE, REGISTER, GESTURE, USE.
     tagChips.clear();
-    for (const auto& t : allTags)
+    for (const auto& t : catalogue.tags)
     {
         auto chip = std::make_unique<AMButton> (t, Theme::cyan);
         chip->setChip (true);
         chip->setClickingTogglesState (true);
+        const auto group = browser::tagGroupOf (t);
+        chip->setTooltip (group.isNotEmpty() ? group + " · " + t : t);
         chip->onClick = [this] { refilter(); };
-        addAndMakeVisible (*chip);
+        chipStrip.addAndMakeVisible (*chip);
         tagChips.push_back (std::move (chip));
     }
+    layoutChips();
     refilter();
 }
 
 void PresetBrowser::refilter()
 {
-    activeTags.clear();
-    for (auto& c : tagChips) if (c->getToggleState()) activeTags.add (c->getButtonText().toUpperCase());
-    const auto query = search.getText().trim().toUpperCase();
-    auto& presets = processor.presets();
-    visibleCards.clear();
-    for (int i = 0; i < (int) cards.size(); ++i)
-    {
-        const auto& f = presets.factoryPreset (i);
-        bool ok = currentCategory == "ALL" || f.category.equalsIgnoreCase (currentCategory);
-        if (ok && query.isNotEmpty())
-            ok = f.name.toUpperCase().contains (query) || f.category.toUpperCase().contains (query) || f.tags.joinIntoString (" ").toUpperCase().contains (query);
-        for (const auto& t : activeTags) if (ok && ! f.tags.contains (t, true)) ok = false;
-        cards[(size_t) i]->setVisible (ok);
-        if (ok) visibleCards.push_back (i);
-    }
+    filter.tags.clear();
+    for (auto& c : tagChips)
+        if (c->getToggleState()) filter.tags.add (c->getButtonText().toUpperCase());
+    filter.query = search.getText().trim();
+
+    browser::applyFilter (catalogue, filter, filtered);
+
+    clearFilters.setVisible (filter.query.isNotEmpty() || ! filter.tags.isEmpty());
     layoutGrid();
     repaint();
 }
 
+//==============================================================================
 void PresetBrowser::layoutGrid()
 {
-    const int width = viewport.getMaximumVisibleWidth();
+    const int width = viewport != nullptr ? viewport->getMaximumVisibleWidth() : 0;
     if (width <= 0) return;
-    const int gap = juce::jmax (8, width / 80);
-    const int columns = juce::jlimit (2, 6, width / 230);
-    const int cardW = (width - gap * (columns - 1)) / columns;
-    const int cardH = juce::roundToInt ((float) cardW * 0.82f);
-    int i = 0;
-    for (int idx : visibleCards)
+
+    geometry = browser::gridGeometry (width, (int) filtered.size());
+    grid.setSize (width, geometry.contentHeight);
+
+    // The pool covers the viewport plus a row above and below, so a scroll
+    // never shows an empty slot and never allocates a component.
+    const int wanted = juce::jmin ((int) filtered.size(),
+                                   browser::gridPoolSize (geometry, viewport->getMaximumVisibleHeight(), 1));
+    while ((int) cards.size() > wanted) cards.pop_back();
+    while ((int) cards.size() < wanted)
     {
-        const int r = i / columns, c = i % columns;
-        cards[(size_t) idx]->setBounds (c * (cardW + gap), r * (cardH + gap), cardW, cardH);
-        ++i;
+        auto card = std::make_unique<AMPresetCard>();
+        card->onClick = [this] (int idx) { select (idx); };
+        card->onDoubleClick = [this] (int idx) { select (idx); if (onClose) onClose(); };
+        grid.addAndMakeVisible (*card);
+        cards.push_back (std::move (card));
     }
-    const int rows = ((int) visibleCards.size() + columns - 1) / columns;
-    grid.setSize (width, juce::jmax (1, rows * (cardH + gap)));
+
+    updateCardWindow (true);
+}
+
+void PresetBrowser::updateCardWindow (bool force)
+{
+    if (viewport == nullptr || cards.empty())
+    {
+        windowValid = false;
+        return;
+    }
+
+    const int scrollY = viewport->getViewPositionY();
+    const auto next = browser::gridWindow (geometry, scrollY, viewport->getMaximumVisibleHeight(), 1, (int) filtered.size());
+    if (! force && windowValid && next.first == window.first && next.count == window.count) return;
+
+    window = next;
+    windowValid = true;
+
+    const int current = processor.currentPresetIndex();
+    auto& presets = processor.presets();
+
+    for (size_t k = 0; k < cards.size(); ++k)
+    {
+        const int slot = window.first + (int) k;
+        auto& card = *cards[k];
+        if (slot >= window.last() || slot >= (int) filtered.size())
+        {
+            card.setVisible (false);
+            continue;
+        }
+        const int presetIndex = filtered[(size_t) slot];
+        const auto& f = presets.factoryPreset (presetIndex);
+        card.setPreset (presetIndex, f.name, f.category, f.tags);
+        card.setCurrent (presetIndex == current);
+        const auto slotBounds = browser::cardBounds (geometry, slot);
+        card.setBounds (slotBounds.x, slotBounds.y, slotBounds.width, slotBounds.height);
+        card.setVisible (true);
+    }
+}
+
+void PresetBrowser::scrollToPreset (int presetIndex)
+{
+    if (viewport == nullptr || viewport->getMaximumVisibleHeight() <= 0) return;
+    pendingScrollTo = -1;
+    const auto at = std::find (filtered.begin(), filtered.end(), presetIndex);
+    if (at == filtered.end()) return;
+
+    const int slot = (int) std::distance (filtered.begin(), at);
+    const auto bounds = browser::cardBounds (geometry, slot);
+    const int centred = bounds.y - juce::jmax (0, (viewport->getMaximumVisibleHeight() - bounds.height) / 2);
+    viewport->setViewPosition (0, juce::jmax (0, centred));
+    updateCardWindow (true);
+}
+
+//==============================================================================
+void PresetBrowser::layoutChips()
+{
+    if (chipArea.isEmpty()) return;
+
+    const auto font = Theme::captionFont (9.0f);
+    std::vector<int> widths;
+    widths.reserve (tagChips.size());
+    for (auto& chip : tagChips)
+        widths.push_back (juce::roundToInt (draw::trackedTextWidth (font, chip->getButtonText().toUpperCase())) + 26);
+
+    const auto strip = browser::chipStripGeometry (getHeight());
+    const int stripWidth = juce::jmax (1, chipArea.getWidth() - 8);
+    const auto flow = browser::flowChips (widths, stripWidth, strip.chipHeight, strip.gapX, strip.gapY);
+    for (size_t i = 0; i < tagChips.size() && i < flow.bounds.size(); ++i)
+    {
+        const auto& b = flow.bounds[i];
+        tagChips[i]->setBounds (b.x, b.y, b.width, b.height);
+    }
+
+    chipStrip.setSize (stripWidth, juce::jmax (strip.chipHeight, flow.height));
 }
 
 void PresetBrowser::resized()
@@ -233,24 +351,21 @@ void PresetBrowser::resized()
     categories->setBounds (left);
 
     auto searchArea = area.removeFromTop (juce::jlimit (32, 40, getHeight() / 22));
-    search.setBounds (searchArea.withWidth (juce::jmin (searchArea.getWidth(), 420)));
+    search.setBounds (searchArea.removeFromLeft (juce::jmin (searchArea.getWidth(), 420)));
+    searchArea.removeFromLeft (10);
+    clearFilters.setBounds (searchArea.removeFromLeft (juce::jmin (78, juce::jmax (0, searchArea.getWidth()))).reduced (0, 3));
     area.removeFromTop (pad / 3);
 
-    chipArea = area.removeFromTop (juce::jlimit (22, 28, getHeight() / 32));
-    {
-        auto row = chipArea;
-        const auto font = Theme::captionFont (9.0f);
-        for (auto& chip : tagChips)
-        {
-            const int w = juce::roundToInt (draw::trackedTextWidth (font, chip->getButtonText().toUpperCase())) + 26;
-            if (row.getWidth() < w) { chip->setBounds (0, 0, 0, 0); continue; }
-            chip->setBounds (row.removeFromLeft (w));
-            row.removeFromLeft (6);
-        }
-    }
+    // Two rows of chips, scrollable: fifty tags do not fit on one line at any
+    // window size the instrument opens at.
+    chipArea = area.removeFromTop (browser::chipStripGeometry (getHeight()).height);
+    chipViewport.setBounds (chipArea);
+    layoutChips();
     area.removeFromTop (pad / 2);
-    viewport.setBounds (area);
+
+    viewport->setBounds (area);
     layoutGrid();
+    if (pendingScrollTo >= 0) scrollToPreset (pendingScrollTo);
 }
 
 void PresetBrowser::paint (juce::Graphics& g)
@@ -267,12 +382,20 @@ void PresetBrowser::paint (juce::Graphics& g)
     const auto h = headerArea.toFloat();
     const float titleH = juce::jlimit (14.0f, 22.0f, h.getHeight() * 0.42f);
     draw::trackedText (g, "BROWSER", h.withHeight (titleH * 1.4f), juce::Justification::centredLeft, Theme::titleFont (titleH), Theme::textPrimary);
-    const juce::String caption = juce::String (juce::CharPointer_UTF8 ("FACTORY LIBRARY   \xC2\xB7   ")) + juce::String (visibleCards.size()) + " OF " + juce::String (cards.size()) + " PRESETS";
+    const juce::String caption = juce::String (juce::CharPointer_UTF8 ("FACTORY LIBRARY   \xC2\xB7   ")) + juce::String ((int) filtered.size()) + " OF " + juce::String (catalogue.size()) + " PRESETS";
     draw::trackedText (g, caption, h.withTop (h.getY() + titleH * 1.4f), juce::Justification::topLeft, Theme::captionFont (juce::jlimit (7.5f, 10.0f, titleH * 0.5f)), Theme::textSecondary);
     juce::Path line; line.startNewSubPath (h.getX(), h.getBottom() + 4.0f); line.lineTo (h.getX() + 84.0f, h.getBottom() + 4.0f);
     draw::glowPath (g, line, Theme::blue, 1.2f, 7.0f, 0.6f);
     g.setColour (Theme::borderSoft);
     g.drawLine (h.getX() + 84.0f, h.getBottom() + 4.0f, h.getRight(), h.getBottom() + 4.0f, 1.0f);
+
+    // "Nothing matched" is a real state at 300 presets with three tags active.
+    if (filtered.empty() && catalogue.size() > 0 && viewport != nullptr)
+    {
+        const auto empty = viewport->getBounds().toFloat().withHeight (60.0f);
+        draw::trackedText (g, "NO PRESETS MATCH THIS FILTER", empty, juce::Justification::centredTop,
+                           Theme::labelFont (11.0f), Theme::textDim);
+    }
 }
 
 } // namespace am::ui

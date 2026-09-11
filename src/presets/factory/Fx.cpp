@@ -118,7 +118,7 @@ manager.addFactory ({ "Signal Decay", "FX", { "fx", "granular", "collapse", "sam
     r.commit (s);
 }});
 
-manager.addFactory ({ "Ascension Wire", "FX", { "metallic", "bright", "evolving", "wide", "transition" }, [] (PatchState& s)
+manager.addFactory ({ "Winch Arc", "FX", { "metallic", "bright", "evolving", "wide", "transition" }, [] (PatchState& s)
 {
     gesture (s, 0 /* BOW */, 0.58f, 0.52f, 0.22f, 0.34f, 0.42f, 0.55f);
     amp (s, 0.30f, 2.50f, 0.88f, 0.90f, 0.62f);
@@ -771,16 +771,17 @@ manager.addFactory ({ "Insect Storm", "FX", { "organic", "chaotic", "granular", 
 
 manager.addFactory ({ "Bone Splinter", "FX", { "wooden", "dry", "close", "struck", "mid" }, [] (PatchState& s)
 {
-    impact (s, 2 /* PLUCK */, 0.62f, 0.55f, 0.08f, 0.90f, 0.35f, 0.25f, 0.0f, 0.90f);
+    impact (s, 1 /* CLICK */, 0.78f, 0.72f, 0.05f, 0.92f, 0.30f, 0.35f, 0.0f, 0.90f);
     amp (s, 0.001f, 0.35f, 0.0f, 0.28f, 0.20f);
     set (s, Param::masterGain, -5.5f);
-    shape (s, 0.34f, 0.28f, 0.35f, 0.55f, 0.30f, 0.30f);
-    material (s, MaterialType::Wood, MaterialType::Organic, 0.40f);
-    topology (s, 0 /* CHAIN */, 0.30f, 0.38f, 3159);
-    matter (s, 1.0f, 0.60f, 0.80f, 0.35f);
+    shape (s, 0.30f, 0.44f, 0.28f, 0.62f, 0.24f, 0.38f);
+    material (s, MaterialType::Wood, MaterialType::Void, 0.45f);
+    topology (s, 4 /* RANDOM */, 0.34f, 0.58f, 3159);
+    matter (s, 1.0f, 0.60f, 0.80f, 0.45f, 0.55f /* barely tracks: a crack is a crack wherever you play it */);
     evolve (s, 0.0f, 0.0f, 0.32f, 0.0f, 0.48f, 0.28f, 0.0f, 0.50f, 0.25f);
     set (s, Param::evolveScatterSeed, 3163);
-    space (s, SpacePresets::Chamber, 0.20f, 0.20f, 0.55f, 0.20f);
+    set (s, Param::shapePitch, 5.0f);
+    space (s, SpacePresets::Machine, 0.18f, 0.18f, 0.58f, 0.18f);
 
     env (s, 1, 0.001f, 0.10f, 0.0f, 0.08f, 0.20f);
     lfo (s, 1, 0.45f, 4 /* RANDOM */, 1.0f, true);

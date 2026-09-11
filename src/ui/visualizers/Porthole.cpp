@@ -1,11 +1,11 @@
 /*
     The hardware around the ANTI-MATTER object (VISUAL_SPEC §5): the machined
-    bezel, the glass composited over the object, the status lamps and the plinth.
+    bezel, the glass composited over the object and the status lamps.
 
     All of it is static geometry, so the bezel, the glass highlight layer and the
-    plinth are rendered once into images at device resolution and blitted every
+    are rendered once into images at device resolution and blitted every
     frame. Only the parts that answer to the engine — the lamp bloom and the blue
-    arc under the plinth — are redrawn live.
+    — are redrawn live.
 */
 
 #include "AntiMatterVisualizer.h"
@@ -24,7 +24,7 @@ namespace
         return { c.x + std::cos (angle) * r, c.y + std::sin (angle) * r };
     }
 
-    /** Gunmetal: the bezel and plinth are cut from the same stock. */
+    /** Gunmetal: the stock the bezel is cut from. */
     const juce::Colour kMetalLight { 0xff585d69 };
     const juce::Colour kMetalMid   { 0xff2c303a };
     const juce::Colour kMetalDark  { 0xff15171e };
@@ -78,12 +78,9 @@ void AntiMatterVisualizer::refreshHardware (const Frame& f, float deviceScale)
     const auto bezelBounds = juce::Rectangle<float> (L.centreX - L.outerR - shadowPad, L.centreY - L.outerR - shadowPad,
                                                      (L.outerR + shadowPad) * 2.0f, (L.outerR + shadowPad) * 2.0f);
     const auto glassBounds = juce::Rectangle<float> (L.centreX - L.glassR, L.centreY - L.glassR, L.glassR * 2.0f, L.glassR * 2.0f);
-    const auto plinthBounds = juce::Rectangle<float> (L.centreX - L.plinthHalfWidth * 1.20f, L.plinthTop - L.plinthHeight * 0.30f,
-                                                      L.plinthHalfWidth * 2.40f, L.plinthHeight * 1.60f);
 
     const auto newBezel = bezelBounds.getSmallestIntegerContainer();
     const auto newGlass = glassBounds.getSmallestIntegerContainer();
-    const auto newPlinth = plinthBounds.getSmallestIntegerContainer();
 
     if (std::abs (hardwareScale - deviceScale) < 0.01f
         && hardwareWidth == getWidth() && hardwareHeight == getHeight()
@@ -95,7 +92,7 @@ void AntiMatterVisualizer::refreshHardware (const Frame& f, float deviceScale)
     hardwareHeight = getHeight();
     hardwareSpace = smooth.spaceType;
 
-    bezelArea = newBezel; glassArea = newGlass; plinthArea = newPlinth;
+    bezelArea = newBezel; glassArea = newGlass;
 
     auto make = [deviceScale] (juce::Image& image, juce::Rectangle<int> area)
     {
@@ -108,7 +105,6 @@ void AntiMatterVisualizer::refreshHardware (const Frame& f, float deviceScale)
     make (wellImage, wellArea);
     make (bezelImage, bezelArea);
     make (glassImage, glassArea);
-    make (plinthImage, plinthArea);
 
     auto renderInto = [&] (juce::Image& image, juce::Rectangle<int> area, auto&& fn)
     {
@@ -121,7 +117,6 @@ void AntiMatterVisualizer::refreshHardware (const Frame& f, float deviceScale)
     renderInto (wellImage, wellArea, [&] (juce::Graphics& ig) { renderWell (ig, f); });
     renderInto (bezelImage, bezelArea, [&] (juce::Graphics& ig) { renderBezel (ig, f); });
     renderInto (glassImage, glassArea, [&] (juce::Graphics& ig) { renderGlass (ig, f); });
-    renderInto (plinthImage, plinthArea, [&] (juce::Graphics& ig) { renderPlinth (ig, f); });
 }
 
 /** Blits a cached hardware image. A translation-only draw is JUCE's fast path. */
@@ -469,189 +464,7 @@ void AntiMatterVisualizer::drawLamps (juce::Graphics& g, const Frame& f)
 }
 
 //==============================================================================
-void AntiMatterVisualizer::drawPlinthGlow (juce::Graphics& g, const Frame& f)
-{
-    const auto& L = f.port;
-    if (L.plinthHeight < 6.0f) return;
-
-    // A blue arc spilling from beneath the plinth onto the panel, brightest
-    // directly under the sphere and answering the level.
-    const juce::Point<float> p { L.centreX, L.plinthTop + L.plinthHeight * 0.58f };
-    const float rx = L.plinthHalfWidth * 1.18f;
-    const float ry = juce::jmax (4.0f, L.plinthHeight * 0.92f);
-    const float a = 0.30f + 0.34f * f.pulse + 0.14f * f.life + 0.08f * f.energy;
-    const auto col = Theme::blue.interpolatedWith (Theme::cyan, 0.22f + 0.25f * f.pulse);
-
-    juce::Graphics::ScopedSaveState state (g);
-    // Only the part below the stand is ever seen; the plinth covers the rest.
-    g.reduceClipRegion (juce::Rectangle<float> (f.bounds.getX(), L.plinthTop - L.plinthHeight * 0.12f,
-                                                f.bounds.getWidth(), f.bounds.getBottom() - L.plinthTop + L.plinthHeight)
-                            .getIntersection (f.bounds).getSmallestIntegerContainer());
-    g.addTransform (juce::AffineTransform::scale (1.0f, ry / rx, p.x, p.y));
-    gradient.clearColours();
-    gradient.isRadial = true;
-    gradient.point1 = p;
-    gradient.point2 = { p.x + rx, p.y };
-    gradient.addColour (0.0, alpha (col, a));
-    gradient.addColour (0.32, alpha (col, a * 0.55f));
-    gradient.addColour (0.66, alpha (col, a * 0.18f));
-    gradient.addColour (1.0, alpha (col, 0.0f));
-    g.setGradientFill (gradient);
-    g.fillEllipse (p.x - rx, p.y - rx, rx * 2.0f, rx * 2.0f);
-}
-
 //==============================================================================
-void AntiMatterVisualizer::renderPlinth (juce::Graphics& g, const Frame& f)
-{
-    const auto& L = f.port;
-    if (L.plinthHeight < 6.0f) return;
-
-    const float cx = L.centreX;
-    const float top = L.plinthTop;
-    const float rx = L.plinthHalfWidth;
-    const float ry = juce::jmax (2.0f, L.plinthHeight * 0.215f);
-    const float bodyH = L.plinthHeight * 0.70f;
-    const float u = juce::jmax (0.6f, L.unit);
-
-    // ---- Contact shadow under the whole stand.
-    {
-        const float sr = rx * 1.05f;
-        juce::Graphics::ScopedSaveState state (g);
-        g.addTransform (juce::AffineTransform::scale (1.0f, (bodyH * 0.55f) / sr, cx, top + bodyH));
-        gradient.clearColours();
-        gradient.isRadial = true;
-        gradient.point1 = { cx, top + bodyH };
-        gradient.point2 = { cx + sr, top + bodyH };
-        gradient.addColour (0.0, juce::Colours::black.withAlpha (0.65f));
-        gradient.addColour (0.62, juce::Colours::black.withAlpha (0.30f));
-        gradient.addColour (1.0, juce::Colours::transparentBlack);
-        g.setGradientFill (gradient);
-        g.fillEllipse (cx - sr, top + bodyH - sr, sr * 2.0f, sr * 2.0f);
-    }
-
-    // ---- The body: the front face of the machined stand, tapering slightly inward.
-    juce::Path face;
-    {
-        const float bx = rx * 0.90f;
-        face.startNewSubPath (cx - rx, top);
-        face.lineTo (cx - bx, top + bodyH * 0.82f);
-        face.quadraticTo (cx - bx * 0.55f, top + bodyH + ry * 0.55f, cx, top + bodyH + ry * 0.62f);
-        face.quadraticTo (cx + bx * 0.55f, top + bodyH + ry * 0.55f, cx + bx, top + bodyH * 0.82f);
-        face.lineTo (cx + rx, top);
-        face.closeSubPath();
-
-        gradient.clearColours();
-        gradient.isRadial = false;
-        gradient.point1 = { cx, top };
-        gradient.point2 = { cx, top + bodyH + ry };
-        gradient.addColour (0.0, kMetalMid.brighter (0.28f));
-        gradient.addColour (0.24, kMetalMid);
-        gradient.addColour (0.70, kMetalDark);
-        gradient.addColour (1.0, juce::Colour (0xff1e222a));
-        g.setGradientFill (gradient);
-        g.fillPath (face);
-
-        // Brushed streaks across the face.
-        juce::Graphics::ScopedSaveState clip (g);
-        g.reduceClipRegion (face);
-        const int streaks = juce::jlimit (4, 14, (int) (bodyH / juce::jmax (1.0f, u * 2.4f)));
-        for (int i = 0; i < streaks; ++i)
-        {
-            const float y = top + bodyH * ((float) i + 0.5f) / (float) streaks;
-            const float n = noise.noise ((float) i * 4.1f, 7.7f);
-            g.setColour (juce::Colours::white.withAlpha (0.010f + 0.016f * (0.5f + 0.5f * n)));
-            g.drawLine (cx - rx, y, cx + rx, y, juce::jmax (0.5f, u * 0.6f));
-        }
-    }
-
-    // ---- The top surface: an ellipse seen from slightly above, with a chrome rim.
-    {
-        const auto plate = juce::Rectangle<float> (cx - rx, top - ry, rx * 2.0f, ry * 2.0f);
-        gradient.clearColours();
-        gradient.isRadial = false;
-        gradient.point1 = { cx, plate.getY() };
-        gradient.point2 = { cx, plate.getBottom() };
-        gradient.addColour (0.0, kMetalDark);
-        gradient.addColour (0.42, kMetalMid.brighter (0.16f));
-        gradient.addColour (1.0, kMetalDark.darker (0.25f));
-        g.setGradientFill (gradient);
-        g.fillEllipse (plate);
-
-        // Chrome rim catching the light along the top edge.
-        juce::Path lip;
-        lip.addCentredArc (cx, top, rx - u * 0.5f, ry - u * 0.5f, 0.0f, -kPi * 0.98f, -kPi * 0.02f, true);
-        gradient.clearColours();
-        gradient.isRadial = false;
-        gradient.point1 = { cx - rx, top };
-        gradient.point2 = { cx + rx, top };
-        gradient.addColour (0.0, kChrome.withAlpha (0.22f));
-        gradient.addColour (0.32, kChrome.brighter (0.25f).withAlpha (1.0f));
-        gradient.addColour (0.62, kChrome.withAlpha (0.70f));
-        gradient.addColour (1.0, kChrome.withAlpha (0.20f));
-        g.setGradientFill (gradient);
-        g.strokePath (lip, juce::PathStrokeType (juce::jmax (1.0f, u * 1.7f)));
-
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        juce::Path under;
-        under.addCentredArc (cx, top, rx - u * 0.5f, ry - u * 0.5f, 0.0f, kPi * 0.04f, kPi * 0.96f, true);
-        g.strokePath (under, juce::PathStrokeType (juce::jmax (0.7f, u * 1.0f)));
-    }
-
-    // ---- The recessed face carrying the engraved wordmark.
-    {
-        const float insetW = rx * 1.05f;
-        const float insetH = bodyH * 0.78f;
-        const auto inset = juce::Rectangle<float> (cx - insetW * 0.5f, top + bodyH * 0.10f, insetW, insetH);
-        const float corner = insetH * 0.22f;
-
-        gradient.clearColours();
-        gradient.isRadial = false;
-        gradient.point1 = { cx, inset.getY() };
-        gradient.point2 = { cx, inset.getBottom() };
-        gradient.addColour (0.0, juce::Colour (0xff191d25));
-        gradient.addColour (1.0, juce::Colour (0xff343945));
-        g.setGradientFill (gradient);
-        g.fillRoundedRectangle (inset, corner);
-
-        g.setColour (juce::Colours::black.withAlpha (0.60f));
-        g.drawRoundedRectangle (inset.reduced (0.5f), corner, juce::jmax (0.7f, u * 0.8f));
-        g.setColour (juce::Colours::white.withAlpha (0.09f));
-        g.drawLine (inset.getX() + corner, inset.getBottom() - u * 0.5f, inset.getRight() - corner, inset.getBottom() - u * 0.5f,
-                    juce::jmax (0.6f, u * 0.7f));
-
-        // Engraved: cut in, so the letters are dark with a light lower edge.
-        const float titleH = juce::jlimit (7.0f, 24.0f, insetH * 0.40f);
-        const float subH = juce::jlimit (5.0f, 11.0f, insetH * 0.19f);
-        auto textArea = inset.reduced (insetW * 0.05f, insetH * 0.08f);
-        auto titleRow = textArea.removeFromTop (textArea.getHeight() * 0.60f);
-        const float lift = juce::jmax (0.7f, u * 0.9f);
-
-        auto title = draw::fitFont (Theme::displayFont (titleH, 0.20f), "ANTI-MATR", titleRow.getWidth(), 7.0f);
-        draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, lift * 1.15f), juce::Justification::centred, title,
-                           kChrome.brighter (0.55f).withAlpha (0.95f));
-        draw::trackedText (g, "ANTI-MATR", titleRow.translated (0.0f, -lift * 0.55f), juce::Justification::centred, title,
-                           juce::Colour (0xff000103).withAlpha (0.70f));
-        draw::trackedText (g, "ANTI-MATR", titleRow, juce::Justification::centred, title, juce::Colour (0xff04050a));
-
-        if (textArea.getHeight() > subH * 1.0f)
-        {
-            auto subRow = textArea;
-            auto sub = draw::fitFont (Theme::captionFont (subH), "SOUND BEYOND MATTER", subRow.getWidth(), 5.0f);
-            draw::trackedText (g, "SOUND BEYOND MATTER", subRow.translated (0.0f, lift * 0.9f), juce::Justification::centred, sub,
-                               kChrome.brighter (0.35f).withAlpha (0.80f));
-            draw::trackedText (g, "SOUND BEYOND MATTER", subRow, juce::Justification::centred, sub,
-                               juce::Colour (0xff06070c));
-        }
-    }
-
-    // ---- Two bolts holding the stand to the chassis.
-    {
-        const float br = juce::jmax (1.2f, u * 3.0f);
-        drawBolt (g, { cx - rx * 0.80f, top + bodyH * 0.42f }, br, -kPi * 0.75f);
-        drawBolt (g, { cx + rx * 0.80f, top + bodyH * 0.42f }, br, -kPi * 0.75f);
-    }
-}
-
 //==============================================================================
 void AntiMatterVisualizer::drawCaptions (juce::Graphics& g, const Frame& f)
 {

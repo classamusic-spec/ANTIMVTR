@@ -18,7 +18,6 @@ namespace am::ui
     procedurally from `getLocalBounds()`: no bitmaps, no assets, nothing loaded
     from disk. Layers, back to front:
 
-      1. The blue arc spilling from beneath the plinth onto the panel.
       2. The glass well: a deep near-black bowl with a faint Space-tinted haze.
       3. THE OBJECT, clipped to the glass — a liquid-light organism:
            · bubbles and sparkles on the far side of the volume,
@@ -35,12 +34,11 @@ namespace am::ui
       5. The bezel: brushed gunmetal segmented into plates with seams and bolt
          heads, an outer shadow onto the panel and an inner shadow onto the glass.
       6. The two warm amber-white status lamps at nine and three o'clock.
-      7. The machined plinth with its chrome rim and engraved wordmark.
       8. The flank captions (INHALE / IDEA, EXHALE / EVOLVE).
 
-    The hardware (bezel, plinth, glass highlights) is static geometry, so it is
+    The hardware (bezel, glass highlights) is static geometry, so it is
     rendered once into cached images and blitted; only the object, the lamp bloom
-    and the plinth glow are redrawn each frame. Paint time is measured every
+    are redrawn each frame. Paint time is measured every
     frame and the quality level drops when it runs long.
 
     Reads VisualStateSnapshot only, eased with Mass-dependent inertia. Never
@@ -127,8 +125,6 @@ private:
     void refreshHardware (const Frame& f, float deviceScale);
     void renderBezel (juce::Graphics& g, const Frame& f);
     void renderGlass (juce::Graphics& g, const Frame& f);
-    void renderPlinth (juce::Graphics& g, const Frame& f);
-    void drawPlinthGlow (juce::Graphics& g, const Frame& f);
     void drawLamps (juce::Graphics& g, const Frame& f);
     void drawSmudges (juce::Graphics& g, const Frame& f);
     void drawCaptions (juce::Graphics& g, const Frame& f);
@@ -162,7 +158,7 @@ private:
     int   recoveryWaitFrames = 150;     // doubles after every drop so a marginal machine does not oscillate
     bool  profileToStderr = false;
     int   pinnedQuality = -1;           // ANTIMATR_VIS_QUALITY pins the level for measurement
-    static constexpr int kLayers = 11;
+    static constexpr int kLayers = 10;
     std::array<double, kLayers> frameLayerMs {}, layerMsAverage {};
     juce::int64 lastTick = 0;
 
@@ -185,8 +181,8 @@ private:
     juce::ColourGradient gradient;      // reused so a per-segment fill never allocates
 
     // Cached hardware: rendered at device resolution, redrawn only when the size changes.
-    juce::Image wellImage, bezelImage, glassImage, plinthImage;
-    juce::Rectangle<int> wellArea, bezelArea, glassArea, plinthArea;   // logical pixels
+    juce::Image wellImage, bezelImage, glassImage;
+    juce::Rectangle<int> wellArea, bezelArea, glassArea;   // logical pixels
     void blit (juce::Graphics& g, const juce::Image& image, juce::Rectangle<int> area) const;
     float hardwareScale = 0.0f;
     int   hardwareWidth = 0, hardwareHeight = 0, hardwareSpace = -1;

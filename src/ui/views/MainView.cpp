@@ -31,12 +31,18 @@ void MainView::resized()
     };
 
     // Reference geometry (in design units, relative to the page area below the top bar).
-    source.setBounds   (rel (22.0f,   8.0f,  458.0f, 470.0f));
-    object.setBounds   (rel (488.0f,  0.0f,  592.0f, 486.0f));
-    shape.setBounds    (rel (1084.0f, 8.0f,  494.0f, 470.0f));
-    evolve.setBounds   (rel (22.0f,  496.0f, 458.0f, 300.0f));
-    fracture.setBounds (rel (500.0f, 496.0f, 540.0f, 300.0f));
-    space.setBounds    (rel (1060.0f, 496.0f, 518.0f, 300.0f));
+    //
+    // The object is the instrument's focal point and the layout says so: it is the largest
+    // element on the page by a wide margin, it is square so the porthole is limited by
+    // nothing but its own bounds, and it runs the full height of the page rather than
+    // sitting in the top half. The six control panels are pushed out to the flanks and the
+    // bottom corners, which is what leaves the centre clear.
+    source.setBounds   (rel (22.0f,    8.0f, 392.0f, 390.0f));
+    shape.setBounds    (rel (1186.0f,  8.0f, 392.0f, 390.0f));
+    object.setBounds   (rel (490.0f,   2.0f, 620.0f, 620.0f));
+    evolve.setBounds   (rel (22.0f,  406.0f, 392.0f, 390.0f));
+    space.setBounds    (rel (1186.0f, 406.0f, 392.0f, 390.0f));
+    fracture.setBounds (rel (422.0f,  628.0f, 756.0f, 172.0f));
 }
 
 //==============================================================================

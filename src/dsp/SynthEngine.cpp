@@ -317,6 +317,49 @@ void SynthEngine::publishSnapshots (const float* outL, const float* outR, int nu
         }
         v.activeNodes = activeNodes; v.clusterCount = clusterCount;
         v.pitchHz = pitch; v.noteEnergy = energy; v.numVisualNodes = visualNodes;
+
+        // ---- What the player just did.
+        if (fv != nullptr)
+        {
+            const auto& n = fv->noteState();
+            v.noteId = n.noteId;
+            v.noteVelocity = n.velocity;
+            v.noteMidi = n.midiNote;
+            v.noteHeld = n.gate || n.sustained;
+            v.motionPhase = fv->evolve().motionPhase();
+            v.motionRateHz = EvolveEngine::motionRateHz (paramValue (p, Param::evolveSpeed));
+        }
+
+        // A fragment step is an event, not a level: count the ones that actually fired so a
+        // visual can answer each one instead of chasing a smoothed activity envelope.
+        {
+            FractureEngine::FragmentActivity fa;
+            fracture.fillFragmentActivity (fa);
+            if (fa.currentStep != lastFractureStep)
+            {
+                lastFractureStep = fa.currentStep;
+                if (fa.overall > 0.02f) ++fractureHitCount;
+            }
+            v.fractureHits = fractureHitCount;
+        }
+
+        // Every sounding voice, newest first, so a chord reads as a chord.
+        {
+            int n = 0;
+            const int newest = voices.mostRecentVoice();
+            const int total = voices.getMaxVoices();
+            for (int k = 0; k < total && n < VisualStateSnapshot::kVisualVoices; ++k)
+            {
+                const int i = newest >= 0 ? (newest + total - k) % total : k;
+                const auto& voice = voices.voice (i);
+                if (! voice.isActive()) continue;
+                v.voicePitchHz[n]  = (float) voice.noteState().frequency;
+                v.voiceEnergy[n]   = voice.envelopeLevel();
+                v.voiceVelocity[n] = voice.noteState().velocity;
+                ++n;
+            }
+            v.numVisualVoices = n;
+        }
         diag.visualSnapshots.endWrite();
     }
 

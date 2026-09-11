@@ -98,6 +98,8 @@ private:
     uint64_t sampleTime = 0;
     bool    prepared = false;
     bool    snapControlGraph = true;   ///< next block adopts the host's values instead of gliding to them
+    int      lastFractureStep = -1;    ///< for turning the fragment step into countable events
+    uint32_t fractureHitCount = 0;
     static constexpr float kInitialPolyphonyGain = 0.5f;
     float   polyphonyGain = kInitialPolyphonyGain;   ///< smoothed voice-sum headroom (see process())
 

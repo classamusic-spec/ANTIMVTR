@@ -205,7 +205,7 @@ void AntiMatterVisualizer::updateQuality()
     if (profileToStderr && frameCounter % 60 == 0)
     {
         static const char* names[kLayers] = { "well", "farParticles", "backRibbons", "core", "frontRibbons",
-                                              "nearParticles", "glass", "bezel", "plinth", "captions", "clip" };
+                                              "nearParticles", "glass", "bezel", "captions", "clip" };
         const auto port = PortholeLayout::forBounds (0.0f, 0.0f, (float) getWidth(), (float) getHeight());
         std::fprintf (stderr, "[antimatter] paint %.2f ms avg, quality %d, %dx%d, ribbons %d, spans %d, extent %.2f\n",
                       (double) paintMsAverage, quality, getWidth(), getHeight(), numRibbons, numSpans,
@@ -271,8 +271,6 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
     refreshHardware (f, juce::jmax (0.5f, g.getInternalContext().getPhysicalPixelScaleFactor()));
     buildOrganism (f);
 
-    // ---- 1. the glow spilling from beneath the plinth (behind everything)
-    drawPlinthGlow (g, f);                            mark (8);
 
     // ---- 2/3. the glass well and the object, clipped to the glass.
     //      Building an edge table from the circle costs about a sixth of the frame,
@@ -293,7 +291,7 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
                                                         f.port.glassR * 2.0f, f.port.glassR * 2.0f)
                                     .getSmallestIntegerContainer());
         }
-        mark (10);
+        mark (9);
         drawWell (g, f);                              mark (0);
         drawBubbles (g, f, false);
         drawSparkles (g, f, false);                   mark (1);
@@ -314,13 +312,9 @@ void AntiMatterVisualizer::paint (juce::Graphics& g)
     drawLamps (g, f);
     mark (7);
 
-    // ---- 7. the plinth
-    blit (g, plinthImage, plinthArea);
-    mark (8);
-
-    // ---- 8. flank captions
+    // ---- 7. flank captions
     drawCaptions (g, f);
-    mark (9);
+    mark (8);
 
     const double ms = juce::Time::highResolutionTicksToSeconds (juce::Time::getHighResolutionTicks() - t0) * 1000.0;
     paintMsAverage = paintMsAverage <= 0.0f ? (float) ms : paintMsAverage + ((float) ms - paintMsAverage) * 0.08f;

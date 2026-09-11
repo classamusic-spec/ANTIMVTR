@@ -162,6 +162,32 @@ struct VisualStateSnapshot
     float nodeEnergy[kVisualNodes] {};
     float nodePan[kVisualNodes] {};
     uint8_t nodeCluster[kVisualNodes] {};
+
+    //==========================================================================
+    // What the player just did.
+    //
+    // Everything above describes a *level* — how loud, how much, how far open —
+    // which is enough to make a visual breathe but not enough to make it react.
+    // A visual that only reads levels has to infer events from envelopes, and an
+    // envelope arrives late, rounds off the attack and cannot tell one note from
+    // two. These fields carry the events themselves.
+
+    static constexpr int kVisualVoices = 8;
+
+    uint32_t noteId = 0;          ///< focus voice's note id: a change means a new note started
+    float    noteVelocity = 0.0f; ///< 0..1, how hard that note was struck
+    int      noteMidi = 60;       ///< its MIDI number, for anything that wants the register
+    bool     noteHeld = false;    ///< its key (or the sustain pedal) is still down
+    uint32_t fractureHits = 0;    ///< monotonic: one per fragment step that actually fired
+
+    float motionPhase = 0.0f;     ///< 0..1 phase of the Evolve movement clock
+    float motionRateHz = 0.0f;    ///< how fast that clock is running
+
+    /** Every sounding voice, newest first, so a chord looks different from a note. */
+    int   numVisualVoices = 0;
+    float voicePitchHz[kVisualVoices] {};
+    float voiceEnergy[kVisualVoices] {};
+    float voiceVelocity[kVisualVoices] {};
 };
 
 /** Developer controls written by DSP LAB and read by the engine (all atomics). */

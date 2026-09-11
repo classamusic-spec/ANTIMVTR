@@ -687,8 +687,6 @@ public:
             expect (l.centreX + l.outerR <= (float) s.w + 0.5f, "the bezel runs off the right" + at);
             expect (l.centreY - l.outerR >= -0.5f, "the bezel runs off the top" + at);
             expect (l.centreY + l.outerR <= (float) s.h + 0.5f, "the bezel runs off the bottom" + at);
-            expect (l.plinthTop + l.plinthHeight <= (float) s.h + 1.0f, "the plinth runs off the bottom" + at);
-            expect (l.centreX + l.plinthHalfWidth <= (float) s.w + 0.5f, "the plinth runs off the side" + at);
             expect (l.glassR > 0.0f && l.glassR < l.outerR, "the glass is not inside the bezel" + at);
             expect (l.bezelWidth > 0.0f, "the bezel has no thickness" + at);
             expect (l.unit > 0.0f, "the reference unit collapsed" + at);
@@ -703,8 +701,6 @@ public:
             expectWithinAbsoluteError (small.outerR / big.outerR, k, 0.005f);
             expectWithinAbsoluteError (small.glassR / big.glassR, k, 0.005f);
             expectWithinAbsoluteError (small.bezelWidth / big.bezelWidth, k, 0.005f);
-            expectWithinAbsoluteError (small.plinthHeight / big.plinthHeight, k, 0.005f);
-            expectWithinAbsoluteError ((small.plinthTop / small.outerR), (big.plinthTop / big.outerR), 0.01f);
             expectWithinAbsoluteError (small.unit / big.unit, k, 0.005f);
         }
 
@@ -739,7 +735,7 @@ public:
             {
                 const auto l = PortholeLayout::forBounds (0.0f, 0.0f, s[0], s[1]);
                 expect (std::isfinite (l.outerR) && std::isfinite (l.glassR) && std::isfinite (l.centreX)
-                        && std::isfinite (l.centreY) && std::isfinite (l.plinthTop) && std::isfinite (l.plinthHeight)
+                        && std::isfinite (l.centreY) && std::isfinite (l.glassR)
                         && std::isfinite (l.unit) && std::isfinite (l.bezelWidth),
                         "a degenerate size produced a non-finite layout");
                 expect (l.outerR > 0.0f, "a degenerate size collapsed the bezel");

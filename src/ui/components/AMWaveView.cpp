@@ -167,7 +167,7 @@ void AMSpectrumView::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
     const float corner = juce::jmin (10.0f, b.getHeight() * 0.1f);
-    draw::insetWell (g, b, corner);
+    draw::insetSurface (g, b, corner);
 
     auto inner = b.reduced (6.0f, 6.0f);
     {

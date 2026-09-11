@@ -15,6 +15,14 @@ namespace am::ui::draw
     dome with its specular in the upper-left third; every glow is the section
     accent at low opacity and never white.
 
+    The ground is pale, and that changes where depth comes from. A panel cannot
+    be lighter than the chassis by much — it is frosted glass on pearl, and the
+    two are within a few percent of each other — so the thing that lifts it off
+    the ground is the **shadow it casts**, below and slightly right, plus one
+    near-white pixel along its top-left edge and a faint dark one along its
+    bottom-right. Nothing is outlined. The single dark element is the recessed
+    display, and it is genuinely black.
+
     All of it derives from the bounds it is given, so the same code draws the
     same instrument at 1100 x 690 and at 1600 x 1000.
 */
@@ -39,9 +47,51 @@ namespace detail
                 for (int x = 0; x < n; ++x)
                 {
                     const float v = rng.nextFloat() * 2.0f - 1.0f;
-                    // Slightly more dark speckle than light so large areas never lift.
-                    const float a = std::abs (v) * (v < 0.0f ? 0.055f : 0.038f);
+                    // Balanced on a pale ground: dark speckle alone turns pearl to concrete.
+                    const float a = std::abs (v) * (v < 0.0f ? 0.040f : 0.034f);
                     data.setPixelColour (x, y, (v < 0.0f ? juce::Colours::black : juce::Colours::white).withAlpha (a));
+                }
+            return img;
+        }();
+        return tile;
+    }
+
+    /**
+        Frost on a glass panel: a fine speckle over a soft low-frequency mottle,
+        mostly white. Built once and tiled; the lattice wraps, so there is no seam.
+
+        A panel face is nearly white, so this has to be a whisper — the point is
+        only that a large slab never looks like flat paint.
+    */
+    inline const juce::Image& frostTile()
+    {
+        static const juce::Image tile = []
+        {
+            constexpr int n = 128, cells = 8;
+            juce::Random rng (0xf0517e);
+            float lattice[cells][cells];
+            for (auto& row : lattice)
+                for (auto& v : row) v = rng.nextFloat();
+
+            auto smooth = [] (float t) { return t * t * (3.0f - 2.0f * t); };
+
+            juce::Image img (juce::Image::ARGB, n, n, true);
+            juce::Image::BitmapData data (img, juce::Image::BitmapData::writeOnly);
+            for (int y = 0; y < n; ++y)
+                for (int x = 0; x < n; ++x)
+                {
+                    const float fx = (float) x / (float) n * (float) cells;
+                    const float fy = (float) y / (float) n * (float) cells;
+                    const int x0 = (int) fx, y0 = (int) fy;
+                    const int x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+                    const float sx = smooth (fx - (float) x0), sy = smooth (fy - (float) y0);
+                    const float a = lattice[y0][x0] + (lattice[y0][x1] - lattice[y0][x0]) * sx;
+                    const float b = lattice[y1][x0] + (lattice[y1][x1] - lattice[y1][x0]) * sx;
+                    const float cloud = (a + (b - a) * sy) * 2.0f - 1.0f;
+                    const float speckle = rng.nextFloat() * 2.0f - 1.0f;
+                    const float v = cloud * 0.45f + speckle * 0.55f;
+                    data.setPixelColour (x, y, (v > 0.0f ? juce::Colours::white : juce::Colours::black)
+                                                   .withAlpha (std::abs (v) * (v > 0.0f ? 0.080f : 0.042f)));
                 }
             return img;
         }();
@@ -101,6 +151,19 @@ inline void grain (juce::Graphics& g, juce::Rectangle<float> bounds, float stren
 {
     if (strength <= 0.01f || bounds.isEmpty()) return;
     g.setTiledImageFill (detail::grainTile(), 0, 0, juce::jlimit (0.0f, 1.0f, strength));
+    g.fillRect (bounds);
+}
+
+/** A whisper of frost across the face of a glass panel, clipped to its rounded rectangle. */
+inline void frost (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float strength = 1.0f)
+{
+    if (strength <= 0.01f || bounds.getWidth() < 3.0f || bounds.getHeight() < 3.0f) return;
+    juce::Graphics::ScopedSaveState save (g);
+    juce::Path clip;
+    clip.addRoundedRectangle (bounds, corner);
+    g.reduceClipRegion (clip);
+    g.setTiledImageFill (detail::frostTile(), juce::roundToInt (bounds.getX()), juce::roundToInt (bounds.getY()),
+                         juce::jlimit (0.0f, 1.0f, strength));
     g.fillRect (bounds);
 }
 
@@ -187,18 +250,35 @@ inline void glowDot (juce::Graphics& g, juce::Point<float> centre, float r, juce
     g.fillEllipse (centre.x - r * 0.45f, centre.y - r * 0.45f, r * 0.9f, r * 0.9f);
 }
 
-/** Contact shadow beneath a rounded shape: soft, offset down and to the right. */
-inline void contactShadow (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float radius, float strength = 1.0f)
+/**
+    The soft drop shadow a floating slab casts: below and slightly right, in the
+    single light direction, reaching exactly `reach` past the shape.
+
+    This is the primitive the whole light-ground design rests on. A panel is not
+    brighter than the pearl it sits on — it is the shadow underneath that says it
+    is above the chassis rather than cut into it. So it is wide and very soft
+    (about 18 % black where it is deepest, spread over a dozen rings) rather than
+    the short hard crescent a dark ground could get away with.
+*/
+inline void dropShadow (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float reach, float strength = 1.0f)
 {
-    if (radius < 0.5f || strength <= 0.01f) return;
-    const int steps = juce::jlimit (3, 9, (int) (radius * 0.8f));
+    if (reach < 0.5f || strength <= 0.01f || bounds.isEmpty()) return;
+    const int steps = juce::jlimit (4, 14, (int) (reach * 1.4f));
+    const float dx = reach * 0.22f, dy = reach * 0.44f;   // the offset: down, and a little right
     for (int i = steps; i >= 1; --i)
     {
         const float t = (float) i / (float) steps;
-        const float spread = radius * t;
-        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.22f * strength * (1.0f - t) * (1.0f - t) + 0.02f * strength)));
-        g.fillRoundedRectangle (bounds.expanded (spread * 0.62f).translated (spread * 0.18f, spread * 0.34f), corner + spread * 0.62f);
+        const float spread = reach * 0.56f * t;
+        const float alpha = 0.050f * strength * (1.0f - t) * (1.0f - t) + 0.004f * strength;
+        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, alpha)));
+        g.fillRoundedRectangle (bounds.expanded (spread).translated (dx, dy), corner + spread);
     }
+}
+
+/** Contact shadow beneath a rounded shape: shorter and tighter than a drop shadow. */
+inline void contactShadow (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float radius, float strength = 1.0f)
+{
+    dropShadow (g, bounds, corner, radius, strength);
 }
 
 /**
@@ -211,14 +291,41 @@ inline void contactShadow (juce::Graphics& g, juce::Rectangle<float> bounds, flo
 inline void contactShadowEllipse (juce::Graphics& g, juce::Rectangle<float> circle, float radius, float strength = 1.0f)
 {
     if (radius < 0.5f || strength <= 0.01f) return;
-    const int steps = juce::jlimit (4, 10, (int) (radius * 1.6f));
+    const int steps = juce::jlimit (4, 12, (int) (radius * 1.6f));
+    const float dx = radius * 0.24f, dy = radius * 0.46f;
     for (int i = steps; i >= 1; --i)
     {
         const float t = (float) i / (float) steps;
-        const float spread = radius * t;
-        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.16f * strength * (1.0f - t) * (1.0f - t) + 0.012f * strength)));
-        g.fillEllipse (circle.expanded (spread * 0.45f).translated (spread * 0.16f, spread * 0.34f));
+        const float spread = radius * 0.6f * t;
+        g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, 0.048f * strength * (1.0f - t) * (1.0f - t) + 0.005f * strength)));
+        g.fillEllipse (circle.expanded (spread).translated (dx, dy));
     }
+}
+
+/**
+    The shadow the top and left lips of a recess throw into it, clipped to the
+    recess itself. The counterpart of `dropShadow`: same light, other side.
+*/
+inline void innerShadow (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float depth, float strength)
+{
+    if (strength <= 0.005f || bounds.getWidth() < 2.0f || bounds.getHeight() < 2.0f) return;
+    juce::Graphics::ScopedSaveState save (g);
+    juce::Path clip;
+    clip.addRoundedRectangle (bounds, corner);
+    g.reduceClipRegion (clip);
+
+    const float dy = juce::jmin (bounds.getHeight() * 0.5f, depth);
+    juce::ColourGradient top (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, strength)), bounds.getX(), bounds.getY(),
+                              juce::Colours::transparentBlack, bounds.getX(), bounds.getY() + dy, false);
+    top.addColour (0.35, juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, strength * 0.30f)));
+    g.setGradientFill (top);
+    g.fillRect (bounds.withHeight (dy));
+
+    const float dx = juce::jmin (bounds.getWidth() * 0.45f, depth * 0.8f);
+    juce::ColourGradient left (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, strength * 0.55f)), bounds.getX(), bounds.getY(),
+                               juce::Colours::transparentBlack, bounds.getX() + dx, bounds.getY(), false);
+    g.setGradientFill (left);
+    g.fillRect (bounds.withWidth (dx));
 }
 
 /**
@@ -231,10 +338,16 @@ inline void bevelEdge (juce::Graphics& g, juce::Rectangle<float> bounds, float c
     if (bounds.getWidth() < 2.0f || bounds.getHeight() < 2.0f) return;
     juce::Path p;
     p.addRoundedRectangle (bounds.reduced (thickness * 0.5f), juce::jmax (0.0f, corner - thickness * 0.5f));
-    juce::ColourGradient grad (juce::Colours::white.withAlpha (light), bounds.getX(), bounds.getY(),
-                               juce::Colours::black.withAlpha (dark), bounds.getRight(), bounds.getBottom(), false);
-    grad.addColour (0.42, juce::Colours::white.withAlpha (light * 0.10f));
-    grad.addColour (0.58, juce::Colours::black.withAlpha (dark * 0.10f));
+
+    // The axis leans with the light but stays mostly vertical, so the whole of the
+    // top edge is lit and the whole of the bottom edge is in shadow — a strictly
+    // diagonal axis fades the top edge out before it reaches the right-hand corner.
+    juce::ColourGradient grad (juce::Colours::white.withAlpha (juce::jlimit (0.0f, 1.0f, light)),
+                               bounds.getX() + bounds.getWidth() * 0.18f, bounds.getY(),
+                               juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, dark)),
+                               bounds.getX() + bounds.getWidth() * 0.82f, bounds.getBottom(), false);
+    grad.addColour (0.40, juce::Colours::white.withAlpha (juce::jlimit (0.0f, 1.0f, light * 0.22f)));
+    grad.addColour (0.62, juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, dark * 0.18f)));
     g.setGradientFill (grad);
     g.strokePath (p, juce::PathStrokeType (thickness));
 }
@@ -248,136 +361,151 @@ struct SlabStyle
 {
     juce::Colour top    = Theme::panelTop;
     juce::Colour bottom = Theme::panel;
-    float shadow = 1.0f;   ///< drop shadow beneath the slab
-    float shadowRadius = 0.0f;  ///< how far the shadow reaches (0 chooses from the size)
-    float bevel  = 1.0f;   ///< light top-left / dark bottom-right edge
-    float brush  = 1.0f;   ///< brushed-metal streaks
+    float shadow = 1.0f;   ///< the drop shadow the slab floats on — this is what makes it read
+    float shadowRadius = 0.0f;  ///< how far that shadow reaches (0 chooses from the size)
+    float bevel  = 1.0f;   ///< near-white top-left edge, faint dark bottom-right edge
+    float brush  = 1.0f;   ///< the texture on the face: frost on glass
     float sheen  = 1.0f;   ///< broad diagonal light from the top-left
 };
 
 /**
-    A raised slab: the panel material. Vertical gradient from a lit top to a
-    dark bottom, brushed horizontally, bevelled, sitting on its own shadow.
+    A raised slab: the panel material — a slab of frosted white glass floating
+    above the chassis.
+
+    It is built from four passes and nothing else:
+      1. a soft drop shadow beneath and slightly right,
+      2. a nearly white vertical gradient, lighter at the top,
+      3. a whisper of frost across the face and a broad diagonal sheen,
+      4. one near-white pixel along the top and left edges and a faint dark
+         hairline along the bottom and right.
+
+    There is deliberately no outline: an outlined panel reads as a sticker on a
+    light ground. The slab is never darker than the chassis — if it looks flat,
+    the shadow is too small, not the fill too bright.
 */
 inline void raisedSlab (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, const SlabStyle& style = {})
 {
     if (bounds.getWidth() < 2.0f || bounds.getHeight() < 2.0f) return;
 
     if (style.shadow > 0.01f)
-        contactShadow (g, bounds, corner,
-                       style.shadowRadius > 0.0f ? style.shadowRadius
-                                                 : juce::jlimit (3.0f, 10.0f, juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.03f),
-                       style.shadow);
-
-    // A hard dark line just outside the slab separates it from the chassis.
-    g.setColour (Theme::panelEdge.withAlpha (0.85f));
-    g.drawRoundedRectangle (bounds.expanded (0.5f), corner + 0.5f, 1.0f);
+        dropShadow (g, bounds, corner,
+                    style.shadowRadius > 0.0f ? style.shadowRadius
+                                              : juce::jlimit (3.0f, 12.0f, juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.05f),
+                    style.shadow);
 
     juce::ColourGradient body (style.top, bounds.getCentreX(), bounds.getY(), style.bottom, bounds.getCentreX(), bounds.getBottom(), false);
-    body.addColour (0.5, style.top.interpolatedWith (style.bottom, 0.68f));
+    body.addColour (0.55, style.top.interpolatedWith (style.bottom, 0.55f));
     g.setGradientFill (body);
     g.fillRoundedRectangle (bounds, corner);
 
-    brushedStreaks (g, bounds, corner, 0.42f * style.brush);
+    frost (g, bounds, corner, 0.5f * style.brush);
 
     if (style.sheen > 0.01f)
     {
-        juce::ColourGradient sheen (juce::Colours::white.withAlpha (0.05f * style.sheen), bounds.getX(), bounds.getY(),
+        juce::ColourGradient sheen (juce::Colours::white.withAlpha (0.5f * style.sheen), bounds.getX(), bounds.getY(),
                                     juce::Colours::transparentWhite,
-                                    bounds.getX() + bounds.getWidth() * 0.55f, bounds.getY() + bounds.getHeight() * 0.8f, false);
+                                    bounds.getX() + bounds.getWidth() * 0.62f, bounds.getY() + bounds.getHeight() * 0.9f, false);
+        sheen.addColour (0.45, juce::Colours::white.withAlpha (0.10f * style.sheen));
         g.setGradientFill (sheen);
         g.fillRoundedRectangle (bounds, corner);
     }
 
-    bevelEdge (g, bounds, corner, 0.17f * style.bevel, 0.62f * style.bevel, 1.3f);
-
-    // A crisp highlight just inside the top edge finishes the machined lip.
-    if (style.bevel > 0.01f && bounds.getWidth() > corner * 2.5f)
-    {
-        g.setColour (juce::Colours::white.withAlpha (0.075f * style.bevel));
-        g.drawLine (bounds.getX() + corner * 0.85f, bounds.getY() + 1.6f, bounds.getRight() - corner * 0.85f, bounds.getY() + 1.6f, 1.0f);
-    }
+    // The lit edge is strong and the shadowed one is faint: on a pale ground a dark
+    // edge all the way round would read as an outline drawn on top of the glass.
+    bevelEdge (g, bounds, corner, 0.95f * style.bevel, 0.20f * style.bevel, 1.2f);
 }
 
 /**
-    An inset well: the same slab with the light inverted, so it reads as a
-    recess cut into the panel — the screens sit behind glass in these.
+    An inset well: the same slab with the light inverted, so it reads as a recess
+    cut into the panel.
+
+    It does two jobs, and which one it does depends on how dark the fill is:
+
+      * a **light capsule** (the default `Theme::panelInset`) — a slider track, a
+        segment strip, a stepper pill. Slightly darker than the panel it is cut
+        into, with a gentle shadow under its top lip and a white catch along the
+        bottom. Quiet: the thing that sits *in* it is the subject.
+
+      * a **display** (anything near-black, the default of `screenWell`) — the one
+        dark element on the page. The mouth of the cut is a hard dark hairline at
+        the top-left and a bright lit lip at the bottom-right, and the shadow the
+        top lip throws inside is deep. That, over near-black, is what makes a
+        screen look milled into the panel rather than painted on it.
 */
 inline void insetWell (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, juce::Colour fill = Theme::panelInset, float depth = 1.0f)
 {
     if (bounds.getWidth() < 2.0f || bounds.getHeight() < 2.0f) return;
+    const bool screen = fill.getPerceivedBrightness() < 0.4f;
 
-    juce::ColourGradient body (fill.darker (0.35f), bounds.getCentreX(), bounds.getY(),
-                               fill.brighter (0.13f), bounds.getCentreX(), bounds.getBottom(), false);
+    // Darkest under the top lip, lifting a little toward the bottom where the light
+    // bounces back in off the panel.
+    juce::ColourGradient body (screen ? fill.darker (0.45f) : fill.darker (0.10f), bounds.getCentreX(), bounds.getY(),
+                               screen ? fill.brighter (0.16f) : fill.brighter (0.06f), bounds.getCentreX(), bounds.getBottom(), false);
     g.setGradientFill (body);
     g.fillRoundedRectangle (bounds, corner);
 
-    {
-        juce::Graphics::ScopedSaveState save (g);
-        juce::Path clip;
-        clip.addRoundedRectangle (bounds, corner);
-        g.reduceClipRegion (clip);
+    innerShadow (g, bounds, corner,
+                 juce::jmin (bounds.getHeight() * 0.45f, screen ? 26.0f : 9.0f),
+                 (screen ? 0.72f : 0.24f) * depth);
 
-        // Shadow cast by the top and left lips of the recess.
-        const float dy = juce::jmin (bounds.getHeight() * 0.45f, 20.0f) * depth;
-        juce::ColourGradient top (juce::Colours::black.withAlpha (0.60f * depth), bounds.getX(), bounds.getY(),
-                                  juce::Colours::transparentBlack, bounds.getX(), bounds.getY() + dy, false);
-        g.setGradientFill (top);
-        g.fillRect (bounds.withHeight (dy));
-
-        const float dx = juce::jmin (bounds.getWidth() * 0.4f, 16.0f) * depth;
-        juce::ColourGradient left (juce::Colours::black.withAlpha (0.40f * depth), bounds.getX(), bounds.getY(),
-                                   juce::Colours::transparentBlack, bounds.getX() + dx, bounds.getY(), false);
-        g.setGradientFill (left);
-        g.fillRect (bounds.withWidth (dx));
-    }
-
-    // Inverted bevel: dark at the top-left, a lit lower-right lip.
+    // The mouth of the cut: dark where it goes in at the top-left, lit where it
+    // comes back up at the bottom-right.
     juce::Path p;
     p.addRoundedRectangle (bounds.reduced (0.6f), juce::jmax (0.0f, corner - 0.6f));
-    juce::ColourGradient edge (juce::Colours::black.withAlpha (0.80f * depth), bounds.getX(), bounds.getY(),
-                               juce::Colours::white.withAlpha (0.13f), bounds.getRight(), bounds.getBottom(), false);
+    juce::ColourGradient edge (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, (screen ? 0.85f : 0.34f) * depth)),
+                               bounds.getX() + bounds.getWidth() * 0.2f, bounds.getY(),
+                               juce::Colours::white.withAlpha (screen ? 0.42f : 0.80f),
+                               bounds.getX() + bounds.getWidth() * 0.8f, bounds.getBottom(), false);
     edge.addColour (0.45, juce::Colours::transparentBlack);
     g.setGradientFill (edge);
     g.strokePath (p, juce::PathStrokeType (1.2f));
 }
 
 /**
-    A screw head: dark, seated in the panel, with a bright crescent on its
-    upper-left and a slot cut across it. Small and quiet, four to a panel.
+    A recessed near-black display — the signature element of the instrument
+    (SPEC section 1). Luminous line art is drawn into it and `screenGlass` goes
+    over the top.
+*/
+inline void screenWell (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, juce::Colour fill = Theme::screen, float depth = 1.0f)
+{
+    insetWell (g, bounds, corner, fill, depth);
+}
+
+/** A light capsule cut into a panel: slider tracks, segment strips, stepper pills. */
+inline void capsuleTrack (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float depth = 1.0f)
+{
+    insetWell (g, bounds, corner, Theme::panelInset, depth);
+}
+
+/**
+    A screw head, seated in the panel: a shallow dish with a slot cut across it.
+
+    The reference has no visible fasteners on its panels, so nothing draws these
+    any more; they survive as a primitive for hardware that genuinely is bolted
+    down (the sphere bezel). On a pale panel a screw is a *dimple*, not a dark
+    stud — light in the dish, a shadow under the upper lip, a lit lower one.
 */
 inline void screw (juce::Graphics& g, juce::Point<float> centre, float radius, float angleRadians = 0.6f, float brightness = 1.0f)
 {
     if (radius < 1.1f) return;
     const juce::Rectangle<float> head (centre.x - radius, centre.y - radius, radius * 2.0f, radius * 2.0f);
 
-    // The seat it is sunk into.
-    g.setColour (juce::Colours::black.withAlpha (0.40f));
-    g.fillEllipse (head.expanded (radius * 0.30f).translated (radius * 0.10f, radius * 0.18f));
-
-    juce::ColourGradient body (Theme::metal.withMultipliedBrightness (1.15f * brightness), centre.x + kLightX * radius * 0.7f, centre.y + kLightY * radius * 0.65f,
-                               juce::Colour (0xff090a0e), centre.x - kLightX * radius * 1.15f, centre.y - kLightY * radius * 1.05f, true);
+    juce::ColourGradient body (Theme::metalLight.withMultipliedBrightness (brightness), centre.x - kLightX * radius * 0.6f, centre.y - kLightY * radius * 0.6f,
+                               Theme::metalDark, centre.x + kLightX * radius * 1.1f, centre.y + kLightY * radius * 1.1f, false);
     g.setGradientFill (body);
     g.fillEllipse (head);
 
-    // Bright crescent on the lit side.
-    juce::Path crescent;
-    crescent.addCentredArc (centre.x, centre.y, radius * 0.78f, radius * 0.78f, 0.0f,
-                            -juce::MathConstants<float>::pi * 0.92f, -juce::MathConstants<float>::pi * 0.08f, true);
-    g.setColour (juce::Colours::white.withAlpha (0.40f * brightness));
-    g.strokePath (crescent, juce::PathStrokeType (juce::jmax (0.7f, radius * 0.28f)));
-
     // The slot: cut in, so it is dark with a lit lower lip.
     const float c = std::cos (angleRadians), s = std::sin (angleRadians);
-    const juce::Point<float> a (centre.x - c * radius * 0.6f, centre.y - s * radius * 0.6f);
-    const juce::Point<float> b (centre.x + c * radius * 0.6f, centre.y + s * radius * 0.6f);
-    g.setColour (juce::Colours::black.withAlpha (0.85f));
-    g.drawLine ({ a, b }, juce::jmax (0.8f, radius * 0.28f));
-    g.setColour (juce::Colours::white.withAlpha (0.18f * brightness));
-    g.drawLine (a.x, a.y + radius * 0.26f, b.x, b.y + radius * 0.26f, juce::jmax (0.6f, radius * 0.15f));
+    const juce::Point<float> a (centre.x - c * radius * 0.62f, centre.y - s * radius * 0.62f);
+    const juce::Point<float> b (centre.x + c * radius * 0.62f, centre.y + s * radius * 0.62f);
+    g.setColour (juce::Colours::black.withAlpha (0.45f));
+    g.drawLine ({ a, b }, juce::jmax (0.7f, radius * 0.24f));
+    g.setColour (juce::Colours::white.withAlpha (0.45f * brightness));
+    g.drawLine (a.x, a.y + radius * 0.24f, b.x, b.y + radius * 0.24f, juce::jmax (0.6f, radius * 0.14f));
 
-    g.setColour (juce::Colours::black.withAlpha (0.55f));
-    g.drawEllipse (head.reduced (0.3f), juce::jmax (0.6f, radius * 0.14f));
+    g.setColour (juce::Colours::black.withAlpha (0.22f));
+    g.drawEllipse (head.reduced (0.3f), juce::jmax (0.6f, radius * 0.12f));
 }
 
 /** The four corner screws that bolt a panel to the chassis. */
@@ -392,30 +520,28 @@ inline void rivets (juce::Graphics& g, juce::Rectangle<float> bounds, float inse
     screw (g, { x1, y1 }, radius,  0.20f, brightness);
 }
 
-/** The chassis behind everything: warm charcoal, grained, with the corners falling away. */
+/**
+    The chassis behind everything: a cool pearl grey, very slightly lighter
+    toward the top, with a fine machined grain.
+
+    No vignette. The ground is light and open — darkening the corners on a pale
+    chassis reads as dirt on the photograph rather than as depth, and it is the
+    panel shadows, not the background, that carry the depth here.
+*/
 inline void chassisBackground (juce::Graphics& g, juce::Rectangle<float> bounds)
 {
     juce::ColourGradient base (Theme::backgroundTop, bounds.getCentreX(), bounds.getY(),
                                Theme::background, bounds.getCentreX(), bounds.getBottom(), false);
-    base.addColour (0.35, Theme::backgroundTop.interpolatedWith (Theme::background, 0.55f));
+    base.addColour (0.45, Theme::backgroundTop.interpolatedWith (Theme::background, 0.52f));
     g.setGradientFill (base);
     g.fillRect (bounds);
 
-    grain (g, bounds, 0.85f);
+    // The one lamp, above and to the left of the instrument: a very broad, very
+    // soft lift, so the pearl has a direction without having an edge.
+    softLight (g, { bounds.getX() + bounds.getWidth() * 0.24f, bounds.getY() - bounds.getHeight() * 0.18f },
+               juce::jmax (bounds.getWidth(), bounds.getHeight()) * 0.95f, juce::Colours::white, 0.20f);
 
-    // Vignette: four edge gradients, so it stays proportional at any aspect ratio.
-    const float fx = bounds.getWidth() * 0.24f, fy = bounds.getHeight() * 0.22f;
-    const auto dark = juce::Colours::black.withAlpha (0.42f);
-    auto edge = [&g, dark] (juce::Rectangle<float> area, float x1, float y1, float x2, float y2)
-    {
-        juce::ColourGradient grad (dark, x1, y1, juce::Colours::transparentBlack, x2, y2, false);
-        g.setGradientFill (grad);
-        g.fillRect (area);
-    };
-    edge (bounds.withHeight (fy), bounds.getX(), bounds.getY(), bounds.getX(), bounds.getY() + fy);
-    edge (bounds.withTop (bounds.getBottom() - fy), bounds.getX(), bounds.getBottom(), bounds.getX(), bounds.getBottom() - fy);
-    edge (bounds.withWidth (fx), bounds.getX(), bounds.getY(), bounds.getX() + fx, bounds.getY());
-    edge (bounds.withLeft (bounds.getRight() - fx), bounds.getRight(), bounds.getY(), bounds.getRight() - fx, bounds.getY());
+    grain (g, bounds, 0.7f);
 }
 
 /**
@@ -431,6 +557,15 @@ inline void screenGlass (juce::Graphics& g, juce::Rectangle<float> bounds, float
     clip.addRoundedRectangle (bounds, corner);
     g.reduceClipRegion (clip);
 
+    // The shadow the top lip of the recess throws across the screen, over the line
+    // art as well as the ground: without it a dark rectangle is a hole, not a well.
+    const float drop = juce::jmin (bounds.getHeight() * 0.26f, 18.0f);
+    juce::ColourGradient inner (juce::Colours::black.withAlpha (0.42f * strength), bounds.getX(), bounds.getY(),
+                                juce::Colours::transparentBlack, bounds.getX(), bounds.getY() + drop, false);
+    inner.addColour (0.4, juce::Colours::black.withAlpha (0.12f * strength));
+    g.setGradientFill (inner);
+    g.fillRect (bounds.withHeight (drop));
+
     juce::ColourGradient sweep (juce::Colours::white.withAlpha (0.055f * strength), bounds.getX(), bounds.getY(),
                                 juce::Colours::transparentWhite,
                                 bounds.getX() + bounds.getWidth() * 0.62f, bounds.getY() + bounds.getHeight() * 0.85f, false);
@@ -444,8 +579,9 @@ inline void screenGlass (juce::Graphics& g, juce::Rectangle<float> bounds, float
     g.setGradientFill (thickness);
     g.fillRect (bounds);
 
+    // A bright crescent on the inside of the top edge: the glass itself.
     const float lip = juce::jmin (bounds.getHeight() * 0.16f, 8.0f);
-    juce::ColourGradient crest (juce::Colours::white.withAlpha (0.09f * strength), bounds.getX(), bounds.getY() + 1.0f,
+    juce::ColourGradient crest (juce::Colours::white.withAlpha (0.11f * strength), bounds.getX(), bounds.getY() + 1.0f,
                                 juce::Colours::transparentWhite, bounds.getX(), bounds.getY() + lip, false);
     g.setGradientFill (crest);
     g.fillRect (bounds.withHeight (lip).reduced (corner * 0.5f, 0.0f));
@@ -457,10 +593,102 @@ inline void panelSurface (juce::Graphics& g, juce::Rectangle<float> bounds, floa
     raisedSlab (g, bounds, corner);
 }
 
-/** Inset (sunken) area inside a panel, e.g. behind a waveform. */
+/** Inset (sunken) area inside a panel: a display, so near-black and deeply recessed. */
 inline void insetSurface (juce::Graphics& g, juce::Rectangle<float> bounds, float corner)
 {
-    insetWell (g, bounds, corner);
+    screenWell (g, bounds, corner);
+}
+
+//==============================================================================
+// Selection
+//
+// Three shapes carry selection across the instrument and they are deliberately
+// the same object at three sizes: a white slab lifted out of a recess, marked in
+// the section colour. Build new selectable things out of these rather than
+// inventing a fourth.
+//==============================================================================
+
+/** The short accent bar that marks a selected thing. */
+inline void accentUnderline (juce::Graphics& g, juce::Rectangle<float> line, juce::Colour first, juce::Colour second, float amount = 1.0f)
+{
+    if (line.isEmpty() || amount <= 0.01f) return;
+    juce::ColourGradient grad (first.withMultipliedAlpha (amount), line.getX(), line.getCentreY(),
+                               second.withMultipliedAlpha (amount), line.getRight(), line.getCentreY(), false);
+    g.setGradientFill (grad);
+    g.fillRoundedRectangle (line, juce::jmin (line.getHeight(), line.getWidth()) * 0.5f);
+}
+
+/**
+    A key: the small raised slab a button, a tab or a stepper is made of. White at
+    the top, floating on its own shadow; `lit` brightens it for hover.
+*/
+inline void keySlab (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, float lit = 0.0f, float shadow = 0.85f)
+{
+    SlabStyle style;
+    style.top    = juce::Colours::white;
+    style.bottom = Theme::panelTop.interpolatedWith (Theme::panel, 0.85f - 0.55f * juce::jlimit (0.0f, 1.0f, lit));
+    style.shadow = shadow;
+    style.brush  = 0.45f;
+    style.sheen  = 0.9f;
+    raisedSlab (g, bounds, corner, style);
+}
+
+/**
+    The selected cell of a segment, a tab or an option row (SPEC section 3): a
+    raised white slab out of the recessed strip, with the accent as a thin
+    underline and a soft glow beneath it.
+*/
+inline void selectedCell (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, juce::Colour accent,
+                          float amount = 1.0f, bool underline = true)
+{
+    if (amount <= 0.01f || bounds.getWidth() < 3.0f || bounds.getHeight() < 3.0f) return;
+    const auto pair = Theme::accentPair (accent);
+
+    glowRoundedRect (g, bounds, corner, pair.second, juce::jmin (bounds.getHeight() * 0.5f, 10.0f), 0.35f * amount);
+    keySlab (g, bounds, corner, 0.55f, 0.9f * amount);
+
+    if (! underline) return;
+    const float h = juce::jlimit (1.5f, 3.0f, bounds.getHeight() * 0.055f);
+    const float inset = juce::jmin (bounds.getWidth() * 0.24f, corner + bounds.getWidth() * 0.06f);
+    accentUnderline (g, { bounds.getX() + inset, bounds.getBottom() - h - juce::jmax (1.5f, corner * 0.25f),
+                          bounds.getWidth() - inset * 2.0f, h }, pair.first, pair.second, amount);
+}
+
+/**
+    A sidebar pill (SPEC section 3): the rows of the vertical lists on the SOURCE,
+    SHAPE, EVOLVE, FRACTURE and SPACE pages. The selected pill is a raised white
+    slab with the accent down its left edge; the rest sit flat and quiet.
+
+    Draws the chrome only — the caller puts its own glyph and label on top, and
+    `selected` / `hover` are eased values so a change of selection reads as motion.
+*/
+inline void sidebarPill (juce::Graphics& g, juce::Rectangle<float> bounds, float corner, juce::Colour accent,
+                         float selected, float hover = 0.0f)
+{
+    if (bounds.getWidth() < 4.0f || bounds.getHeight() < 4.0f) return;
+    const auto pair = Theme::accentPair (accent);
+    const float hv = juce::jlimit (0.0f, 1.0f, hover) * (1.0f - juce::jlimit (0.0f, 1.0f, selected));
+
+    if (hv > 0.02f)
+    {
+        g.setColour (juce::Colours::white.withAlpha (0.55f * hv));
+        g.fillRoundedRectangle (bounds, corner);
+        g.setColour (pair.second.withAlpha (0.16f * hv));
+        g.drawRoundedRectangle (bounds.reduced (0.5f), corner, 1.0f);
+    }
+
+    if (selected <= 0.02f) return;
+    keySlab (g, bounds, corner, 0.5f, 0.95f * selected);
+
+    // The accent runs down the left edge, which is the edge the eye tracks in a
+    // vertical list — an underline would be lost between the rows.
+    const float w = juce::jlimit (2.0f, 4.0f, bounds.getHeight() * 0.09f);
+    auto bar = bounds.withWidth (w).reduced (0.0f, juce::jmin (corner * 0.6f, bounds.getHeight() * 0.22f));
+    glowRoundedRect (g, bar, w * 0.5f, pair.second, bounds.getHeight() * 0.30f, 0.40f * selected);
+    juce::ColourGradient grad (pair.first.withMultipliedAlpha (selected), bar.getX(), bar.getY(),
+                               pair.second.withMultipliedAlpha (selected), bar.getX(), bar.getBottom(), false);
+    g.setGradientFill (grad);
+    g.fillRoundedRectangle (bar, w * 0.5f);
 }
 
 //==============================================================================
@@ -623,10 +851,15 @@ inline void chevron (juce::Graphics& g, juce::Rectangle<float> area, int directi
     g.strokePath (p, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
-/** 1 px hairline. */
+/**
+    1 px hairline: a fine dark rule with a lit lip under it, so a divider on a
+    pale panel reads as a scribed line rather than as a drawn border.
+*/
 inline void hairline (juce::Graphics& g, float x1, float y1, float x2, float y2, float alpha = 0.08f)
 {
-    g.setColour (juce::Colours::white.withAlpha (alpha));
+    g.setColour (juce::Colours::white.withAlpha (juce::jlimit (0.0f, 1.0f, alpha * 4.0f)));
+    g.drawLine (x1, y1 + 1.0f, x2, y2 + 1.0f, 1.0f);
+    g.setColour (Theme::textPrimary.withAlpha (juce::jlimit (0.0f, 1.0f, alpha * 1.1f)));
     g.drawLine (x1, y1, x2, y2, 1.0f);
 }
 
@@ -688,8 +921,37 @@ inline juce::Path textPath (const juce::String& text, juce::Rectangle<float> are
 }
 
 /**
+    A shape cut into the pale ground: a fine engraved bevel, a light edge along
+    the top of the cut and a dark one along the bottom, with the face of the
+    shape itself near-black (SPEC section 7).
+
+    This replaces the metallic fill the wordmark used to carry. A gradient that
+    ran from mid-grey to black was legible against charcoal and nearly invisible
+    against pearl, because its lit half is the same value as the chassis.
+*/
+inline void engravedShape (juce::Graphics& g, const juce::Path& path, juce::Colour ink, float bevel, float strength = 1.0f)
+{
+    if (path.isEmpty()) return;
+    bevel = juce::jmax (0.6f, bevel);
+
+    g.setColour (juce::Colours::white.withAlpha (0.92f * strength));
+    g.fillPath (path, juce::AffineTransform::translation (-bevel * 0.18f, -bevel));
+    g.setColour (juce::Colours::black.withAlpha (0.20f * strength));
+    g.fillPath (path, juce::AffineTransform::translation (bevel * 0.22f, bevel * 0.9f));
+
+    const auto box = path.getBounds();
+    juce::ColourGradient face (ink.brighter (0.10f), box.getCentreX(), box.getY(),
+                               ink.darker (0.30f), box.getCentreX(), box.getBottom(), false);
+    g.setGradientFill (face);
+    g.fillPath (path);
+}
+
+/**
     Machined metal: a shape filled with a vertical metal gradient and given a
     fine bevel — a light edge along the top and a dark one along the bottom.
+
+    Kept for chrome hardware (rims, bezels). Lettering on the pale ground uses
+    `engravedShape` instead, which is what the wordmark wants.
 */
 inline void metallicShape (juce::Graphics& g, const juce::Path& path, juce::Colour tint, float bevel)
 {
@@ -698,42 +960,34 @@ inline void metallicShape (juce::Graphics& g, const juce::Path& path, juce::Colo
     bevel = juce::jmax (0.5f, bevel);
 
     // Dark edge underneath, light edge above: the two halves of the bevel.
-    g.setColour (juce::Colours::black.withAlpha (0.70f));
+    g.setColour (juce::Colours::black.withAlpha (0.35f));
     g.fillPath (path, juce::AffineTransform::translation (bevel * 0.35f, bevel));
-    g.setColour (tint.brighter (0.9f).withAlpha (0.35f));
+    g.setColour (juce::Colours::white.withAlpha (0.8f));
     g.fillPath (path, juce::AffineTransform::translation (-bevel * 0.3f, -bevel * 0.75f));
 
-    juce::ColourGradient metal (tint.brighter (0.85f), box.getCentreX(), box.getY(),
-                                tint.darker (0.18f), box.getCentreX(), box.getBottom(), false);
-    metal.addColour (0.46, tint.brighter (0.25f));
-    metal.addColour (0.56, tint.darker (0.30f));
-    metal.addColour (0.88, tint.darker (0.05f));
+    juce::ColourGradient metal (tint.brighter (0.30f), box.getCentreX(), box.getY(),
+                                tint.darker (0.30f), box.getCentreX(), box.getBottom(), false);
+    metal.addColour (0.46, tint.brighter (0.10f));
+    metal.addColour (0.56, tint.darker (0.16f));
     g.setGradientFill (metal);
     g.fillPath (path);
 }
 
-/** Machined lettering — the wordmark and its like. */
+/** Lettering cut into the pale ground — the wordmark and its like. */
 inline void metallicText (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, juce::Justification just,
                           const juce::Font& font, juce::Colour tint = Theme::textPrimary, float bevelScale = 1.0f)
 {
-    metallicShape (g, textPath (text, area, just, font), tint, font.getHeight() * 0.05f * bevelScale);
+    engravedShape (g, textPath (text, area, just, font), tint, juce::jmax (0.8f, font.getHeight() * 0.045f * bevelScale));
 }
 
 /**
-    Engraved lettering: cut into the metal, so it is dark with a lit lower lip
-    and no bright fill of its own.
+    Engraved lettering: cut into the pale ground, with a lit top lip, a soft
+    shadow along the bottom and a near-black face.
 */
 inline void engravedText (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, juce::Justification just,
-                          const juce::Font& font, juce::Colour surface, float strength = 1.0f)
+                          const juce::Font& font, juce::Colour ink = Theme::textPrimary, float strength = 1.0f)
 {
-    const auto path = textPath (text, area, just, font);
-    if (path.isEmpty()) return;
-    const float lip = juce::jmax (0.6f, font.getHeight() * 0.07f);
-
-    g.setColour (surface.brighter (0.85f).withAlpha (0.34f * strength));
-    g.fillPath (path, juce::AffineTransform::translation (0.0f, lip));
-    g.setColour (surface.darker (0.9f).withAlpha (0.92f * strength));
-    g.fillPath (path);
+    engravedShape (g, textPath (text, area, just, font), ink, juce::jmax (0.7f, font.getHeight() * 0.06f), strength);
 }
 
 } // namespace am::ui::draw

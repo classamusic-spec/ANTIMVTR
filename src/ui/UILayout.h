@@ -142,11 +142,15 @@ inline int gridColumns (int count, int width, int height) noexcept
     The margin a panel keeps inside its own bounds so its drop shadow has
     somewhere to fall. Nothing may paint outside a component, so the slab is
     drawn this far in and the shadow lands in the margin.
+
+    On a pale chassis that shadow is the only thing holding a panel off the
+    ground, so this is generous: too small a margin clips the soft edge of the
+    shadow and the panel flattens back into the background.
 */
 inline float panelShadowMargin (float width, float height) noexcept
 {
     if (width <= 0.0f || height <= 0.0f) return 0.0f;
-    return juce::jlimit (3.0f, 7.0f, juce::jmin (width, height) * 0.013f);
+    return juce::jlimit (4.0f, 11.0f, juce::jmin (width, height) * 0.022f);
 }
 
 /** Inner padding of a panel: the gutter its title and content sit in. */

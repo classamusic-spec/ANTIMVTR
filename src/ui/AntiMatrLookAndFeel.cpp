@@ -9,7 +9,7 @@ AntiMatrLookAndFeel::AntiMatrLookAndFeel()
     setColour (juce::ResizableWindow::backgroundColourId, Theme::background);
     setColour (juce::PopupMenu::backgroundColourId, Theme::panel);
     setColour (juce::PopupMenu::textColourId, Theme::textPrimary);
-    setColour (juce::PopupMenu::highlightedBackgroundColourId, Theme::blue.withAlpha (0.25f));
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, Theme::blue.withAlpha (0.16f));
     setColour (juce::PopupMenu::highlightedTextColourId, Theme::textPrimary);
     setColour (juce::PopupMenu::headerTextColourId, Theme::textSecondary);
     setColour (juce::AlertWindow::backgroundColourId, Theme::panel);
@@ -22,7 +22,7 @@ AntiMatrLookAndFeel::AntiMatrLookAndFeel()
     setColour (juce::TextEditor::highlightColourId, Theme::blue.withAlpha (0.35f));
     setColour (juce::Label::textColourId, Theme::textPrimary);
     setColour (juce::TextButton::buttonColourId, Theme::panelTop);
-    setColour (juce::TextButton::buttonOnColourId, Theme::blue.withAlpha (0.3f));
+    setColour (juce::TextButton::buttonOnColourId, Theme::blue.withAlpha (0.2f));
     setColour (juce::TextButton::textColourOffId, Theme::textSecondary);
     setColour (juce::TextButton::textColourOnId, Theme::textPrimary);
     setColour (juce::ComboBox::backgroundColourId, Theme::panelInset);
@@ -32,6 +32,7 @@ AntiMatrLookAndFeel::AntiMatrLookAndFeel()
     setColour (juce::ToggleButton::textColourId, Theme::textPrimary);
     setColour (juce::ToggleButton::tickColourId, Theme::cyan);
     setColour (juce::ScrollBar::thumbColourId, Theme::textDim);
+    setColour (juce::ListBox::textColourId, Theme::textPrimary);
     setColour (juce::TooltipWindow::backgroundColourId, Theme::panelTop);
     setColour (juce::TooltipWindow::textColourId, Theme::textPrimary);
     setColour (juce::TooltipWindow::outlineColourId, Theme::border);
@@ -42,22 +43,25 @@ AntiMatrLookAndFeel::AntiMatrLookAndFeel()
     setColour (juce::Slider::thumbColourId, Theme::cyan);
     setColour (juce::Slider::trackColourId, Theme::knobTrack);
     setColour (juce::Slider::backgroundColourId, Theme::panelInset);
-    setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffd8d8e0));
+    setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xfff6f7f9));
     setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff1a1a22));
     setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, Theme::cyan.withAlpha (0.6f));
     setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, Theme::blue.withAlpha (0.3f));
-    setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff404050));
+    setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xffa7adb8));
 }
 
 void AntiMatrLookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
 {
-    // A menu is a small slab that has lifted off the chassis.
+    // A menu is a small slab of the same frosted glass, lifted off the chassis.
     auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
     draw::SlabStyle style;
-    style.top    = Theme::panelTop.brighter (0.04f);
-    style.bottom = Theme::panel;
+    style.top    = juce::Colours::white;
+    style.bottom = Theme::panelTop;
     style.shadow = 0.0f;   // the menu window has no room outside itself for one
     draw::raisedSlab (g, b, 6.0f, style);
+    // With no shadow to hold it off the ground, a menu needs one fine edge of its own.
+    g.setColour (Theme::textPrimary.withAlpha (0.20f));
+    g.drawRoundedRectangle (b, 6.0f, 1.0f);
 }
 
 juce::Font AntiMatrLookAndFeel::getPopupMenuFont() { return Theme::font (13.0f); }
@@ -146,14 +150,16 @@ void AntiMatrLookAndFeel::drawTooltip (juce::Graphics& g, const juce::String& te
 {
     auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
     draw::SlabStyle style;
-    style.top    = Theme::panelTop.brighter (0.08f);
-    style.bottom = Theme::panel;
+    style.top    = juce::Colours::white;
+    style.bottom = Theme::panelTop;
     style.shadow = 0.0f;
     style.brush  = 0.5f;
     draw::raisedSlab (g, b, 6.0f, style);
+    g.setColour (Theme::textPrimary.withAlpha (0.20f));
+    g.drawRoundedRectangle (b, 6.0f, 1.0f);
     // accent bar
     juce::Path bar; bar.startNewSubPath (b.getX() + 5.0f, b.getY() + 7.0f); bar.lineTo (b.getX() + 5.0f, b.getBottom() - 7.0f);
-    draw::glowPath (g, bar, Theme::cyan, 1.5f, 6.0f, 0.6f);
+    draw::glowPath (g, bar, Theme::blue, 1.5f, 6.0f, 0.6f);
     tooltipLayout (text, kTooltipMaxWidth).draw (g, b.reduced ((float) kTooltipPadX, (float) kTooltipPadY).withTrimmedLeft (2.0f));
 }
 
@@ -161,10 +167,9 @@ void AntiMatrLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button&
 {
     auto b = button.getLocalBounds().toFloat().reduced (1.0f);
     const bool on = button.getToggleState();
-    g.setColour (on ? Theme::blue.withAlpha (0.22f) : (highlighted || down ? Theme::glass : Theme::panelInset));
-    g.fillRoundedRectangle (b, 6.0f);
-    g.setColour (on ? Theme::blue.withAlpha (0.5f) : Theme::border);
-    g.drawRoundedRectangle (b, 6.0f, 1.0f);
+    if (down)     draw::capsuleTrack (g, b, 6.0f, 0.9f);
+    else if (on)  draw::selectedCell (g, b, 6.0f, Theme::blue, 1.0f);
+    else          draw::keySlab (g, b, 6.0f, highlighted ? 0.6f : 0.0f, 0.8f);
 }
 
 void AntiMatrLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button, bool highlighted, bool down)
@@ -172,14 +177,16 @@ void AntiMatrLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
     juce::ignoreUnused (down);
     auto b = button.getLocalBounds().toFloat();
     auto box = b.removeFromLeft (b.getHeight()).reduced (4.0f);
-    g.setColour (Theme::panelInset);
-    g.fillRoundedRectangle (box, 3.0f);
-    g.setColour (highlighted ? Theme::textSecondary : Theme::border);
-    g.drawRoundedRectangle (box, 3.0f, 1.0f);
+    draw::capsuleTrack (g, box, 3.0f, 1.0f);
+    if (highlighted)
+    {
+        g.setColour (Theme::blue.withAlpha (0.35f));
+        g.drawRoundedRectangle (box, 3.0f, 1.0f);
+    }
     if (button.getToggleState())
     {
-        draw::glowRoundedRect (g, box.reduced (3.0f), 2.0f, Theme::cyan, 5.0f, 0.6f);
-        g.setColour (Theme::cyan);
+        draw::glowRoundedRect (g, box.reduced (3.0f), 2.0f, Theme::blue, 5.0f, 0.6f);
+        g.setColour (Theme::blue);
         g.fillRoundedRectangle (box.reduced (3.0f), 2.0f);
     }
     g.setColour (Theme::textPrimary);
@@ -190,10 +197,12 @@ void AntiMatrLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
 void AntiMatrLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool, int, int, int, int, juce::ComboBox& box)
 {
     auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
-    g.setColour (Theme::panelInset);
-    g.fillRoundedRectangle (b, 5.0f);
-    g.setColour (box.hasKeyboardFocus (true) ? Theme::blue.withAlpha (0.5f) : Theme::border);
-    g.drawRoundedRectangle (b, 5.0f, 1.0f);
+    draw::capsuleTrack (g, b, 5.0f, 1.0f);
+    if (box.hasKeyboardFocus (true))
+    {
+        g.setColour (Theme::blue.withAlpha (0.5f));
+        g.drawRoundedRectangle (b, 5.0f, 1.0f);
+    }
     auto arrow = b.removeFromRight ((float) height).reduced ((float) height * 0.32f);
     juce::Path p; p.startNewSubPath (arrow.getX(), arrow.getY() + arrow.getHeight() * 0.35f); p.lineTo (arrow.getCentreX(), arrow.getBottom() - arrow.getHeight() * 0.35f); p.lineTo (arrow.getRight(), arrow.getY() + arrow.getHeight() * 0.35f);
     g.setColour (Theme::textSecondary);

@@ -111,7 +111,9 @@ public:
         const float alpha = dimmed ? 0.4f : 1.0f;
         const float lit = (isMouseOverOrDragging() ? 1.0f : 0.0f);
 
-        draw::insetSurface (g, track, corner);
+        // A depth slider is a control, not a display: a light capsule cut into the
+        // row, with the destination's colour filling it (SPEC section 3).
+        draw::capsuleTrack (g, track, corner, 1.0f);
 
         const float centre = track.getCentreX();
         const float half = track.getWidth() * 0.5f - 1.0f;
@@ -123,7 +125,7 @@ public:
         {
             const auto bar = juce::Rectangle<float> (juce::jmin (centre, x), track.getY() + 1.0f,
                                                      std::abs (x - centre), track.getHeight() - 2.0f);
-            g.setColour (tint.withAlpha (0.34f * alpha + 0.14f * lit));
+            g.setColour (tint.withAlpha (0.55f * alpha + 0.16f * lit));
             g.fillRoundedRectangle (bar, corner - 1.0f);
             g.setColour (tint.withAlpha (0.85f * alpha));
             g.fillRoundedRectangle (bar.withWidth (juce::jmax (1.5f, bar.getWidth())).removeFromBottom (juce::jmax (1.5f, track.getHeight() * 0.22f)), 1.0f);
@@ -145,7 +147,7 @@ public:
         // Zero tick and value handle.
         g.setColour (Theme::textDim.withAlpha (0.75f * alpha));
         g.fillRect (centre - 0.5f, track.getY() - 1.0f, 1.0f, track.getHeight() + 2.0f);
-        g.setColour (juce::Colours::white.withAlpha ((0.7f + 0.3f * lit) * alpha));
+        g.setColour (Theme::textPrimary.withAlpha ((0.75f + 0.25f * lit) * alpha));
         g.fillRoundedRectangle (x - 1.25f, track.getY() - 1.5f, 2.5f, track.getHeight() + 3.0f, 1.25f);
 
         g.setColour (tint.withAlpha ((0.18f + 0.3f * lit) * alpha));

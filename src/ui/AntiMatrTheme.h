@@ -8,9 +8,10 @@ namespace am::ui
 /**
     ANTI-MATR visual system: colours, typography and reference metrics.
 
-    Dark near-black background, graphite panels, subtle glass, thin borders,
-    large negative space. Luminous accents communicate energy, selection,
-    modulation, focus and activity — never decoration for its own sake.
+    A pale pearl chassis carrying panels of frosted white glass, near-black
+    recessed displays, thin borders and large negative space. Luminous accents
+    communicate energy, selection, modulation, focus and activity — never
+    decoration for its own sake.
 
     Typography (embedded OFL typefaces, see assets/fonts):
       Michroma        — wordmark and titles (wide geometric display face)
@@ -29,11 +30,11 @@ struct Theme
     // shadow a panel casts and from a hairline of white along its top edge. So
     // `panelTop` sits *above* white and `panel` just below it, the difference is
     // small, and the shadow does the work.
-    static inline const juce::Colour background    { 0xffd8d9dd };   // chassis, cool pearl
-    static inline const juce::Colour backgroundTop { 0xffeceef1 };   // lighter toward the top
-    static inline const juce::Colour panel         { 0xffe9ebee };   // bottom of a frosted slab
-    static inline const juce::Colour panelTop      { 0xfffbfcfd };   // top of a frosted slab (lit)
-    static inline const juce::Colour panelInset    { 0xffc6c9cf };   // recessed screens
+    static inline const juce::Colour background    { 0xffd3d5da };   // chassis, cool pearl
+    static inline const juce::Colour backgroundTop { 0xffe6e8ec };   // lighter toward the top
+    static inline const juce::Colour panel         { 0xffeef0f3 };   // bottom of a frosted slab
+    static inline const juce::Colour panelTop      { 0xfffcfdfe };   // top of a frosted slab (lit)
+    static inline const juce::Colour panelInset    { 0xffc9ccd3 };   // a light capsule cut into a panel
     static inline const juce::Colour panelEdge     { 0x2a2c3242 };   // the shadow a slab sits in
     static inline const juce::Colour border        { 0x1a2a3044 };   // hairline, now dark on light
     static inline const juce::Colour borderSoft    { 0x0d2a3044 };
@@ -44,11 +45,20 @@ struct Theme
     static inline const juce::Colour metalDark     { 0xff6c727d };   // its shadowed face
     static inline const juce::Colour well          { 0xff14161c };   // behind the glass: the object's ground
 
-    // Text — dark on light now, so the weights invert.
-    static inline const juce::Colour textPrimary   { 0xff1b1e26 };
-    static inline const juce::Colour textSecondary { 0xff5c6270 };
-    static inline const juce::Colour textDim       { 0xff8d939f };
-    static inline const juce::Colour textValue     { 0xff2c313c };
+    // The displays. These are the one dark element on the page, and the contrast
+    // between a pale chassis and a near-black screen is the signature of the
+    // design — so they are genuinely black, not a dark grey.
+    static inline const juce::Colour screen        { 0xff0e1016 };   // the face of a recessed display
+    static inline const juce::Colour screenDeep    { 0xff05060a };   // under its top lip
+    static inline const juce::Colour screenInk     { 0xffe8ecf4 };   // luminous line art on one
+
+    // Text — dark on light now, so the weights invert. Every one of these is
+    // checked against the pale chassis, not only against a white panel: a caption
+    // that reads on the panel can vanish on the navigation rail.
+    static inline const juce::Colour textPrimary   { 0xff15181f };
+    static inline const juce::Colour textSecondary { 0xff555b69 };
+    static inline const juce::Colour textDim       { 0xff787e8d };
+    static inline const juce::Colour textValue     { 0xff23262f };
 
     // Luminous accents — one pair per section (SPEC section 9). Deepened, because a
     // colour that glowed against charcoal washes out against pearl.

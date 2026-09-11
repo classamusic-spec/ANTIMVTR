@@ -217,7 +217,7 @@ public:
         const float d = liquid::clean (s.density, 0.0f, 1.0f, 0.5f);
         const float life = liquid::clean (a.life, 0.0f, 1.0f, 0.0f);
         const float frac = liquid::clean (a.fracture, 0.0f, 2.0f, 0.0f);
-        const int n = 1300 + (int) (d * 2500.0f) + (int) (life * 700.0f) + (int) (frac * 400.0f);
+        const int n = 700 + (int) (d * 3200.0f) + (int) (life * 700.0f) + (int) (frac * 400.0f);
         const int top = cap < kMaxPoints ? cap : kMaxPoints;
         // Always a multiple of the slot count so every resonator keeps an equal swarm.
         const int clamped = n < 128 ? 128 : (n > top ? top : n);
@@ -314,12 +314,14 @@ public:
             // The swarm's own axis: its cluster's lobe, tilted by a fixed amount of
             // its own so nodes of one cluster form a neighbourhood rather than a spike,
             // then leaned toward the side its resonator is panned to.
-            Vec3 w = lobe[(size_t) sl.lobeIx] + slotTilt[(size_t) k] * 0.95f;
-            w.x += sl.pan * 0.55f;
+            // MAGNET pulls the resonators onto shared paths: their axes collapse onto
+            // their cluster's, so thirty-two separate orbits become a handful of rings.
+            Vec3 w = lobe[(size_t) sl.lobeIx] + slotTilt[(size_t) k] * (0.95f * (1.0f - magnet));
+            w.x += sl.pan * 0.55f * (1.0f - 0.7f * magnet);
             sl.w = normalised (w, lobe[(size_t) sl.lobeIx]);
             sl.u = normalised (cross (lobeSide[(size_t) sl.lobeIx], sl.w), lobeSide[(size_t) sl.lobeIx]);
             sl.v = normalised (cross (sl.w, sl.u), lobeSide[(size_t) sl.lobeIx]);
-            sl.band = liquid::clampf (1.0f - gather, 0.13f, 1.0f);
+            sl.band = liquid::clampf ((1.0f - gather) * (1.0f - 0.60f * magnet), 0.07f, 1.0f);
         }
 
         //---- per-cell: one for every sounding voice ----------------------------
@@ -328,20 +330,26 @@ public:
         //---- the volume -------------------------------------------------------
         // Shell thickness: Density fattens every band, Tension collapses them all
         // onto one surface.
-        const float thickness = (0.055f + 0.20f * density) * (1.0f - 0.80f * tension);
-        const float flowAmp   = (0.055f + 0.10f * density) * (1.0f - 0.55f * tension) * (1.0f + 1.1f * melt)
+        const float thickness = (0.055f + 0.22f * density) * (1.0f - 0.85f * tension) * (1.0f - 0.75f * magnet);
+        const float flowAmp   = (0.055f + 0.10f * density) * (1.0f - 0.60f * tension) * (1.0f + 1.1f * melt)
                                 * (0.35f + 0.65f * (1.0f - form));
         const float flowScale = 1.15f + 1.7f * density;
         const float lateral   = 0.26f + 0.10f * density;
-        const float roughness = surface * (0.045f + 0.055f * density);
-        const float jitter    = scatter * 0.22f;
+        const float roughness = surface * (0.10f + 0.10f * density);
+        const float jitter    = scatter * 0.55f;
         const float lattice   = crush > 0.04f ? (3.0f + 11.0f * (1.0f - crush)) : 0.0f;
         const float tearAmt   = tear * 0.34f;
         const float gravityPull = (gravity - 0.5f) * 2.0f;   // −1 in, +1 out
+        // TENSION draws every shell onto one skin: at the top of the control the
+        // resonators stop being separate orbits and become a single taut surface.
+        const float skin      = coreR + (shell - coreR) * 0.86f;
+        const float skinPull  = tension * tension * 0.80f;
+        // MAGNET quantises the radius exactly as it quantises frequency in the engine:
+        // the shells snap onto a coarse grid and the object goes concentric.
+        const float magnetGrid = 3.0f + 3.0f * liquid::hash01 (0x51EDu);
         const float bendAngle = a.flowTime * 0.31f;
         float bs = 0.0f, bc = 1.0f;
         S.sincos (bendAngle, bs, bc);
-        const float magnetGrid = 5.0f + 4.0f * liquid::hash01 (0x51EDu);
 
         // The vacuum is never black. Even with nothing playing, every point keeps a
         // low luminosity that shimmers on its own clock, so the volume still has a
@@ -357,12 +365,13 @@ public:
             //-- radius: the node's shell, spread by Density, squeezed by Tension
             float rad = sl.radius * (1.0f + q.radial * thickness);
             rad *= cellS;
+            if (skinPull > 0.005f) rad += (skin - rad) * skinPull;
             if (magnet > 0.02f)
             {
                 const float snapped = std::round (rad * magnetGrid) / magnetGrid;
-                rad += (snapped - rad) * magnet * 0.85f;
+                rad += (snapped - rad) * magnet * 0.96f;
             }
-            rad += gravityPull * -0.16f * rad;
+            rad -= gravityPull * 0.42f * rad;
             rad = liquid::clampf (rad, coreR * 0.55f, 1.55f);
 
             //-- direction: orbit about the swarm's own axis
@@ -393,31 +402,55 @@ public:
                 p += liquid::flow (noise, p, a.flowTime + (float) q.cell * 0.37f, flowScale) * flowAmp;
 
             //-- Surface roughens the path; Scatter throws it about
+            float rough = 0.0f;
             if (roughness > 0.0005f || jitter > 0.0005f)
             {
                 const float w1 = roughness + jitter;
-                p.x += S.sin (q.seed * 1.37f + a.time * 4.3f) * w1;
+                rough = S.sin (q.seed * 1.37f + a.time * 4.3f);
+                p.x += rough * w1;
                 p.y += S.sin (q.seed * 2.71f + a.time * 3.7f) * w1;
                 p.z += S.sin (q.seed * 4.93f + a.time * 5.1f) * w1;
+                // A rough surface scatters the light as well as the path: the shells
+                // break into glitter instead of staying evenly lit.
+                rough *= surface;
             }
 
             //-- Evolve deformations
             if (bend > 0.01f)
             {
-                const float lean = p.y * bend * 0.55f;
-                p.x += bc * lean;
-                p.z += bs * lean;
+                // A real bend: the volume is rotated about a slowly turning axis by an
+                // angle that grows with height, so the ball curls into a comma instead
+                // of merely leaning over.
+                const float ang = p.y * bend * 1.35f;
+                float sa = 0.0f, ca = 1.0f;
+                S.sincos (ang, sa, ca);
+                const float ax = p.x * bc + p.z * bs;      // along the bend axis
+                const float az = -p.x * bs + p.z * bc;
+                const float rx = ax * ca - p.y * sa;
+                const float ry = ax * sa + p.y * ca;
+                p.x = rx * bc - az * bs;
+                p.z = rx * bs + az * bc;
+                p.y = ry;
             }
             if (melt > 0.01f)
             {
                 // The lower half runs and pools: sag grows with how far down it already is.
                 const float low = liquid::clampf (0.5f - p.y * 0.5f, 0.0f, 1.0f);
-                p.y -= melt * (0.10f + 0.42f * low * low);
-                p.x *= 1.0f + melt * 0.12f * low;
-                p.z *= 1.0f + melt * 0.12f * low;
+                p.y -= melt * (0.16f + 0.80f * low * low);
+                p.y *= 1.0f - melt * 0.22f;
+                p.x *= 1.0f + melt * (0.10f + 0.34f * low);
+                p.z *= 1.0f + melt * (0.10f + 0.34f * low);
             }
             if (tearAmt > 0.005f)
-                p.z += q.hash < 0.5f ? -tearAmt : tearAmt;
+            {
+                // Torn across the screen, not into it: a split you cannot see is not a
+                // split. The two halves also counter-rotate as they pull apart.
+                // A gap, not a shift: everything is pushed clear of the tear plane, so
+                // the volume comes apart into two masses with dark between them.
+                const float side = q.hash < 0.5f ? -1.0f : 1.0f;
+                p.x = side * (std::abs (p.x) * (1.0f - 0.35f * tear) + tearAmt);
+                p.y += side * tearAmt * 0.28f;
+            }
             if (lattice > 0.0f)
             {
                 p.x = std::round (p.x * lattice) / lattice;
@@ -469,7 +502,8 @@ public:
                            + nodeLight * (0.55f + 0.45f * tw) * (0.30f + 0.70f * a.life)
                            + flash * (0.9f + 0.6f * (float) sl.active);
             bright *= 1.0f + 0.55f * a.level * (0.3f + 0.7f * (float) sl.active);
-            bright += strike * 0.30f * q.hash;
+            bright *= 1.0f + 0.85f * rough;
+            bright += strike * 0.16f * q.hash;
 
             q.out.p      = q.live;
             q.out.bright = liquid::clampf (bright, 0.0f, 3.0f);
@@ -478,9 +512,12 @@ public:
             q.out.size   = q.sizeMul * (0.0082f + 0.0030f * (1.0f - a.life)
                                         + 0.0058f * nodeLight + 0.0040f * flash
                                         + 0.0026f * a.level) * (1.0f - 0.24f * tension);
-            q.out.hue    = sl.hue + a.hueDrift + 0.06f * q.hash * (1.0f - tension);
+            // FREEZE crystallises the volume: the light goes cold and hard, so the
+            // seizure reads in a still frame and not only in the stopped motion.
+            q.out.hue    = sl.hue + a.hueDrift + 0.06f * q.hash * (1.0f - tension)
+                           + a.freezeMix * (0.02f - (sl.hue + a.hueDrift));
             q.out.white  = liquid::clampf (0.14f * nodeLight + 0.55f * flash + 0.35f * shatter
-                                           + 0.20f * a.level * nodeLight, 0.0f, 0.92f);
+                                           + 0.20f * a.level * nodeLight + 0.30f * a.freezeMix, 0.0f, 0.92f);
             q.out.vel    = q.live - q.prev;
         }
         primed = true;
@@ -563,7 +600,7 @@ private:
             if (! first)
             {
                 const float vel = liquid::clean (s.noteVelocity, 0.0f, 1.0f, 0.7f);
-                pushShock (0.35f + 0.85f * vel, 1.9f + 1.1f * vel, 5.4f - 1.4f * vel);
+                pushShock (0.30f + 0.75f * vel, 1.7f + 1.0f * vel, 10.0f - 2.5f * vel);
                 strike = liquid::clampf (strike + 0.45f + 0.55f * vel, 0.0f, 1.6f);
             }
         }

@@ -354,7 +354,7 @@ inline void turnedCap (juce::Graphics& g, juce::Rectangle<float> circle, float b
     // fine at 1600 x 1000 and does not turn to moire at 1100 x 690.
     // Wedges are kept wide enough at the rim to stay wedges: any narrower and the
     // alternation turns into moire long before it reads as a brush.
-    const int n = juce::jlimit (28, 160, (int) std::lround (r * 2.1f));
+    const int n = juce::jlimit (24, 104, (int) std::lround (r * 1.45f));
     const float step = juce::MathConstants<float>::twoPi / (float) n;
     const float reach = r * 1.06f;
     const auto wedgeBounds = circle.withSizeKeepingCentre (reach * 2.0f, reach * 2.0f);
@@ -369,8 +369,9 @@ inline void turnedCap (juce::Graphics& g, juce::Rectangle<float> circle, float b
         const float lobe = 0.5f + 0.5f * std::cos (2.0f * delta);
         const float shaped = lobe * lobe * lobe * (4.0f - 3.0f * lobe);   // narrower, brighter lobes
         // Smoothed across neighbours: white noise per wedge speckles, a brush drifts.
-        const float grain = 0.5f * detail::wedgeNoise (i)
-                          + 0.25f * (detail::wedgeNoise (i - 1) + detail::wedgeNoise (i + 1));
+        const float grain = 0.40f * detail::wedgeNoise (i)
+                          + 0.22f * (detail::wedgeNoise (i - 1) + detail::wedgeNoise (i + 1))
+                          + 0.08f * (detail::wedgeNoise (i - 2) + detail::wedgeNoise (i + 2));
         const float b = juce::jlimit (0.0f, 1.0f,
                                       0.10f + (0.80f + 0.12f * lit) * shaped
                                             + 0.145f * grain * (0.32f + 0.68f * shaped));
@@ -385,9 +386,10 @@ inline void turnedCap (juce::Graphics& g, juce::Rectangle<float> circle, float b
     // out there; otherwise the wedges pile up into a starburst that is all detail
     // and no material.
     {
-        juce::ColourGradient hub (Theme::metal.withAlpha (0.82f), c.x, c.y,
-                                  Theme::metal.withAlpha (0.0f), c.x + r * 0.50f, c.y, true);
-        hub.addColour (0.45, Theme::metal.withAlpha (0.36f));
+        juce::ColourGradient hub (Theme::metal.withAlpha (0.95f), c.x, c.y,
+                                  Theme::metal.withAlpha (0.0f), c.x + r * 0.72f, c.y, true);
+        hub.addColour (0.24, Theme::metal.withAlpha (0.62f));
+        hub.addColour (0.55, Theme::metal.withAlpha (0.22f));
         g.setGradientFill (hub);
         g.fillEllipse (circle);
     }
@@ -612,8 +614,9 @@ inline void sourceBadge (juce::Graphics& g, const Geometry& geo, int sources, ju
     const float r = juce::jmax (5.0f, geo.modStroke * 3.2f);
     if (geo.diameter < r * 6.0f) return;
 
-    // Upper right, clear of the sweep's own opening at the bottom.
-    const auto c = geo.polar (geo.modRadius, juce::MathConstants<float>::pi * 0.62f);
+    // In the sweep's own opening at the bottom, where it can never cover a dot or a
+    // stretch of the range it is counting.
+    const auto c = geo.polar (geo.modRadius, juce::MathConstants<float>::pi * 0.845f);
     const auto badge = juce::Rectangle<float> (c.x - r, c.y - r, r * 2.0f, r * 2.0f);
 
     softLight (g, c, r * 2.4f, juce::Colours::black, 0.16f);

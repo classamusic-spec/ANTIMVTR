@@ -25,6 +25,13 @@ enum class Style
 };
 
 /**
+    The sweep every knob turns through: 7 o'clock to 5 o'clock, as the reference
+    shows, which leaves the bottom of the ring open for the source-count badge.
+*/
+inline constexpr float kStartAngle = juce::MathConstants<float>::pi * 1.25f;
+inline constexpr float kEndAngle   = juce::MathConstants<float>::pi * 2.75f;
+
+/**
     The smallest a knob can be and still carry readable dots and a cap.
 
     Deliberately clear of the sizes the instrument actually lays out (the small
@@ -76,19 +83,21 @@ inline Radii radii (float diameter, Style style) noexcept
     if (diameter <= 0.0f) return r;
 
     r.modStroke = juce::jmax (1.0f, diameter * 0.012f);
-    r.modRadius = diameter * 0.5f - r.modStroke * 0.8f;
+    r.modRadius = juce::jmax (0.0f, diameter * 0.5f - r.modStroke * 0.8f);
     r.dotRadius = juce::jmax (1.1f, diameter * 0.0265f);
-    r.ledRadius = r.modRadius - r.modStroke * 1.6f - r.dotRadius * 1.35f;
+    r.ledRadius = juce::jmax (0.0f, r.modRadius - r.modStroke * 1.6f - r.dotRadius * 1.35f);
 
+    // Clamped rather than floored: a knob far too small to wear this dress collapses
+    // to nothing instead of growing a body larger than the ring around it.
     const float gap = juce::jmax (1.8f, diameter * 0.042f);
-    const float capped = juce::jmax (4.0f, r.ledRadius - r.dotRadius - gap);
+    const float capped = juce::jlimit (0.0f, r.ledRadius, r.ledRadius - r.dotRadius - gap);
 
     if (style == Style::Plain)
     {
         // No ring to clear, so the dome takes the room the dots would have used.
         // The knob still fills the footprint it was given — it is the body that is
         // larger, which is exactly what makes the plain knob read as the quiet one.
-        r.bodyRadius = r.ledRadius + r.dotRadius * 0.30f;
+        r.bodyRadius = juce::jmin (r.modRadius, r.ledRadius + r.dotRadius * 0.30f);
     }
     else
     {

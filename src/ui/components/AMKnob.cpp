@@ -9,7 +9,7 @@ AMKnob::AMKnob (const juce::String& labelText, juce::Colour accentColour)
 {
     setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
-    setRotaryParameters (juce::MathConstants<float>::pi * 1.25f, juce::MathConstants<float>::pi * 2.75f, true);
+    setRotaryParameters (knobart::kStartAngle, knobart::kEndAngle, true);
     setMouseDragSensitivity (240);
     setVelocityBasedMode (false);
     setDoubleClickReturnValue (true, 0.0);
@@ -242,11 +242,14 @@ void AMKnob::paint (juce::Graphics& g)
             knobart::unlitDot (g, c, geo.dotRadius);
             if (i < lo || i > hi || ringFade <= 0.01f) continue;
 
-            // The run burns hottest at its head, so the eye lands on the value.
+            // The run burns hottest at its head, so the eye lands on the value; and the
+            // dot that has just lit surges — brighter, fractionally larger, spilling
+            // further — then settles back into the run.
             const float toHead = 1.0f - juce::jmin (1.0f, (float) std::abs (i - head) / span);
-            float heat = 0.78f + 0.30f * toHead * toHead + 0.24f * lit + 0.18f * activity;
-            if (i == flareDot) heat += 0.70f * flareAmount;
-            knobart::litDot (g, c, geo.dotRadius, Theme::amber, heat, bloom, ringFade);
+            const float surge = (i == flareDot) ? flareAmount : 0.0f;
+            const float heat = 0.78f + 0.30f * toHead * toHead + 0.24f * lit + 0.18f * activity + 0.85f * surge;
+            knobart::litDot (g, c, geo.dotRadius * (1.0f + 0.20f * surge), Theme::amber,
+                             heat, bloom + 0.80f * surge, ringFade);
         }
     }
 
@@ -254,9 +257,10 @@ void AMKnob::paint (juce::Graphics& g)
     //    outside the body. It is the one place a section accent touches a knob.
     if (held > 0.01f)
     {
-        const float fr = geo.bodyRadius() + juce::jmax (1.6f, d * 0.022f);
-        g.setColour (accent.withAlpha (0.42f * held));
-        g.drawEllipse (geo.centre.x - fr, geo.centre.y - fr, fr * 2.0f, fr * 2.0f, juce::jmax (1.0f, d * 0.012f));
+        const float fr = geo.bodyRadius() + juce::jmax (1.4f, d * 0.018f);
+        knobart::softLight (g, geo.centre, fr * 1.16f, accent, 0.10f * held);
+        g.setColour (accent.withAlpha (0.36f * held));
+        g.drawEllipse (geo.centre.x - fr, geo.centre.y - fr, fr * 2.0f, fr * 2.0f, juce::jmax (1.0f, d * 0.011f));
     }
 
     // 3. The body, and the cap inset into it.

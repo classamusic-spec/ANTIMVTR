@@ -1,6 +1,7 @@
 #include <juce_core/juce_core.h>
 
 #include "ui/UILayout.h"
+#include "ui/components/AMKnobGeometry.h"
 
 using namespace am::ui::layout;
 
@@ -251,6 +252,109 @@ public:
             const auto r = knobRadii (d, false);
             expect (r.orbit >= 0.0f && r.arc >= 0.0f && r.body >= 0.0f, "negative geometry at d=" + juce::String (d));
             expect (r.arc <= r.orbit && r.body <= r.arc, "geometry inverted at d=" + juce::String (d));
+        }
+    }
+};
+
+//==============================================================================
+/**
+    The knob bodies (SPEC section 2): the LED ring, the moulded body and the cap
+    have to stay concentric, separated and inside the footprint at every size the
+    instrument lays out, or the three styles stop being one piece of hardware.
+*/
+class KnobBodyGeometryTests : public juce::UnitTest
+{
+public:
+    KnobBodyGeometryTests() : juce::UnitTest ("Knob body geometry", "uilayout") {}
+
+    using Style = am::ui::knobart::Style;
+
+    void runTest() override
+    {
+        using namespace am::ui::knobart;
+        const float sweep = kEndAngle - kStartAngle;
+
+        beginTest ("Nothing leaves the footprint and nothing touches anything else");
+        for (auto style : { Style::CappedLit, Style::CappedDark, Style::Plain })
+        {
+            for (float d : { 46.0f, 52.0f, 64.0f, 77.0f, 102.0f, 118.0f, 160.0f, 200.0f })
+            {
+                const auto r = radii (d, style);
+                const juce::String at = " at d=" + juce::String (d) + " style=" + juce::String ((int) style);
+
+                expect (r.modRadius + r.modStroke * 0.5f <= d * 0.5f + 0.01f, "the orbit leaves the footprint" + at);
+                expect (r.bodyRadius > 0.0f, "the body vanished" + at);
+                expect (r.bodyRadius < r.modRadius, "the body reaches the orbit" + at);
+                expect (r.orbitGap() > 0.5f, "only " + juce::String (r.orbitGap(), 2) + "px between ring and orbit" + at);
+
+                if (style == Style::Plain)
+                {
+                    expect (r.dots == 0 && r.capRadius == 0.0f, "a plain knob grew a ring or a cap" + at);
+                    continue;
+                }
+
+                expect (r.capRadius > 0.0f && r.capRadius < r.bodyRadius, "the cap is not inset in the body" + at);
+                // The reference's moulded ring: a wide band of body around the metal.
+                expect (r.capRadius < r.bodyRadius * 0.85f, "the cap swallowed the moulding" + at);
+                expect (r.bodyGap() > 0.5f, "only " + juce::String (r.bodyGap(), 2) + "px between the dots and the body" + at);
+
+                // Dots have to stay dots: they never merge into a band.
+                expect ((r.dots % 2) == 1, "an even dot count has no centre" + at);
+                const float spacing = r.ledRadius * sweep / (float) (r.dots - 1);
+                expect (spacing > r.dotRadius * 2.2f,
+                        "dots " + juce::String (spacing, 2) + "px apart are " + juce::String (r.dotRadius * 2.0f, 2) + "px wide" + at);
+            }
+        }
+
+        beginTest ("A plain knob is the larger, quieter body");
+        for (float d : { 46.0f, 80.0f, 140.0f })
+            expect (radii (d, Style::Plain).bodyRadius > radii (d, Style::CappedDark).bodyRadius * 1.15f,
+                    "the plain dome is not visibly larger at d=" + juce::String (d));
+
+        beginTest ("Both capped styles are the same piece of hardware");
+        for (float d : { 46.0f, 92.0f, 200.0f })
+        {
+            const auto lit = radii (d, Style::CappedLit), dark = radii (d, Style::CappedDark);
+            expectEquals (lit.bodyRadius, dark.bodyRadius, "lit and dark rings wear different bodies");
+            expectEquals (lit.capRadius, dark.capRadius, "lit and dark rings wear different caps");
+            expectEquals (lit.dots, dark.dots, "lit and dark rings hold different numbers of dots");
+        }
+
+        beginTest ("Everything scales with the knob");
+        {
+            const auto small = radii (60.0f, Style::CappedLit);
+            const auto large = radii (120.0f, Style::CappedLit);
+            expect (large.modRadius > small.modRadius * 1.8f, "the orbit did not scale");
+            expect (large.bodyRadius > small.bodyRadius * 1.8f, "the body did not scale");
+            expect (large.capRadius > small.capRadius * 1.8f, "the cap did not scale");
+            expect (large.dotRadius > small.dotRadius * 1.5f, "the dots did not scale");
+            expect (large.dots >= small.dots, "a bigger knob lost dots");
+        }
+
+        beginTest ("Dot counts are odd, bounded and grow with the knob");
+        {
+            int previous = 0;
+            for (float d : { 24.0f, 46.0f, 60.0f, 90.0f, 130.0f, 200.0f, 400.0f })
+            {
+                const int n = dotCount (d);
+                expect ((n % 2) == 1, "even dot count at d=" + juce::String (d));
+                expect (n >= 9 && n <= 29, "dot count out of bounds at d=" + juce::String (d));
+                expect (n >= previous, "dot count fell at d=" + juce::String (d));
+                previous = n;
+            }
+        }
+
+        beginTest ("Tiny and zero knobs stay finite");
+        for (auto style : { Style::CappedLit, Style::Plain })
+        {
+            for (float d : { 0.0f, -10.0f, 1.0f, 4.0f, 12.0f, 30.0f })
+            {
+                const auto r = radii (d, style);
+                const juce::String at = " at d=" + juce::String (d);
+                expect (r.modStroke > 0.0f && r.modRadius >= 0.0f && r.ledRadius >= 0.0f
+                        && r.bodyRadius >= 0.0f && r.capRadius >= 0.0f, "negative geometry" + at);
+                expect (r.bodyRadius <= r.modRadius + 0.01f, "geometry inverted" + at);
+            }
         }
     }
 };
@@ -598,6 +702,7 @@ static ModRowLayoutTests modRowLayoutTests;
 static ModScopeGridTests modScopeGridTests;
 static GridColumnTests gridColumnTests;
 static KnobGeometryTests knobGeometryTests;
+static KnobBodyGeometryTests knobBodyGeometryTests;
 static PanelHardwareTests panelHardwareTests;
 static SliderRowTests sliderRowTests;
 static KnobFootprintTests knobFootprintTests;

@@ -261,6 +261,10 @@ namespace
                               { { Param::impactMode },
                                 { Param::impactRandom, Param::impactRate } },
                               {} };
+            case 4:  return { { Param::gesturePressure, Param::gestureSpeed, Param::gestureRoughness,
+                                Param::gesturePosition, Param::gestureMotion, Param::gestureBandwidth },
+                              { { Param::gestureMode, Param::gestureLevel } },
+                              {} };
             default: return { { Param::wavePosition, Param::waveScan, Param::waveMorph,
                                 Param::waveDetune, Param::waveSpread, Param::waveLevel },
                               { { Param::waveTable, Param::waveUnison },
@@ -298,7 +302,7 @@ SourcePage::SourcePage (AntiMatrProcessor& p)
     sidebarPanel.addAndMakeVisible (tabs);
     sidebar.setTooltip ("Source: what creates the energy Matter is struck with.");
     tabs.setTooltip ("MAIN: the six controls that shape this source. ADVANCED: everything else it can do.");
-    tabs.onChange = [this] (int i) { advanced = i == 1; applyTab(); };
+    tabs.onChange = [this] (int i) { advanced = i == 1; applyTab(); resized(); };
 
     sourceModeControl = std::make_unique<BoundControl> (processor.parameters(), Param::sourceMode, Theme::blue, "Mode");
     sidebarPanel.addAndMakeVisible (sourceModeControl->component());
@@ -330,12 +334,11 @@ void SourcePage::rebuild (int source)
     samplePanel.reset();
     gesturePanel.reset();
 
-    const bool dedicated = currentSource == 3 || currentSource == 4;
+    // SAMPLE brings its own display — the waveform with the playback handles — so it
+    // takes the middle and the right together. Every other source uses the mesh.
+    const bool dedicated = currentSource == 3;
     if (currentSource == 3) { samplePanel = std::make_unique<SamplePanel> (processor); addAndMakeVisible (*samplePanel); }
-    if (currentSource == 4) { gesturePanel = std::make_unique<GesturePanel> (processor); addAndMakeVisible (*gesturePanel); }
-
-    mesh.setVisible (! dedicated);
-    cluster->setVisible (! dedicated);
+    if (currentSource == 4) { gesturePanel = std::make_unique<GesturePanel> (processor); addChildComponent (*gesturePanel); }
 
     // The table selector under the screen names whatever the selected source calls its shapes.
     tableSelector.reset();
@@ -368,13 +371,15 @@ void SourcePage::rebuild (int source)
     cluster->setTitle (names[currentSource]);
     cluster->setSubtitle (taglines[currentSource]);
     cluster->setAccent (sourceAccent (currentSource));
-    mesh.setAccent (sourceAccent (currentSource));
-    mesh.setTitle (juce::String (names[currentSource]) + "  ·  " + juce::String (taglines[currentSource]));
+    mesh.setAccent (Theme::blue);
+    mesh.setTitle (juce::String (names[currentSource]) + "  /  " + juce::String (taglines[currentSource]));
     sidebar.setAccent (sourceAccent (currentSource));
 
-    // ADVANCED only exists where a source has more than its six shaping controls.
-    tabs.setVisible (! advancedParams.empty() && ! dedicated);
-    if (advancedParams.empty()) { advanced = false; tabs.setSelected (0, juce::dontSendNotification); }
+    // ADVANCED only exists where a source has more than its six shaping controls, or
+    // (GESTURE) a panel of its own behind them.
+    const bool hasAdvanced = ! advancedParams.empty() || gesturePanel != nullptr;
+    tabs.setVisible (hasAdvanced && ! dedicated);
+    if (! hasAdvanced) { advanced = false; tabs.setSelected (0, juce::dontSendNotification); }
     applyTab();
     resized();
 }
@@ -382,6 +387,11 @@ void SourcePage::rebuild (int source)
 void SourcePage::applyTab()
 {
     if (cluster == nullptr) return;
+    const bool wide = samplePanel != nullptr || (gesturePanel != nullptr && advanced);
+    if (gesturePanel != nullptr) gesturePanel->setVisible (advanced);
+    mesh.setVisible (! wide);
+    cluster->setVisible (! wide);
+    if (tableSelector != nullptr) tableSelector->setVisible (! wide);
     static const char* prefixes[] = { "Wave", "Dust", "Impact", "Sample", "Gesture" };
     const juce::String prefix (prefixes[juce::jlimit (0, 4, currentSource)]);
     if (advanced && ! advancedParams.empty())
@@ -412,14 +422,10 @@ void SourcePage::resized()
     layoutSidebar (sidebarPanel, sidebar,
                    { &tabs, sourceModeControl != nullptr ? &sourceModeControl->component() : nullptr }, gap);
 
-    // SAMPLE and GESTURE bring their own display, so they take the middle and the right together.
-    if (samplePanel != nullptr || gesturePanel != nullptr)
-    {
-        auto wide = cols.centre.getUnion (cols.controls);
-        if (samplePanel != nullptr) samplePanel->setBounds (wide);
-        if (gesturePanel != nullptr) gesturePanel->setBounds (wide);
-        return;
-    }
+    // A source with a panel of its own takes the middle and the right together.
+    const auto wide = cols.centre.getUnion (cols.controls);
+    if (samplePanel != nullptr) { samplePanel->setBounds (wide); return; }
+    if (gesturePanel != nullptr && advanced) { gesturePanel->setBounds (wide); return; }
 
     auto centre = cols.centre;
     const int selectorH = juce::jlimit (30, 46, centre.getHeight() / 15);
@@ -489,7 +495,7 @@ ShapePage::ShapePage (AntiMatrProcessor& p)
     cluster = std::make_unique<ParamPanel> (processor, "Matter", "Turn matter into sound", Theme::cyan,
                                             std::vector<Param> {}, 3, "Shape");
     addAndMakeVisible (*cluster);
-    lattice.setTitle ("Matter · node lattice");
+    lattice.setTitle ("Matter / node lattice");
     showTab (0);
     startTimerHz (24);
 }
@@ -563,7 +569,7 @@ void ShapePage::timerCallback()
                        paramChoice (values, Param::shapeTopology), (int) paramValue (values, Param::shapeSeed));
     lattice.setEnergy (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
     lattice.setCaption (paramChoices (Param::shapeMaterialA)[juce::jlimit (0, 8, paramChoice (values, Param::shapeMaterialA))]
-                        + juce::String ("  /  ")
+                        + juce::String ("   /   ")
                         + paramChoices (Param::shapeMaterialB)[juce::jlimit (0, 8, paramChoice (values, Param::shapeMaterialB))]);
     lattice.advance (1.0f / 24.0f);
     sidebarPanel.setActivity (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
@@ -596,7 +602,7 @@ EvolvePage::EvolvePage (AntiMatrProcessor& p)
     sidebarPanel.addAndMakeVisible (sidebar);
     sidebar.setTooltip ("MAIN: bend, melt, tear and magnet. ADVANCED: the deformation detail. MOTION: how fast it all moves.");
     sidebar.onChange = [this] (int i) { showTab (i); };
-    ribbon.setTitle ("Evolve · deformation");
+    ribbon.setTitle ("Evolve / deformation");
 
     // The four operators: a knob each, the selected one also driven by the AMOUNT slider.
     const Param ops[] = { Param::evolveBend, Param::evolveMelt, Param::evolveTear, Param::evolveMagnet };
@@ -665,7 +671,7 @@ void EvolvePage::bindAmount (int op)
     amountAttachment.reset();
     amountAttachment = std::make_unique<SliderAttachment> (processor.parameters(), ParameterRegistry::get (param).id, amount);
     amount.setDoubleClickReturnValue (true, ParameterRegistry::get (param).defaultValue);
-    amount.setLabel (juce::String (ParameterRegistry::get (param).name) + " amount");
+    amount.setLabel ("Amount");
     amount.setTooltip (paramTooltip (param));
 }
 
@@ -675,7 +681,7 @@ void EvolvePage::showTab (int index)
     sidebar.setSelected (current, juce::dontSendNotification);
     operatorPanel.setVisible (current == 0);
     magnetPanel.setVisible (current == 1);
-    fieldPanel.setVisible (current == 2);
+    fieldPanel.setVisible (current != 1);
     cluster->setVisible (current != 0);
     if (current == 1)
     {
@@ -699,27 +705,43 @@ void EvolvePage::resized()
 {
     const int pad = pagePad (*this), gap = pad;
     auto area = getLocalBounds().reduced (pad, pad / 2);
-    const auto cols = pageColumns (area, gap);
+    const auto cols = pageColumns (area, gap, 0.155f, 0.325f);
 
     sidebarPanel.setBounds (cols.sidebar);
     layoutSidebar (sidebarPanel, sidebar, {}, gap);
     ribbon.setBounds (cols.centre);
 
     auto right = cols.controls;
+    auto layoutField = [this] (juce::Rectangle<int> bounds)
+    {
+        fieldPanel.setBounds (bounds);
+        // The pad centres a square plot inside whatever it is given, so it is given a
+        // rectangle only as wide as that square plus its axis captions.
+        auto c = fieldPanel.contentBounds();
+        const int d = juce::jmin (c.getWidth(), c.getHeight());
+        field.setBounds (c.withSizeKeepingCentre (juce::jmin (c.getWidth(), d + d / 6), d));
+    };
     if (current == 0)
     {
-        operatorPanel.setBounds (right);
+        operatorPanel.setBounds (right.removeFromTop (juce::roundToInt ((float) right.getHeight() * 0.56f)));
+        right.removeFromTop (gap);
+        layoutField (right);
         auto c = operatorPanel.contentBounds();
-        // Two sliders under the operators; they take the height a slider needs, no more.
-        const int sliderH = juce::jlimit (26, 42, c.getHeight() / 8);
-        auto sliders = c.removeFromBottom (sliderH * 2 + gap);
-        c.removeFromBottom (gap);
+        // A row of four knobs and the two sliders under them, kept together as one
+        // block in the middle of the panel: the slack becomes an even border
+        // instead of a hole under the operators.
+        const int cellW = c.getWidth() / 4;
+        const int knobH = juce::jmin (c.getHeight() / 2, juce::roundToInt ((float) cellW * 1.30f));
+        const int sliderH = juce::jlimit (26, 44, c.getHeight() / 9);
+        const int blockH = knobH + gap * 2 + sliderH * 2 + gap;
+        c = c.withSizeKeepingCentre (c.getWidth(), juce::jmin (c.getHeight(), blockH));
         std::vector<juce::Component*> knobs;
         for (auto& k : operatorKnobs) knobs.push_back (&k->component());
-        layoutGrid (c, knobs, 4, gap / 3, gap / 2);
-        amount.setBounds (sliders.removeFromTop (sliderH));
-        sliders.removeFromTop (gap);
-        speed.setBounds (sliders.removeFromTop (sliderH));
+        layoutGrid (c.removeFromTop (knobH), knobs, 4, gap / 3, 0);
+        c.removeFromTop (gap * 2);
+        amount.setBounds (c.removeFromTop (sliderH));
+        c.removeFromTop (gap);
+        speed.setBounds (c.removeFromTop (sliderH));
         return;
     }
 
@@ -734,10 +756,7 @@ void EvolvePage::resized()
     }
     else
     {
-        fieldPanel.setBounds (right);
-        auto c = fieldPanel.contentBounds();
-        const int d = juce::jmin (c.getWidth(), c.getHeight());
-        field.setBounds (c.withSizeKeepingCentre (d, d));
+        layoutField (right);
     }
 }
 
@@ -777,7 +796,7 @@ FracturePage::FracturePage (AntiMatrProcessor& p)
     sidebarPanel.addAndMakeVisible (onOff);
     sidebar.setTooltip ("MAIN: the spectral engine. SEQUENCER: the fragment pattern. FRAGMENTS: tone, feedback and decay.");
     sidebar.onChange = [this] (int i) { showTab (i); };
-    shards.setTitle ("Fracture · shards");
+    shards.setTitle ("Fracture / shards");
 
     onOff.setTooltip ("Fracture on / off");
     auto* onParam = processor.parameters().getParameter (ParameterRegistry::get (Param::fractureOn).id);
@@ -1089,15 +1108,18 @@ void SpacePage::resized()
     }
     right.removeFromTop (gap);
 
-    const int tileRow = juce::jlimit (54, 76, right.getWidth() / 7);
-    enginePanel.setBounds (right.removeFromTop (tileRow + juce::jlimit (34, 52, right.getHeight() / 9)));
+    const int n = (int) modules.size();
+    const int perRow = 4;
+    const int tileRows = (n + perRow - 1) / perRow;
+    const int tileH = juce::jlimit (46, 72, right.getWidth() / 8);
+    enginePanel.setBounds (right.removeFromTop (tileH * tileRows + juce::jlimit (34, 54, right.getHeight() / 9)));
     {
         auto c = enginePanel.contentBounds();
-        const int n = (int) modules.size();
-        const int cellW = c.getWidth() / juce::jmax (1, n);
-        const int h = juce::jmin (c.getHeight(), juce::roundToInt ((float) cellW * 1.28f));
+        const int cellW = c.getWidth() / perRow;
+        const int h = juce::jmin (c.getHeight() / tileRows, juce::roundToInt ((float) cellW * 0.78f));
+        const int top = c.getY() + juce::jmax (0, (c.getHeight() - h * tileRows) / 2);
         for (int i = 0; i < n; ++i)
-            modules[(size_t) i]->tile->setBounds (c.getX() + i * cellW, c.getY() + (c.getHeight() - h) / 2, cellW, h);
+            modules[(size_t) i]->tile->setBounds (c.getX() + (i % perRow) * cellW, top + (i / perRow) * h, cellW, h);
     }
     right.removeFromTop (gap);
     moduleControls->setBounds (right);
@@ -1107,7 +1129,8 @@ void SpacePage::timerCallback()
 {
     if (! isShowing()) return;
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
-    space.setEnergy (juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f));
+    // The space never looks asleep: it keeps a floor of activity even in silence.
+    space.setEnergy (juce::jlimit (0.22f, 1.0f, vs.rmsL * 3.0f));
     space.advance (1.0f / 24.0f);
     sidebarPanel.setActivity (vs.spaceActivity * 0.5f);
     macroPanel.setActivity (vs.spaceActivity * 0.5f);

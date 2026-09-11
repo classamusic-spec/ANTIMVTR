@@ -255,6 +255,7 @@ private:
     void setAdvanced (bool advanced);
     AntiMatrProcessor& processor;
     AMSegment mode { { "Simple", "Advanced" }, Theme::cyan };
+    LatticeDisplay lattice;
     std::vector<std::unique_ptr<BoundKnob>> simpleKnobs;
     std::vector<std::unique_ptr<BoundControl>> advancedControls;
     bool advanced = false;

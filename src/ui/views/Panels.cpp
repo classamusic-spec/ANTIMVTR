@@ -191,7 +191,7 @@ void PageDisplay::paint (juce::Graphics& g)
     else
     {
         // The recess: near-black, cut into the pale chassis, lit from the top left.
-        draw::insetWell (g, b, c, Theme::well, 1.0f);
+        draw::insetWell (g, b, c, juce::Colour (0xff07080d), 1.0f);
         {
             juce::Graphics::ScopedSaveState save (g);
             juce::Path clip;
@@ -201,7 +201,7 @@ void PageDisplay::paint (juce::Graphics& g)
 
             // A vignette pulls the eye to the middle of the screen.
             juce::ColourGradient vignette (juce::Colours::transparentBlack, b.getCentreX(), b.getCentreY(),
-                                           juce::Colours::black.withAlpha (0.55f), b.getX(), b.getY(), true);
+                                           juce::Colours::black.withAlpha (0.40f), b.getX(), b.getY(), true);
             g.setGradientFill (vignette);
             g.fillRect (b);
         }
@@ -230,14 +230,15 @@ void WaveMeshDisplay::setShape (int tableIndex, float pos, float scanAmount, flo
 
 void WaveMeshDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
 {
-    const auto pair = Theme::accentPair (accent);
-    draw::softLight (g, { area.getCentreX(), area.getCentreY() + area.getHeight() * 0.12f },
-                     area.getWidth() * 0.55f, pair.second, 0.14f + 0.10f * energy);
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.45f), raw.second.brighter (0.30f) };
+    draw::softLight (g, { area.getCentreX(), area.getCentreY() + area.getHeight() * 0.10f },
+                     area.getWidth() * 0.60f, pair.second, 0.20f + 0.14f * energy);
 
-    const int rows = juce::jlimit (9, 20, (int) (area.getHeight() / 26.0f));
+    const int rows = juce::jlimit (9, 22, (int) (area.getHeight() / 24.0f));
     const int cols = juce::jlimit (28, 120, (int) (area.getWidth() / 9.0f));
-    const float frontY = area.getBottom() - area.getHeight() * 0.12f;
-    const float backY  = area.getY() + area.getHeight() * 0.20f;
+    const float frontY = area.getBottom() - area.getHeight() * 0.13f;
+    const float backY  = area.getY() + area.getHeight() * 0.15f;
     const float travel = position + scan * 0.35f * std::sin (phase * 0.7f);
 
     std::vector<juce::Path> traces ((size_t) rows);
@@ -250,7 +251,7 @@ void WaveMeshDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
         const float y = backY + (frontY - backY) * (t * t * 0.55f + t * 0.45f);
         const float w = area.getWidth() * 0.86f * persp;
         const float x0 = area.getCentreX() - w * 0.5f;
-        const float amp = area.getHeight() * (0.055f + 0.075f * t) * (0.62f + 0.55f * energy);
+        const float amp = area.getHeight() * (0.075f + 0.105f * t) * (0.70f + 0.50f * energy);
         const float frame = std::fmod (juce::jmax (0.0f, travel + (1.0f - t) * (0.25f + 0.55f * morph)), 1.0f);
         depths[(size_t) r] = t;
 
@@ -277,14 +278,14 @@ void WaveMeshDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
             const float persp = 0.52f + 0.48f * t;
             const float y = backY + (frontY - backY) * (t * t * 0.55f + t * 0.45f);
             const float w = area.getWidth() * 0.86f * persp;
-            const float amp = area.getHeight() * (0.055f + 0.075f * t) * (0.62f + 0.55f * energy);
+            const float amp = area.getHeight() * (0.075f + 0.105f * t) * (0.70f + 0.50f * energy);
             const float frame = std::fmod (juce::jmax (0.0f, travel + (1.0f - t) * (0.25f + 0.55f * morph)), 1.0f);
             const float v = tableSample (table, frame, u + phase * 0.06f * (0.4f + t));
             const float px = area.getCentreX() - w * 0.5f + w * u;
             const float py = y - v * amp;
             if (r == 0) rib.startNewSubPath (px, py); else rib.lineTo (px, py);
         }
-        g.setColour (pair.first.withAlpha (0.13f));
+        g.setColour (pair.first.withAlpha (0.20f));
         g.strokePath (rib, juce::PathStrokeType (0.8f));
     }
 
@@ -293,11 +294,11 @@ void WaveMeshDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
         const float t = depths[(size_t) r];
         const auto col = pair.second.interpolatedWith (pair.first, t);
         if (r == rows - 1)
-            draw::glowPath (g, traces[(size_t) r], col, 1.7f, 9.0f, 0.7f + 0.3f * energy);
+            draw::glowPath (g, traces[(size_t) r], col, 2.0f, 12.0f, 0.9f + 0.3f * energy);
         else
         {
-            g.setColour (col.withAlpha (0.16f + 0.55f * t * t));
-            g.strokePath (traces[(size_t) r], juce::PathStrokeType (0.6f + 1.1f * t));
+            g.setColour (col.withAlpha (0.30f + 0.55f * t));
+            g.strokePath (traces[(size_t) r], juce::PathStrokeType (0.7f + 1.2f * t));
         }
     }
 }
@@ -316,11 +317,12 @@ void LatticeDisplay::setMatter (float d, float f, float m, float t, float s, int
 
 void LatticeDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
 {
-    const auto pair = Theme::accentPair (accent);
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.35f), raw.second.brighter (0.35f) };
     const auto c = area.getCentre();
-    const float R = juce::jmin (area.getWidth(), area.getHeight()) * (0.30f + 0.08f * form);
+    const float R = juce::jmin (area.getWidth() * 0.40f, area.getHeight() * 0.46f) * (0.92f + 0.18f * form);
 
-    draw::softLight (g, c, R * 1.7f, pair.first, 0.16f + 0.12f * energy);
+    draw::softLight (g, c, R * 1.8f, pair.first, 0.20f + 0.14f * energy);
 
     const int n = juce::jlimit (10, 46, 12 + (int) (34.0f * density));
     const float spin = phase * (0.14f + 0.24f * tension);
@@ -354,9 +356,9 @@ void LatticeDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
             const float strength = 1.0f - dist / link;
             const float depth = 0.5f * (nodes[(size_t) i].depth + nodes[(size_t) j].depth);
             g.setColour (pair.first.interpolatedWith (pair.second, depth)
-                             .withAlpha (0.06f + 0.42f * strength * strength * depth));
+                             .withAlpha (0.14f + 0.62f * strength * depth));
             g.drawLine (nodes[(size_t) i].p.x, nodes[(size_t) i].p.y, nodes[(size_t) j].p.x, nodes[(size_t) j].p.y,
-                        0.5f + 1.2f * strength * depth);
+                        0.7f + 1.6f * strength * depth);
         }
 
     // The dark core opens with Mass.
@@ -388,7 +390,8 @@ void RibbonDisplay::setOperators (float b, float m, float t, float mag, float sp
 
 void RibbonDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
 {
-    const auto pair = Theme::accentPair (accent);
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.40f), raw.second.brighter (0.40f) };
     draw::softLight (g, area.getCentre(), area.getWidth() * 0.5f, pair.first, 0.15f + 0.10f * energy);
 
     const int lines = juce::jlimit (10, 26, (int) (area.getHeight() / 20.0f));
@@ -443,7 +446,7 @@ void RibbonDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
         back.applyTransform (juce::AffineTransform::scale (-1.0f, 1.0f, area.getCentreX(), 0.0f));
         band2.addPath (back);
         band2.closeSubPath();
-        g.setColour (pair.first.withAlpha (0.035f));
+        g.setColour (pair.first.withAlpha (0.05f));
         g.fillPath (band2);
     }
     for (int r = 0; r < lines; ++r)
@@ -454,8 +457,8 @@ void RibbonDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
             draw::glowPath (g, ribs[(size_t) r], col, 1.4f, 8.0f, 0.45f + 0.35f * energy);
         else
         {
-            g.setColour (col.withAlpha (0.14f + 0.46f * v));
-            g.strokePath (ribs[(size_t) r], juce::PathStrokeType (0.6f + 0.9f * v));
+            g.setColour (col.withAlpha (0.24f + 0.52f * v));
+            g.strokePath (ribs[(size_t) r], juce::PathStrokeType (0.7f + 1.0f * v));
         }
     }
 }
@@ -473,67 +476,84 @@ void ShardDisplay::setFracture (int frags, float amt, float spr, float rnd, bool
 
 void ShardDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
 {
-    const auto pair = Theme::accentPair (accent);
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.40f), raw.second.brighter (0.40f) };
     const auto c = area.getCentre();
-    const float R = juce::jmin (area.getWidth(), area.getHeight()) * 0.34f;
-    const float live = on ? 1.0f : 0.34f;
+    const float R = juce::jmin (area.getWidth(), area.getHeight()) * 0.30f;
+    const float live = on ? 1.0f : 0.62f;
 
-    draw::softLight (g, c, R * 1.9f, pair.first, (0.10f + 0.12f * energy) * live);
+    draw::softLight (g, c, R * 2.0f, pair.first, (0.14f + 0.14f * energy) * live);
 
     const int n = juce::jlimit (6, 48, fragments);
     juce::Random rng (seed * 977 + n);
-    const float burst = (0.10f + 0.95f * amount * spread) * live;
+    const float burst = (0.10f + 0.85f * amount * (0.35f + 0.65f * spread)) * live;
 
+    // Every shard is its own broken plate: its own wedge of the object, thrown out
+    // along its own angle, turned a little, drifting on the Evolve clock.
     for (int i = 0; i < n; ++i)
     {
-        const float a0 = kTwoPi * (float) i / (float) n;
+        const float a0 = kTwoPi * ((float) i + 0.5f) / (float) n;
         const float wedge = kTwoPi / (float) n;
-        const float jitter = (rng.nextFloat() - 0.5f) * random * wedge * 1.6f;
-        const float drift = 0.55f + 0.9f * rng.nextFloat();
-        // Each shard flies out along its own angle, breathing on the Evolve clock.
-        const float push = burst * drift * (0.72f + 0.28f * std::sin (phase * (0.5f + drift) + (float) i));
-        const float inner = R * (0.30f + 0.22f * rng.nextFloat()) * (1.0f - 0.35f * amount);
-        const float outer = R * (0.82f + 0.35f * rng.nextFloat());
-        const float ox = std::cos (a0 + jitter) * R * push;
-        const float oy = std::sin (a0 + jitter) * R * push;
+        const float jitter = (rng.nextFloat() - 0.5f) * random * wedge * 1.8f;
+        const float drift = 0.45f + 1.1f * rng.nextFloat();
+        const float push = burst * drift * (0.70f + 0.30f * std::sin (phase * (0.35f + drift * 0.7f) + (float) i * 1.7f));
+        const float spin = (rng.nextFloat() - 0.5f) * (0.25f + 0.55f * amount);
+        const float inner = R * (0.20f + 0.16f * rng.nextFloat());
+        const float outer = R * (0.38f + 0.52f * rng.nextFloat());
+        const float travel = inner * 0.6f + R * (0.16f + 0.34f * rng.nextFloat()) + R * push * 0.55f;
+        const juce::Point<float> seat { c.x + std::cos (a0 + jitter) * travel,
+                                        c.y + std::sin (a0 + jitter) * travel };
 
+        // A tip at the object's centre and three or four outer corners: a fragment,
+        // not a petal and not a splinter.
+        const int corners = 3 + rng.nextInt (2);
+        const float span = wedge * (0.80f + 0.45f * rng.nextFloat());
         juce::Path shard;
-        const float a1 = a0 - wedge * 0.44f, a2 = a0 + wedge * 0.44f;
-        shard.startNewSubPath (c.x + ox + std::cos (a0) * inner, c.y + oy + std::sin (a0) * inner);
-        shard.lineTo (c.x + ox + std::cos (a1) * outer, c.y + oy + std::sin (a1) * outer);
-        shard.lineTo (c.x + ox + std::cos (a0) * outer * (1.0f + 0.22f * rng.nextFloat()),
-                      c.y + oy + std::sin (a0) * outer * (1.0f + 0.22f * rng.nextFloat()));
-        shard.lineTo (c.x + ox + std::cos (a2) * outer, c.y + oy + std::sin (a2) * outer);
+        shard.startNewSubPath (seat.x + std::cos (a0 + spin) * inner * 0.30f,
+                               seat.y + std::sin (a0 + spin) * inner * 0.30f);
+        for (int v = 0; v < corners; ++v)
+        {
+            const float f = ((float) v + 0.5f) / (float) corners;
+            const float a = a0 + spin + (f - 0.5f) * span;
+            const float r = outer * (0.80f + 0.20f * rng.nextFloat());
+            shard.lineTo (seat.x + std::cos (a) * r, seat.y + std::sin (a) * r);
+        }
         shard.closeSubPath();
 
         const float t = (float) i / (float) n;
         const auto col = pair.first.interpolatedWith (pair.second, t);
-        g.setColour (col.withAlpha (0.06f * live + 0.10f * energy));
+        g.setColour (col.withAlpha ((0.10f + 0.12f * energy) * live));
         g.fillPath (shard);
-        g.setColour (col.withAlpha ((0.30f + 0.45f * (1.0f - push)) * live));
-        g.strokePath (shard, juce::PathStrokeType (juce::jmax (0.7f, R * 0.012f)));
+        g.setColour (col.withAlpha ((0.48f + 0.32f * (1.0f - juce::jmin (1.0f, push))) * live));
+        g.strokePath (shard, juce::PathStrokeType (juce::jmax (0.9f, R * 0.016f), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-        // The trail back to where the shard came from.
+        // The line back to where the piece came from.
         if (push > 0.05f)
         {
             juce::Path trail;
-            trail.startNewSubPath (c.x + std::cos (a0) * inner, c.y + std::sin (a0) * inner);
-            trail.lineTo (c.x + ox + std::cos (a0) * inner, c.y + oy + std::sin (a0) * inner);
-            g.setColour (col.withAlpha (0.16f * live));
-            g.strokePath (trail, juce::PathStrokeType (0.7f));
+            trail.startNewSubPath (c.x + std::cos (a0) * inner * 0.5f, c.y + std::sin (a0) * inner * 0.5f);
+            trail.lineTo (seat.x, seat.y);
+            g.setColour (col.withAlpha (0.18f * live));
+            g.strokePath (trail, juce::PathStrokeType (0.8f));
         }
     }
 
     // What is left of the object at the centre.
-    const float coreR = R * (0.24f - 0.15f * amount) + 2.0f;
+    const float coreR = R * (0.26f - 0.16f * amount) + 2.0f;
     draw::glowEllipse (g, juce::Rectangle<float> (coreR * 2.0f, coreR * 2.0f).withCentre (c),
-                       pair.second, coreR * 2.2f, (0.5f + 0.5f * energy) * live);
+                       pair.second, coreR * 2.4f, (0.55f + 0.45f * energy) * live);
+    g.setColour (pair.second.withAlpha (0.75f * live));
+    g.drawEllipse (juce::Rectangle<float> (coreR * 2.0f, coreR * 2.0f).withCentre (c), juce::jmax (0.8f, R * 0.012f));
 }
 
 //==============================================================================
 void SpaceDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
 {
-    SpaceArt::draw (g, area, type, phase, energy, corner());
+    juce::Graphics::ScopedSaveState save (g);
+    juce::Path clip;
+    clip.addRoundedRectangle (area, corner());
+    g.reduceClipRegion (clip);
+    SpaceArt::draw (g, area.expanded (area.getWidth() * 0.15f, area.getHeight() * 0.15f), type, phase, energy, corner());
 }
 
 //==============================================================================
@@ -734,6 +754,7 @@ ShapePanel::ShapePanel (AntiMatrProcessor& p)
         addChildComponent (advancedControls.back()->component());
     }
     addAndMakeVisible (mode);
+    addAndMakeVisible (lattice);
     mode.setTooltip ("SIMPLE: the six Matter macros. ADVANCED: materials, topology, coupling.");
     mode.onChange = [this] (int i) { setAdvanced (i == 1); };
     startTimerHz (20);
@@ -744,6 +765,7 @@ void ShapePanel::setAdvanced (bool a)
     advanced = a;
     for (auto& k : simpleKnobs) k->knob.setVisible (! advanced);
     for (auto& c : advancedControls) c->component().setVisible (advanced);
+    lattice.setVisible (! advanced);
     resized();
 }
 
@@ -755,6 +777,10 @@ void ShapePanel::resized()
     area.removeFromTop (juce::jmax (4, area.getHeight() / 26));
     if (! advanced)
     {
+        // The lattice is the dark element of this panel, the way the reference has it:
+        // a strip of screen over the six macros.
+        lattice.setBounds (area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.30f)));
+        area.removeFromTop (juce::jmax (4, area.getHeight() / 26));
         std::vector<juce::Component*> c;
         for (auto& k : simpleKnobs) c.push_back (&k->knob);
         layoutGrid (area, c, 3);
@@ -779,6 +805,13 @@ void ShapePanel::timerCallback()
     // The ring shows the routed modulation; without any, it falls back to where the engine's
     // effective (smoothed) value sits relative to the knob.
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
+    {
+        const auto values = processor.currentParamValues();
+        lattice.setMatter (vs.density, vs.form, vs.mass, vs.tension, vs.surface,
+                           paramChoice (values, Param::shapeTopology), (int) paramValue (values, Param::shapeSeed));
+        lattice.setEnergy (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
+        lattice.advance (1.0f / 20.0f);
+    }
     const float values[] = { vs.density, vs.form, vs.mass, vs.tension, vs.decay, vs.surface };
     for (int i = 0; i < 6; ++i)
         if (! simpleKnobs[(size_t) i]->refreshModRing (mod))

@@ -526,31 +526,29 @@ void SamplePanel::resized()
     if (area.isEmpty()) return;
     const int gap = juce::jmax (6, area.getHeight() / 40);
 
-    // ---- top row: built-in picker and file loading
-    auto top = area.removeFromTop (juce::jlimit (26, 40, area.getHeight() / 8));
-    const int buttonWidth = juce::jlimit (90, 150, top.getWidth() / 5);
-    builtIn->setBounds (top.removeFromLeft (juce::jlimit (140, 260, top.getWidth() / 3)));
-    top.removeFromLeft (gap);
-    loadButton.setBounds (top.removeFromLeft (buttonWidth));
-    area.removeFromTop (gap);
+    // The same shape as every other page: the waveform is the display and fills the
+    // left, the controls stack in a column on the right.
+    auto right = area.removeFromRight (juce::jlimit (200, 420, juce::roundToInt ((float) area.getWidth() * 0.32f)));
+    area.removeFromRight (gap);
 
-    // ---- controls row
-    auto bottom = area.removeFromBottom (juce::jlimit (86, 150, (int) ((float) area.getHeight() * 0.34f)));
-    area.removeFromBottom (gap);
+    const int rowH = juce::jlimit (28, 42, right.getHeight() / 12);
+    builtIn->setBounds (right.removeFromTop (rowH));
+    right.removeFromTop (gap);
+    loadButton.setBounds (right.removeFromTop (rowH));
+    right.removeFromTop (gap);
+    analyzeButton.setBounds (right.removeFromBottom (rowH + 4));
+    right.removeFromBottom (gap);
+    {
+        std::vector<juce::Component*> comps;
+        for (auto& c : controls) comps.push_back (&c->component());
+        layoutGrid (right, comps, 2, gap / 2, gap / 2);
+    }
 
     // The status line is a slim strip directly under the waveform; the waveform takes
     // everything else, so there is never a band of empty panel between the two.
-    statusStrip = area.removeFromBottom (juce::jlimit (14, 22, area.getHeight() / 14));
+    statusStrip = area.removeFromBottom (juce::jlimit (14, 22, area.getHeight() / 20));
     area.removeFromBottom (gap / 2);
     waveView.setBounds (area);
-
-    auto analyze = bottom.removeFromRight (juce::jlimit (120, 200, bottom.getWidth() / 5));
-    analyzeButton.setBounds (analyze.withSizeKeepingCentre (analyze.getWidth(), juce::jlimit (28, 38, analyze.getHeight() / 3)));
-    bottom.removeFromRight (gap);
-
-    std::vector<juce::Component*> comps;
-    for (auto& c : controls) comps.push_back (&c->component());
-    layoutGrid (bottom, comps, (int) comps.size(), gap / 2, 2);
 }
 
 //==============================================================================
@@ -621,17 +619,20 @@ void GesturePanel::resized()
     if (area.isEmpty()) return;
     const int gap = juce::jmax (6, area.getWidth() / 90);
 
-    auto left = area.removeFromLeft (juce::jlimit (150, 270, (int) ((float) area.getWidth() * 0.23f)));
-    area.removeFromLeft (gap);
-    mode->setBounds (left);
+    auto right = area.removeFromRight (juce::jlimit (180, 340, juce::roundToInt ((float) area.getWidth() * 0.28f)));
+    area.removeFromRight (gap);
+    {
+        std::vector<juce::Component*> comps;
+        for (auto& c : controls) comps.push_back (&c->component());
+        layoutGrid (right, comps, 2, gap, gap);
+    }
 
-    auto padArea = area.removeFromLeft (juce::jlimit (160, 460, (int) ((float) area.getWidth() * 0.46f)));
+    auto left = area.removeFromLeft (juce::jlimit (140, 240, juce::roundToInt ((float) area.getWidth() * 0.30f)));
     area.removeFromLeft (gap);
-    pad.setBounds (padArea);
-
-    std::vector<juce::Component*> comps;
-    for (auto& c : controls) comps.push_back (&c->component());
-    layoutGrid (area, comps, 2, gap, gap);
+    const int listH = juce::jmin (left.getHeight(), AMOptionList::preferredHeight (paramChoices (Param::gestureMode).size(),
+                                                                                   juce::jlimit (26, 40, left.getHeight() / 9), true));
+    mode->setBounds (left.withHeight (listH));
+    pad.setBounds (area);
 }
 
 } // namespace am::ui

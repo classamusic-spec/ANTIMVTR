@@ -144,7 +144,7 @@ private:
     void showTab (int index);
 
     AntiMatrProcessor& processor;
-    AMPanel sidebarPanel { "Shape", "Turn matter into sound", Theme::cyan };
+    AMPanel sidebarPanel { "Shape", "Matter into sound", Theme::cyan };
     AMSidebar sidebar;
     LatticeDisplay lattice;
     AMPanel blendPanel { "Material Blend", "", Theme::cyan };
@@ -223,7 +223,7 @@ private:
     std::array<float, kMaxSequencerSteps> shownGates {};
     bool pushing = false;
 
-    AMPanel sidebarPanel { "Fracture", "Break into new realities", Theme::magenta };
+    AMPanel sidebarPanel { "Fracture", "New realities", Theme::magenta };
     AMSidebar sidebar;
     AMSegment onOff { { "Off", "On" }, Theme::magenta };
     std::unique_ptr<juce::ParameterAttachment> onAttachment;
@@ -276,7 +276,7 @@ private:
 
     SpaceDisplay space;
 
-    AMPanel macroPanel { "Space", "Mix, size, tone & feedback", Theme::ivory };
+    AMPanel macroPanel { "Macros", "Mix, size, tone & feedback", Theme::ivory };
     std::vector<std::unique_ptr<BoundControl>> macros;
     AMPanel enginePanel { "Space Engine", "Modules in the chain", Theme::ivory };
     std::vector<std::unique_ptr<Module>> modules;

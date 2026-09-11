@@ -99,6 +99,11 @@ public:
         shimmerState = 0.0f;
         clamped = false;
         first = true;
+        // The line-modulation LFOs are state. Left where the last patch stopped them they detune the
+        // first moments of the next one differently every time, so a reset has to put them back on
+        // the spread `prepare` gives them.
+        for (int i = 0; i < kLines; ++i)
+            modLfo[i].reset (0.137f * (float) i);
     }
 
     /**

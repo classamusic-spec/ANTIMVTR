@@ -1,5 +1,6 @@
 #include <juce_core/juce_core.h>
 #include "dsp/SynthEngine.h"
+#include "presets/PresetManager.h"
 
 using namespace am;
 
@@ -70,6 +71,59 @@ public:
         params[(size_t) paramIndex (Param::ampRelease)] = 0.05f;
         params[(size_t) paramIndex (Param::spaceMix)] = 0.0f;     // these tests measure the voice envelope, not the Space tail
         params[(size_t) paramIndex (Param::shapeMix)] = 0.0f;     // ...nor Matter's ring-out (covered by MatterTests)
+
+        beginTest ("reset returns the voice path to its constructed state");
+        {
+            // A host loads a patch, the player plays it, the host loads another. The second patch
+            // must sound exactly as it does on a freshly opened plugin — anything the engine carries
+            // across the reset colours the start of whatever is loaded next. The note counter alone
+            // seeds wave phase, dust, the impact strike, gesture noise, sample grains and Evolve
+            // scatter, and Matter caches the structure its nodes were built from.
+            //
+            // Scope: sources, Matter, Evolve, the amp envelope, the control graph and the master.
+            // The Space wet path still carries residue across a reset and is excluded here; see the
+            // known-issue note in docs/ARCHITECTURE.md.
+            PresetManager presets;
+            const int count = presets.numFactoryPresets();
+            expect (count > 2, "need a factory bank to test against");
+
+            const double sr = 48000.0;
+            const int block = 128;
+            juce::StringArray failures;
+
+            for (const int index : { count / 7, count / 3, (count * 2) / 3 })
+            {
+                auto subject = presets.buildFactory (index);
+                auto other   = presets.buildFactory ((index + 5) % count);
+                subject.params[(size_t) paramIndex (Param::spaceMix)] = 0.0f;
+                other.params[(size_t) paramIndex (Param::spaceMix)]   = 0.0f;
+
+                SynthEngine fresh;
+                fresh.prepare (sr, block);
+                const auto clean = renderNote (fresh, sr, block, 1.2, 0.8, 60, subject.params);
+
+                SynthEngine used;
+                used.prepare (sr, block);
+                for (int n = 0; n < 4; ++n)
+                    renderNote (used, sr, block, 0.5, 0.3, 48 + n * 5, other.params);
+                used.reset();
+                const auto after = renderNote (used, sr, block, 1.2, 0.8, 60, subject.params);
+
+                float worst = 0.0f;
+                int worstAt = -1;
+                for (int ch = 0; ch < 2; ++ch)
+                    for (int i = 0; i < clean.audio.getNumSamples(); ++i)
+                    {
+                        const float d = std::abs (clean.audio.getSample (ch, i) - after.audio.getSample (ch, i));
+                        if (d > worst) { worst = d; worstAt = i; }
+                    }
+                if (worst != 0.0f)
+                    failures.add (presets.factoryPreset (index).name + ": worst " + juce::String (worst, 9)
+                                  + " at sample " + juce::String (worstAt));
+            }
+            expect (failures.isEmpty(), "a reset engine does not render identically to a fresh one:\n   "
+                                        + failures.joinIntoString ("\n   "));
+        }
 
         beginTest ("Note produces sound and releases to silence at every sample rate and block size");
         {

@@ -37,6 +37,15 @@ void SynthEngine::reset()
     space.reset();
     master.reset();
     diag.clearTaps();
+    // Everything below is state the engine accumulates while playing. A reset means "this is a new
+    // instrument"; anything left here colours the start of whatever is loaded next.
+    polyphonyGain = kInitialPolyphonyGain;
+    sampleTime = 0;
+    for (auto& m : stageMeters) m = LevelMeter();
+    // The control graph holds the *smoothed* parameter values, which have converged on whatever was
+    // playing. Reset has no parameters to hand it, so the next block snaps it to the patch the host
+    // gives us; without this the first ~40 ms of a newly loaded patch glides out of the old one.
+    snapControlGraph = true;
     diag.events.push (EngineEventType::EngineReset, Subsystem::Unknown, -1, 0, 0.0f, sampleTime);
 }
 
@@ -103,6 +112,8 @@ void SynthEngine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer
         ctx.sample = published->get();
 
     // --- MODULATION: pick up a newly published routing table and hand the voices the compiled plan.
+    if (snapControlGraph) { controlGraph.resetTo (hostParams); snapControlGraph = false; }
+
     modulation.beginBlock (hostParams);
     ctx.modPlan = &modulation.modPlan();
     ctx.paramGeneration = controlGraph.generation();

@@ -97,7 +97,9 @@ private:
     int     currentMaxVoices = kDefaultVoices;
     uint64_t sampleTime = 0;
     bool    prepared = false;
-    float   polyphonyGain = 0.5f;   ///< smoothed voice-sum headroom (see process())
+    bool    snapControlGraph = true;   ///< next block adopts the host's values instead of gliding to them
+    static constexpr float kInitialPolyphonyGain = 0.5f;
+    float   polyphonyGain = kInitialPolyphonyGain;   ///< smoothed voice-sum headroom (see process())
 
     // Level accumulators for snapshots
     LevelMeter stageMeters[(int) Stage::Count];

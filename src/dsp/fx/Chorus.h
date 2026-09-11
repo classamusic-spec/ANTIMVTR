@@ -43,6 +43,12 @@ public:
     {
         for (auto& line : lines) line.clear();
         for (auto& f : damp) { f.prepare (sr); f.setCutoff (9000.0f); }
+        // The voice LFOs are what make the chorus a chorus, and their phases are state: carried
+        // across a reset they modulate the first moments of the next patch from wherever the last
+        // one left them. Put them back on the spread they are prepared with.
+        for (int c = 0; c < 2; ++c)
+            for (int v = 0; v < kVoices; ++v)
+                lfos[(size_t) (c * kVoices + v)].reset ((float) v / (float) kVoices + (c == 1 ? 0.5f : 0.0f));
     }
 
     void setParams (float rateHz, float depth01, float mix01, float sizeScale) noexcept

@@ -83,6 +83,15 @@ void MatterEngine::reset()
     strikeNorm = 1.0f;
     envFast = envSlow = 0.0f;
     transientActive = false;
+    // The morpher and the topology cache their built structure and are asked to rebuild only when
+    // the seed, materials or node count change. Reset wipes the nodes those caches correspond to,
+    // so the caches have to go with them or the next note is built against a structure that no
+    // longer exists.
+    morpher = MaterialMorpher();
+    topology = MatterTopology();
+    topologyVersion = 0;
+    edgeJitter.fill (0.0f);
+    seed = 0;
     lastTopology = -1;
     lastQualityNodes = 0;
     lastEdgeScale = 0.0f;

@@ -125,6 +125,29 @@ raw sources.
 * `MasterSection`: gain → hard ceiling → instant-attack limiter (80 ms
   release) → final clip; every limited or clipped sample is counted.
 
+### Reset
+
+`SynthEngine::reset()` means "this is a new instrument": a host loads a patch,
+the player plays it, the host loads another, and the second must sound exactly
+as it does on a freshly opened plugin. That is enforced by a test rather than
+assumed — a fresh engine and a played-then-reset one must render a patch
+sample-identically.
+
+Four things used to survive a reset and colour the start of the next patch:
+the voice manager's note counter (which seeds wave start phase, dust, the
+impact strike, gesture noise, sample grain positions and Evolve scatter), the
+smoothed polyphony headroom, Matter's material and topology caches (reset
+wiped the nodes but left the caches that decide whether to rebuild them), and
+the control graph's smoothed parameter values, which glided out of the old
+patch into the new one.
+
+**Known issue:** the Space wet path still carries residue across a reset. The
+voice path, the control graph and the master are exact; with `space.mix` above
+zero a reset engine and a fresh one diverge by around 0.11 within the first
+millisecond. It is not the rack — re-preparing every module does not remove it,
+and the chorus and reverb modulation LFOs have been ruled out. The regression
+test is scoped to the voice path until this is found.
+
 ## Matter (interface, Phase 5+ implementation)
 
 `MatterEngine::Node` holds frequency / target frequency / ratio / weight /

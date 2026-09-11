@@ -28,6 +28,13 @@ void VoiceManager::reset()
     numHeld = 0;
     lastStartedVoice = -1;
     lastMonoFrequency = 0.0;
+    // The note counter seeds every per-note random stream in the instrument — wave start phase,
+    // dust, the impact strike, gesture noise, sample grain positions, Evolve scatter. Carrying it
+    // across a reset means the first note of a newly loaded patch is coloured by how many notes the
+    // previous patch happened to play.
+    noteCounter = 0;
+    heldNotes.fill (0);
+    heldVelocities.fill (0.0f);
 }
 
 void VoiceManager::setMaxVoices (int n) noexcept

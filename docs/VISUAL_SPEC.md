@@ -1,208 +1,170 @@
 # ANTI-MATR — Visual Specification (reference target)
 
-This document describes, element by element, the look the editor must reproduce.
-It exists because the reference image cannot be checked into the repository: this
-text **is** the target. Everything here is drawn procedurally in JUCE from
-component bounds — no bitmaps, no external assets, no image files (SPEC §6).
+**This document replaces the previous dark-chassis specification.** The
+instrument has pivoted to a light, pearl-and-silver aesthetic. Everything here
+is drawn procedurally in JUCE from component bounds — no bitmaps, no external
+assets, no image files.
 
-The overall impression is a **machined physical instrument**: dark anodised
-metal panels bolted to a chassis, soft moulded rubber knobs lit from above, and
-at the centre a thick curved **glass porthole** with an energy object alive
-behind it. Nothing is flat. Every surface has a light source at the top-left and
-casts a soft shadow at the bottom-right.
+The overall impression is **premium laboratory hardware**: a pale machined
+chassis, panels of frosted white glass floating on it with soft shadows
+underneath, dark moulded knobs with turned-metal caps, and recessed dark
+displays showing luminous line art. Think a high-end instrument photographed on
+a white desk, not a plugin. Nothing is flat, and the light always comes from
+above and slightly to the left.
 
 ## 1. Chassis and panels
 
-* Background: near-black charcoal, very slightly warm, with a fine procedural
-  noise/grain so large areas never band. A subtle vignette darkens the corners.
-* Panels are **raised slabs**, not outlines: rounded rectangles (radius ≈ 1.2 %
-  of the editor width) filled with a vertical gradient from a lighter top to a
-  darker bottom, with
-  * a 1 px light edge along the top and left (the highlight),
-  * a 1–2 px black edge along the bottom and right (the shadow),
-  * a soft drop shadow beneath the whole slab,
-  * a barely visible brushed-metal streak texture running horizontally.
-* Each panel carries **four small screws/rivets**, one inset from each corner:
-  a dark circle with a bright crescent on the upper-left and a slot or cross cut
-  into it. They are small (≈ 6–8 px at the reference size) and quiet.
-* Panel titles sit top-left in letterspaced uppercase, bright; the subtitle sits
-  directly under them in a dimmer, smaller weight. A short accent underline in
-  the section colour sits under the title block.
-* Inner displays (waveform, spectrum, step editor, nebula thumbnail) are
-  **inset** rather than raised: the same rounded rectangle with the gradient and
-  edges inverted, so they read as recessed screens behind glass.
+* Background: a cool pearl grey, very slightly lighter toward the top, with a
+  fine procedural grain so large areas never band. No vignette — the ground is
+  light and open.
+* Panels are **frosted glass slabs floating above the chassis**, not cut into
+  it. Rounded rectangles (radius ≈ 1.2 % of editor width), filled with a nearly
+  white vertical gradient, and given depth by three things only:
+  * a **soft drop shadow** beneath and slightly right — this is what does the
+    work on a light ground,
+  * a 1 px near-white highlight along the top and left edge,
+  * a faint dark hairline along the bottom and right.
+  A panel must never be *darker* than the chassis. Depth comes from the shadow.
+* A very fine frost texture across the panel face — a whisper, not a haze.
+* Panel titles sit top-left in letterspaced uppercase, near-black; the subtitle
+  sits under them in mid-grey. A short accent underline in the section colour
+  sits under the title block.
+* Inner displays (waveform, spectrum, step editor, nebula, material lattice)
+  are the **one dark element on the page**: deeply recessed near-black screens
+  with an inner shadow along their top edge, carrying luminous line art. The
+  contrast between pale chassis and dark screen is the signature of the design.
 
-## 2. Knobs — neuromorphic, physical
+## 2. Knobs — three styles, one family
 
-The single most important control. Each knob is built in layers, outside in:
+The reference shows three variants that share one body. Every knob in the
+instrument is one of these.
 
-1. **Outer arc ring.** A thin ring set slightly outside the knob body, drawn as
-   an arc from roughly 7 o'clock to 5 o'clock. The unfilled part is very dark;
-   the filled part is a **two-stop gradient** in the section's accent pair (for
-   example blue → violet, violet → magenta, cyan → blue), with a soft outer glow
-   that grows with the value. The arc has rounded caps.
-2. **A dark gap** between ring and body so the ring reads as separate hardware.
-3. **The body**: a circle filled with a radial gradient that is lighter at the
-   top-left and darker at the bottom-right, giving a moulded, slightly domed
-   look. A subtle rim runs around the body: light at the top, dark at the
-   bottom, like a machined edge.
-4. **A specular highlight**: a soft elliptical bloom in the upper-left third,
-   low opacity, giving the rubber/metal sheen.
-5. **The indicator**: a single crisp near-white line from about 55 % of the
-   radius to just inside the rim, with a faint glow, rotating with the value.
-   It is the brightest thing on the knob.
-6. **Contact shadow** under the body so it sits on the panel rather than in it.
+**A. Capped, with an LED ring** — the hero control.
+1. A **ring of small round LED dots** set outside the knob, spanning roughly
+   7 o'clock to 5 o'clock. Dots below the value are **lit amber-orange** with a
+   soft bloom that spills onto the panel; dots above it are unlit — dark holes
+   with a faint inner shadow, as if drilled.
+2. A dark gap, then the **body**: a matte near-black moulded ring with a soft
+   outer bevel, lighter at the top-left, darker at the bottom-right, and a
+   contact shadow beneath it.
+3. Inset into the body, a **turned metal cap**: a silver disc with a fine
+   **radial sunburst brush** — narrow wedges of alternating light and shade
+   radiating from the centre, brightest toward the upper-left. A crisp bright
+   rim runs around the cap.
+4. The **indicator**: a fine dark line cut from the top of the cap outward
+   across the body, rotating with the value.
 
-Hover raises the specular highlight and the ring glow slightly. Drag does the
-same, a little more. Modulated knobs additionally show a **second, thinner arc**
-just outside the value ring, in the modulation colour, spanning the range the
-modulation covers, with a small dot at the live modulated position.
+**B. Capped, ring unlit** — the same knob with every dot dark. Used where a
+control is inactive or where a dense cluster would be noisy if all rings glowed.
 
-Labels sit centred below in letterspaced uppercase, dim; the value appears in
-place of the label while the knob is being moved or hovered.
+**C. Plain** — no metal cap and no dots: a soft, slightly larger matte dome with
+a subtle concentric groove near its edge and a small notch at the top. Quiet;
+used for secondary controls.
 
-## 3. Sliders
+**Lighting and animation.** The cap's sunburst highlight rotates with the value,
+so turning the knob makes the metal catch the light differently — this is the
+detail that sells it. Hovering lifts the cap's specular and warms the lit dots
+slightly. On a value change the newly lit dot flares brighter for a moment and
+settles. A modulated knob shows a second, thinner arc of dots just outside the
+ring in the modulation colour, with a brighter dot at the live modulated
+position. All of it is continuous and eased — nothing snaps.
 
-Horizontal capsule track, recessed (dark inside, light lower edge). The filled
-portion is a left-to-right gradient in the section accent pair with a soft glow.
-The handle is a small circular knob built like a miniature knob body (radial
-gradient, rim light, contact shadow). The numeric value sits right-aligned at
-the end of the row in a dim monospaced-feeling face.
+## 3. Sliders, toggles, segments
 
-## 4. Toggles and segmented controls
+* **Slider**: a recessed light-grey capsule track with a soft inner shadow; the
+  filled portion is a gradient in the section accent; the handle is a miniature
+  version of knob body A — dark, capped, with a rim light.
+* **Toggle / segment** (SIMPLE / ADVANCED, OFF / ON, A / B): a recessed capsule
+  split into cells; the selected cell is a raised white slab with the accent as
+  a thin underline or fill and a soft glow; the others sit flush and dim.
+* **Sidebar pills** (the vertical lists on the SOURCE, SHAPE, EVOLVE, FRACTURE
+  and SPACE pages): rounded rectangles with a small glyph and a label; the
+  selected pill is a raised white slab with an accent left-edge and a soft
+  shadow, the rest flat and quiet.
 
-* **Toggle**: a recessed capsule; when on, it fills with the accent gradient and
-  the circular handle slides right with a glow; when off it is dark with the
-  handle left. A label sits beside or beneath in small letterspaced caps.
-* **Segment** (SIMPLE / ADVANCED, OFF / ON, A / B): a recessed capsule split
-  into cells; the selected cell is a raised slab with an accent fill and a soft
-  glow, the others are flat and dim.
+## 4. The centre — glass sphere
 
-## 5. The centre — glass porthole
+The MAIN page's centre is the identity of the product and the largest element
+on the page.
 
-This is the identity of the product and deserves the most work.
+* A **thick circular bezel** of brushed silver, segmented into plates with fine
+  seams and bolt heads at the seams, catching the light along its upper edge.
+  Two small warm status lamps sit at nine and three o'clock.
+* Inside it, the **glass**: a broad diagonal specular sweep from the upper left,
+  a tighter crescent hugging the inside of the bezel at the top, a faint
+  thickness darkening toward the lower right, and a subtle chromatic fringe at
+  the extreme edge. The glass is a highlight layer, never a haze.
+* Behind the glass, the **ANTI-MATTER object** on a dark well, so it reads as a
+  lit interior seen through clear glass. The object is driven by the engine's
+  own modal data — see §5.
+* Beneath the sphere, the wordmark **ANTI-MATR** in letterspaced caps. No
+  plinth, no stand: the sphere floats.
 
-* A **circular metal bezel** occupies the centre column: a thick ring of dark
-  gunmetal, drawn as a brushed-metal gradient (light at the top, dark at the
-  bottom, with a second narrow highlight arc near the top edge so it reads as
-  curved). The ring is visibly **segmented into plates** with fine seams between
-  them, and **bolt heads** sit at the seams in the same style as the panel
-  screws. The bezel casts an outer shadow onto the panel behind it and an inner
-  shadow onto the glass.
-* At the nine and three o'clock positions, mounted on the bezel, two short
-  **vertical light bars** glow warm amber-white with a soft bloom that spills
-  onto the metal around them — the instrument's status lamps.
-* Inside the bezel sits the **glass**: after the object is drawn, the glass is
-  composited over it as
-  * a broad diagonal specular sweep from the upper-left, low opacity, white,
-  * a tighter crescent highlight hugging the inside of the bezel at the top,
-  * a faint darkening toward the lower-right inside edge (thickness),
-  * a very subtle chromatic fringe at the extreme edge,
-  * optional slow-moving faint smudges so the glass feels real, never dirty.
-  The glass must never wash out the object: it is a highlight layer, not a haze.
-* Behind the glass, the **ANTI-MATTER object**. This is the hero of the product
-  and must be built with real care. It is not a wireframe and not a particle
-  fountain: it is a **liquid-light organism suspended in a sphere**.
-  * **Ribbons, not lines.** The strands are wide, smooth, tapering **ribbons of
-    liquid light** — think silk caught in slow water, or an aurora folded into a
-    ball. Each ribbon has a bright molten core with a soft translucent bloom
-    either side, its width swelling in the middle and tapering to nothing at the
-    ends, and its brightness varying along its length. They must never read as
-    a stroked polyline of constant width.
-  * **Colour along the length.** A ribbon shifts hue as it travels: cyan into
-    blue into violet into magenta into pink. Different ribbons start at
-    different points in that range so the mass reads as iridescent rather than
-    tinted.
-  * **Genuine depth.** The ribbons follow paths on and around an implicit sphere
-    in 3D, and are painted back to front. A ribbon behind the core is dimmed,
-    desaturated, blurred and thinned; a ribbon in front is bright, saturated,
-    sharp and wide, and casts a faint shadow onto what is behind it. This
-    front/back difference is what makes the object look solid rather than
-    printed on the glass.
-  * **The core.** At the centre sits a **dark, irregular, organic mass** — not a
-    circle. Its silhouette is a slowly deforming blob with soft lobes, almost
-    black, with a faint violet rim where the light wraps around it. Ribbons
-    disappear behind it cleanly. It opens and closes with MASS.
-  * **Liquid behaviour.** The whole organism must feel like a fluid: ribbons
-    stretch and thin when pulled, bulge where they slow, coalesce and separate,
-    and the surface has a slight surface-tension wobble. Motion is smooth and
-    continuous, never stepping, with the ribbons advecting along a slowly
-    evolving flow field rather than following fixed circles.
-  * **Particles and bubbles.** Two populations float in the sphere: fine bright
-    **sparkles** like stars, scattered through the volume, twinkling as they
-    pass in and out of the light; and larger **translucent bubbles** with a rim
-    highlight and a small specular dot, drifting slowly, scaled and dimmed by
-    their depth. Bubbles nearer the front are larger and softer.
-  * **Reaction.** Size and brightness follow level. Ribbon count and density
-    follow Shape density. The core opens with mass. Tension tightens the orbits
-    and thins the ribbons; surface roughens their edges. Evolve deforms them:
-    bend curves them, melt makes them sag and run, tear splits a ribbon into two
-    that drift apart, magnet pulls them onto shared paths, scatter jitters them,
-    freeze stops the flow dead, crush quantises them into angular segments. A
-    Fracture hit throws a burst of sparkles outward.
-  * The object rotates slowly and breathes with the audio even at rest, so the
-    instrument never looks asleep.
-* The object reacts to the engine: overall size and brightness follow level,
-  strand count and density follow Shape density, the core opens and closes with
-  mass, the strands deform and tear with the Evolve operators, and the particles
-  scatter on Fracture.
-* Below the bezel sits a **plinth**: a wide, shallow elliptical metal base, like
-  a machined stand the sphere rests in. It has a brushed gradient, a bright
-  chrome rim catching the light along its top edge, and a darker recessed face
-  carrying the engraved wordmark **ANTI-MATR** with **SOUND BEYOND MATTER** in
-  small letterspaced caps beneath it. Engraving means the text is cut in: a dark
-  fill with a light lower edge, not a bright overlay. A **glowing blue arc**
-  spills from beneath the plinth onto the panel, brightest directly under the
+## 5. The object reacts to what is played
+
+`VisualStateSnapshot` carries up to 32 modal resonators with individual
+frequency, energy, pan and cluster membership — the actual physical model making
+the sound — plus note events (`noteId`, velocity, whether the key is held),
+`fractureHits`, the Evolve movement clock, and every sounding voice's pitch and
+energy. The object must be bound to these, not to a generic level meter:
+
+* size and brightness follow level; ribbon/particle count follows Density
+* the dark core opens with Mass; Tension tightens the orbits; Surface roughens
+* each Evolve operator deforms it in its own way (bend, melt, tear, magnet,
+  crush, freeze, scatter)
+* a note-on throws a visible burst — from `noteId` changing, not the envelope
+* a chord looks different from a single note (`numVisualVoices`)
+* it breathes at rest: the instrument must never look asleep
+
+## 6. Page layouts
+
+Every page is: a left sidebar or selector column, a large dark display in the
+centre, and control clusters on the right. The bottom navigation bar is
+constant.
+
+* **MAIN** — SOURCE panel top-left (source selector row, waveform strip, four
+  knobs); the glass sphere centred and dominant; SHAPE top-right (dark lattice
+  display, knobs); EVOLVE bottom-left (four operator controls); SPACE
+  bottom-right (preset selector, four knobs); FRACTURE as a strip beneath the
   sphere.
-* Small labels flank the top of the porthole: `INHALE / IDEA` on the left,
-  `EXHALE / EVOLVE` on the right, dim and letterspaced.
+* **SOURCE** — vertical pill list (WAVE / DUST / IMPACT / SAMPLE / GESTURE) on
+  the left; a large dark display showing the wavetable as a luminous mesh with
+  a table selector beneath it; two rows of three knobs on the right; stepper
+  rows for TABLE / UNISON and OCTAVE / SEMITONE / FINE.
+* **SHAPE** — sidebar SIMPLE / ADVANCED / MATERIAL; centre display showing the
+  material lattice with a blend selector; two rows of three knobs (DENSITY FORM
+  MASS / TENSION DECAY SURFACE).
+* **EVOLVE** — sidebar MAIN / ADVANCED / MOTION; centre display showing the
+  deformation as a flowing surface; four operator knobs and AMOUNT / SPEED
+  sliders.
+* **FRACTURE** — sidebar MAIN / SEQUENCER / FRAGMENTS; centre display showing
+  the shattered object; a mode selector, a bar spectrum and four knobs.
+* **SPACE** — vertical list of space types; centre display showing the space as
+  a generated nebula; four knobs and a SPACE ENGINE row of module toggles
+  (DIFFUSION / DELAY / REVERB / SPECTRAL / WIDTH / COMP).
+* **Bottom navigation** — a light bar with a glyph and label per page; the
+  active page is a raised white pill with an accent underline. A / B and the
+  morph control sit at the right.
 
-## 6. Source selector
+## 7. Typography
 
-A row of **circular glass buttons**, one per energy source. Each is a small
-sphere: a dark ball with a radial gradient, a bright specular dot in the upper
-left, a rim light, and inside it a small procedural icon that says what the
-source is (a waveform, a dust cloud, an impact starburst, a sample waveform, a
-gesture curve). The selected one gains a bright accent ring around the sphere
-and a stronger glow; the others are dimmer and slightly smaller. Labels sit
-below in letterspaced caps.
+One condensed technical sans throughout, uppercase for labels, generous
+letterspacing. Four sizes only: panel title, panel subtitle, control label,
+value. Near-black for titles and values, mid-grey for labels, light grey for
+captions. The wordmark is heavier with a fine engraved bevel — a light top edge
+and a dark lower edge cut into the pale ground.
 
-## 7. Displays
+## 8. Colour
 
-* **Waveform**: an inset screen with a glowing polyline in the source accent
-  colour, a soft gradient fill under it, a faint grid, and small chevrons at
-  the left and right edges for stepping through banks/frames.
-* **Fracture spectrum**: an inset screen with a jagged polygonal skyline in two
-  colours — cool blue on the left half moving to magenta on the right — each
-  with a translucent fill and a bright top edge, over a faint grid.
-* **Nebula thumbnail**: an inset rounded rect containing a generated spiral
-  galaxy: a bright core, a soft violet halo, and fine star specks along the
-  arms.
+* Chassis: cool pearl grey. Panels: frosted near-white. Displays: near-black.
+* Text: near-black, mid-grey, light grey.
+* Accents, one pair per section, deepened so they read against a pale ground:
+  SOURCE blue→cyan, SHAPE cyan→violet, EVOLVE violet→indigo, FRACTURE
+  magenta→violet, SPACE ivory→blue, MOD amber→magenta.
+* The LED dot ring is **amber-orange** on every knob regardless of section — it
+  is the instrument's one warm colour and it is what the eye lands on.
 
-## 8. Typography
-
-One condensed, slightly technical sans throughout, always uppercase for labels,
-with generous letterspacing. Four sizes only: panel title, panel subtitle,
-control label, and value. The wordmark is heavier, with a metallic vertical
-gradient and a fine bevel: light top edge, dark bottom edge.
-
-## 9. Colour
-
-* Chassis: near-black, warm charcoal.
-* Panel: dark grey-blue slabs.
-* Text: near-white for titles and values, mid-grey for labels, dim grey for
-  captions.
-* Accents, one pair per section, used on that section's arcs, fills and glows:
-  * SOURCE — blue → cyan
-  * SHAPE — cyan → violet
-  * EVOLVE — violet → indigo
-  * FRACTURE — magenta → violet
-  * SPACE — ivory → blue
-  * MOD — amber → magenta
-* Glow is always the accent at low opacity, never white, and always means
-  something: value, activity or selection.
-
-## 10. Rules that do not bend
+## 9. Rules that do not bend
 
 * Everything derives from `getLocalBounds()`. No absolute pixel constants: the
   editor must look identical in proportion at 1100×690 and at 1600×1000.
@@ -210,6 +172,7 @@ gradient and a fine bevel: light top edge, dark bottom edge.
 * Nothing paints outside its component. No tooltip or popup may render unless
   the pointer is actually over its owner.
 * Every shadow, highlight and glow is drawn from the same top-left light
-  direction. Consistency is what makes it read as one machined object.
-* The centre object animates continuously but must cost little: it runs at
-  30 Hz on the message thread and reads only the diagnostic snapshots.
+  direction.
+* The centre object animates continuously but cheaply: 30 Hz on the message
+  thread, reading only the diagnostic snapshots, under 6 ms per frame at
+  1600×1000.

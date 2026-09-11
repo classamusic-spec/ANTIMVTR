@@ -21,36 +21,49 @@ namespace am::ui
 */
 struct Theme
 {
-    // Surfaces — a warm near-black chassis carrying cooler grey-blue slabs.
-    static inline const juce::Colour background   { 0xff080807 };   // chassis, warm charcoal
-    static inline const juce::Colour backgroundTop { 0xff131211 };
-    static inline const juce::Colour panel        { 0xff11141c };   // bottom of a raised slab
-    static inline const juce::Colour panelTop     { 0xff1d222d };   // top of a raised slab (lit)
-    static inline const juce::Colour panelInset   { 0xff07080b };   // recessed screens
-    static inline const juce::Colour panelEdge    { 0xff030304 };   // dark line outside panels (depth)
-    static inline const juce::Colour border       { 0x14ffffff };   // ~8% white hairline
-    static inline const juce::Colour borderSoft   { 0x0affffff };
-    static inline const juce::Colour glass        { 0x08ffffff };
-    static inline const juce::Colour glassStrong  { 0x14ffffff };
-    static inline const juce::Colour metal        { 0xff5a5f6b };   // screw heads, chrome rims
+    // Surfaces — a pearl chassis carrying frosted white glass panels.
+    //
+    // The instrument is lit from above and slightly left, as it always was; what
+    // changed is the ground. On a light chassis depth cannot come from a panel
+    // being brighter than its background, because it is not — it comes from the
+    // shadow a panel casts and from a hairline of white along its top edge. So
+    // `panelTop` sits *above* white and `panel` just below it, the difference is
+    // small, and the shadow does the work.
+    static inline const juce::Colour background    { 0xffd8d9dd };   // chassis, cool pearl
+    static inline const juce::Colour backgroundTop { 0xffeceef1 };   // lighter toward the top
+    static inline const juce::Colour panel         { 0xffe9ebee };   // bottom of a frosted slab
+    static inline const juce::Colour panelTop      { 0xfffbfcfd };   // top of a frosted slab (lit)
+    static inline const juce::Colour panelInset    { 0xffc6c9cf };   // recessed screens
+    static inline const juce::Colour panelEdge     { 0x2a2c3242 };   // the shadow a slab sits in
+    static inline const juce::Colour border        { 0x1a2a3044 };   // hairline, now dark on light
+    static inline const juce::Colour borderSoft    { 0x0d2a3044 };
+    static inline const juce::Colour glass         { 0x66ffffff };   // frost: white veil over the ground
+    static inline const juce::Colour glassStrong   { 0xa8ffffff };
+    static inline const juce::Colour metal         { 0xff9aa0ab };   // chrome rims and screw heads
+    static inline const juce::Colour metalLight    { 0xfff4f6f8 };   // the lit face of a turned cap
+    static inline const juce::Colour metalDark     { 0xff6c727d };   // its shadowed face
+    static inline const juce::Colour well          { 0xff14161c };   // behind the glass: the object's ground
 
-    // Text
-    static inline const juce::Colour textPrimary   { 0xffeaeaf2 };
-    static inline const juce::Colour textSecondary { 0xff8f8f9e };
-    static inline const juce::Colour textDim       { 0xff55556a };
-    static inline const juce::Colour textValue     { 0xffc9c9d6 };
+    // Text — dark on light now, so the weights invert.
+    static inline const juce::Colour textPrimary   { 0xff1b1e26 };
+    static inline const juce::Colour textSecondary { 0xff5c6270 };
+    static inline const juce::Colour textDim       { 0xff8d939f };
+    static inline const juce::Colour textValue     { 0xff2c313c };
 
-    // Luminous accents — one pair per section (SPEC section 9).
-    static inline const juce::Colour blue    { 0xff4f8dff };
-    static inline const juce::Colour cyan    { 0xff67e6ff };
-    static inline const juce::Colour violet  { 0xff8f63ff };
-    static inline const juce::Colour indigo  { 0xff5a5ce8 };
-    static inline const juce::Colour magenta { 0xffe455cf };
-    static inline const juce::Colour ivory   { 0xfff1e7d3 };
-    static inline const juce::Colour amber   { 0xffffb46b };
+    // Luminous accents — one pair per section (SPEC section 9). Deepened, because a
+    // colour that glowed against charcoal washes out against pearl.
+    static inline const juce::Colour blue    { 0xff2f6ae0 };
+    static inline const juce::Colour cyan    { 0xff1ba8cf };
+    static inline const juce::Colour violet  { 0xff6f3fdc };
+    static inline const juce::Colour indigo  { 0xff3f41c4 };
+    static inline const juce::Colour magenta { 0xffc22fa8 };
+    static inline const juce::Colour ivory   { 0xffb59a63 };
+    static inline const juce::Colour amber   { 0xffe8862a };   // the lit LED in the dot ring
 
-    static inline const juce::Colour knobBase  { 0xff1a1f28 };
-    static inline const juce::Colour knobTrack { 0xff0b0d13 };
+    // The knob is the one thing that stays dark: a moulded body with a turned
+    // metal cap, sitting on a light panel the way hardware actually does.
+    static inline const juce::Colour knobBase  { 0xff2b2e34 };
+    static inline const juce::Colour knobTrack { 0xffb9bdc5 };
 
     /** Accent for a section, used to colour knobs and glows consistently. */
     enum class Section { Source, Shape, Evolve, Fracture, Space, Mod, Neutral };

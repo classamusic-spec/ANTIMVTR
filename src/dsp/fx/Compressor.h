@@ -20,8 +20,7 @@ public:
     void prepare (double sampleRate, int /*maxBlockSize*/)
     {
         sr = sampleRate;
-        makeup.prepare (sampleRate, 40.0f);
-        makeup.reset (1.0f);
+        makeup.prepare (sampleRate, 40.0f, 1.0f);
         reset();
     }
 
@@ -30,6 +29,7 @@ public:
         envelope = 0.0f;
         gainState = 1.0f;
         reduction = 1.0f;
+        makeup.reset();
     }
 
     void setParams (float amount01) noexcept

@@ -43,6 +43,11 @@ void SampleSource::reset()
     numGrains = 0;
     for (auto& g : grains) g = Grain();
     residueL = residueR = 0.0f;
+    // `reset()` drops the sample, so the next block takes the "material changed" path and seeds
+    // the residue from the last output. Left on the previous patch's final sample, that residue
+    // decays into the new one — past its SAMPLE level, which is applied before the residue is
+    // added, so it leaks even when the new patch does not use SAMPLE at all.
+    lastOutL = lastOutR = 0.0f;
     fadeGain = 1.0f;
     lastEnergy = 0.0f;
     dcL.reset();

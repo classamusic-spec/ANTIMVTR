@@ -133,20 +133,45 @@ as it does on a freshly opened plugin. That is enforced by a test rather than
 assumed — a fresh engine and a played-then-reset one must render a patch
 sample-identically.
 
-Four things used to survive a reset and colour the start of the next patch:
-the voice manager's note counter (which seeds wave start phase, dust, the
-impact strike, gesture noise, sample grain positions and Evolve scatter), the
-smoothed polyphony headroom, Matter's material and topology caches (reset
-wiped the nodes but left the caches that decide whether to rebuild them), and
-the control graph's smoothed parameter values, which glided out of the old
-patch into the new one.
+The test covers the whole signal path — voices, Fracture, the Space wet path
+and the master — at the presets' own settings, across presets spread through
+the factory bank.
 
-**Known issue:** the Space wet path still carries residue across a reset. The
-voice path, the control graph and the master are exact; with `space.mix` above
-zero a reset engine and a fresh one diverge by around 0.11 within the first
-millisecond. It is not the rack — re-preparing every module does not remove it,
-and the chorus and reverb modulation LFOs have been ruled out. The regression
-test is scoped to the voice path until this is found.
+Things that used to survive a reset and colour the start of the next patch:
+
+* **The voice manager's note counter**, which seeds wave start phase, dust,
+  the impact strike, gesture noise, sample grain positions and Evolve scatter.
+* **Matter's material and topology caches** — reset wiped the nodes but left
+  the caches that decide whether to rebuild them.
+* **The control graph's smoothed parameter values**, which glided out of the
+  old patch into the new one, and the smoothed polyphony headroom.
+* **Every smoothed control in the SPACE rack** (`SmoothParam`). This was the
+  loud one: a fresh engine and a reset one diverged by up to 0.2 from the very
+  first sample. The worst single offender was the reverb's wet/dry `mix` —
+  the reverb's output is near zero while its lines refill, so `mix` left on
+  the old patch scales the *dry* signal through the module and the error is at
+  full signal level immediately instead of being a decaying tail. Removing
+  `mix` alone took a preset from 0.154 to 0.013.
+* **`SampleSource::lastOutL/R`.** `reset()` drops the sample, so the next
+  block takes the "material changed" path and seeds the decaying join residue
+  from the last output — the previous patch's. The residue is added *after*
+  the SAMPLE level, so it leaked even into patches that do not use SAMPLE.
+
+The reason the SPACE case was hard to see: **a module's `prepare()` is not a
+stronger `reset()`.** `SmoothParam::prepare` used to restore the smoother to
+its own *target*, which is still the previous patch's value, so re-preparing
+the whole rack left the residue exactly where it was. A `SmoothParam` now
+carries the value it holds before anything sets a target, and both `prepare()`
+and `reset()` put it back there — so the reset path and the fresh path run
+through the same fade-in and nothing about how a patch sounds changes.
+
+Smoothed values are not the only state that does not look like state. Also
+restored by `reset()`: caches that gate a recompute (`EQ::cached`,
+`TiltFilter::currentTilt`, `Reverb::first`, `Distortion::mode`), and LFO
+phases and recursive taps (chorus cross-feed, diffusion stage LFOs, reverb
+line modulation). When adding state to a module, the question to ask is not
+"is it a buffer?" but "would two engines that have played different things
+disagree about it?"
 
 ## Matter (interface, Phase 5+ implementation)
 

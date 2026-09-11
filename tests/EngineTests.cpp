@@ -78,11 +78,11 @@ public:
             // must sound exactly as it does on a freshly opened plugin — anything the engine carries
             // across the reset colours the start of whatever is loaded next. The note counter alone
             // seeds wave phase, dust, the impact strike, gesture noise, sample grains and Evolve
-            // scatter, and Matter caches the structure its nodes were built from.
+            // scatter; Matter caches the structure its nodes were built from; and every smoothed
+            // control in the SPACE rack has converged on the patch that was playing.
             //
-            // Scope: sources, Matter, Evolve, the amp envelope, the control graph and the master.
-            // The Space wet path still carries residue across a reset and is excluded here; see the
-            // known-issue note in docs/ARCHITECTURE.md.
+            // Scope: the whole signal path, at the presets' own settings — sources, Matter, Evolve,
+            // the amp envelope, the control graph, Fracture, the Space wet path and the master.
             PresetManager presets;
             const int count = presets.numFactoryPresets();
             expect (count > 2, "need a factory bank to test against");
@@ -91,12 +91,13 @@ public:
             const int block = 128;
             juce::StringArray failures;
 
-            for (const int index : { count / 7, count / 3, (count * 2) / 3 })
+            // Spread across the bank: which state survives a reset depends on which Space type a
+            // patch uses and which rack modules it turns on, so one preset proves very little.
+            const int stride = juce::jmax (1, count / 15);
+            for (int index = 0; index < count; index += stride)
             {
-                auto subject = presets.buildFactory (index);
-                auto other   = presets.buildFactory ((index + 5) % count);
-                subject.params[(size_t) paramIndex (Param::spaceMix)] = 0.0f;
-                other.params[(size_t) paramIndex (Param::spaceMix)]   = 0.0f;
+                const auto subject = presets.buildFactory (index);
+                const auto other   = presets.buildFactory ((index + 5) % count);
 
                 SynthEngine fresh;
                 fresh.prepare (sr, block);

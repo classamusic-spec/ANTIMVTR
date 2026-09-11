@@ -20,8 +20,6 @@ public:
         low.prepare (sampleRate, 40.0f);
         mid.prepare (sampleRate, 40.0f);
         high.prepare (sampleRate, 40.0f);
-        low.reset (0.0f); mid.reset (0.0f); high.reset (0.0f);
-        cached[0] = cached[1] = cached[2] = 1.0e9f;
         reset();
     }
 
@@ -30,6 +28,8 @@ public:
         for (auto& f : lowShelf) f.reset();
         for (auto& f : midPeak) f.reset();
         for (auto& f : highShelf) f.reset();
+        low.reset(); mid.reset(); high.reset();
+        cached[0] = cached[1] = cached[2] = 1.0e9f;   // forget which gains the coefficients were built for
     }
 
     void setParams (float lowDb, float midDb, float highDb) noexcept

@@ -49,6 +49,8 @@ public:
         for (int c = 0; c < 2; ++c)
             for (int v = 0; v < kVoices; ++v)
                 lfos[(size_t) (c * kVoices + v)].reset ((float) v / (float) kVoices + (c == 1 ? 0.5f : 0.0f));
+        crossFeed[0] = crossFeed[1] = 0.0f;
+        rate.reset(); depth.reset(); mix.reset(); size.reset();
     }
 
     void setParams (float rateHz, float depth01, float mix01, float sizeScale) noexcept

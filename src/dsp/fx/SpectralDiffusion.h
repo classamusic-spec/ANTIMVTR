@@ -41,6 +41,12 @@ public:
     void reset()
     {
         for (auto& s : stages) s.clear();
+        // The stage LFOs are state: left where the last patch stopped them they smear the first
+        // moments of the next one differently every time.
+        for (int c = 0; c < 2; ++c)
+            for (int s = 0; s < kStages; ++s)
+                lfos[(size_t) (c * kStages + s)].reset (0.13f * (float) (c * kStages + s));
+        amount.reset(); size.reset();
     }
 
     void setParams (float amount01, float sizeScale) noexcept

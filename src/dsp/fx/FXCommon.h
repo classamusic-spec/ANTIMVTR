@@ -73,12 +73,25 @@ inline float expMap (float t, float lo, float hi) noexcept
 class SmoothParam
 {
 public:
-    void prepare (double sampleRate, float timeMs = 12.0f) noexcept
+    /** `initial` is where the control sits before anything sets a target: after
+        `prepare()`, and after every `reset()`. */
+    void prepare (double sampleRate, float timeMs = 12.0f, float initial = 0.0f) noexcept
     {
         smoother.prepare (sampleRate, timeMs);
-        smoother.reset (smoother.getTarget());
+        initialValue = initial;
+        reset();
     }
 
+    /**
+        Back to where `prepare()` leaves it — the value the control had before the
+        instrument played anything.
+
+        Every module calls this from its own `reset()`. A smoothed control that keeps
+        the value it converged on glides out of the old patch into the new one, and
+        re-preparing the module does not undo it: `prepare()` used to restore the
+        smoother to its own *target*, which is still the old patch's.
+    */
+    void reset() noexcept               { smoother.reset (initialValue); }
     void reset (float v) noexcept       { smoother.reset (v); }
     void setTarget (float v) noexcept   { smoother.setTarget (v); }
     inline float next() noexcept        { return smoother.next(); }
@@ -89,6 +102,7 @@ public:
 
 private:
     OnePoleSmoother smoother;
+    float initialValue = 0.0f;
 };
 
 //==============================================================================
@@ -387,7 +401,11 @@ public:
         reset();
     }
 
-    void reset() noexcept { low[0].reset(); low[1].reset(); high[0].reset(); high[1].reset(); }
+    void reset() noexcept
+    {
+        low[0].reset(); low[1].reset(); high[0].reset(); high[1].reset();
+        currentTilt = 999.0f;   // forget which tilt the coefficients were built for
+    }
 
     /** tilt in -1..1, maxDb the shelf gain at the extremes. */
     void setTilt (float tilt, float maxDb = 7.0f) noexcept

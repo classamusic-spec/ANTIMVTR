@@ -49,7 +49,10 @@ public:
         for (auto& h : holdValue) h = 0.0f;
         for (auto& c : holdCount) c = 0;
         fade = 1.0f;
-        previousMode = mode;
+        // The mode latch is state too: left on the last patch's curve, the first block of the
+        // next one crossfades out of a shape it never used.
+        mode = previousMode = Soft;
+        drive.reset(); mix.reset();
     }
 
     void setParams (int newMode, float drive01, float mix01) noexcept

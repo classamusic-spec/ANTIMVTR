@@ -261,25 +261,26 @@ manager.addFactory ({ "Driven Skin", "BASS", { "harsh", "dirty", "scraped", "clo
 }});
 
 //--------------------------------------------------------------------------
-// An upright bass bowed near the bridge, rosin and all. The bow keeps feeding
-// the string chain for as long as the key is down, so this is the one bass in
-// the set that sustains without a synthesiser's help.
-manager.addFactory ({ "Rosin Bow", "BASS", { "organic", "bowed", "warm", "roomy", "low" }, [] (PatchState& s)
+// An upright bass bowed low and slow over the belly, rosin and all. The string
+// and the soft plate it is stretched over are wired as a ring, so the body
+// answers the bow and the bow answers the body: the one bass in the set that
+// sustains without a synthesiser's help, and the darkest thing that does.
+manager.addFactory ({ "Rosin Bow", "BASS", { "wooden", "bowed", "dark", "roomy", "low" }, [] (PatchState& s)
 {
-    gesture (s, 0 /* BOW */, 0.56f, 0.34f, 0.24f, 0.36f, 0.22f, 0.26f);
-    amp (s, 0.06f, 0.90f, 0.82f, 0.40f, 0.45f);
+    gesture (s, 0 /* BOW */, 0.64f, 0.26f, 0.24f, 0.36f, 0.22f, 0.16f);
+    amp (s, 0.12f, 1.10f, 0.86f, 0.48f, 0.5f);
     set (s, Param::masterGain, -1.0f);
-    shape (s, 0.36f, 0.06f, 0.70f, 0.44f, 0.44f, 0.28f);
-    material (s, MaterialType::Organic, MaterialType::String, 0.52f);
-    topology (s, 0 /* CHAIN */, 0.38f, 0.44f, 233);
-    matter (s, 0.90f, 0.46f, 0.14f, 0.36f);
+    shape (s, 0.36f, 0.12f, 0.82f, 0.38f, 0.50f, 0.28f);
+    material (s, MaterialType::String, MaterialType::Membrane, 0.42f);
+    topology (s, 1 /* RING */, 0.52f, 0.38f, 233);
+    matter (s, 0.90f, 0.34f, 0.14f, 0.36f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.20f, 0.54f, 0.06f, 0.0f, 0.18f, 0.16f);
     set (s, Param::evolveMagnetTarget, 6 /* CUSTOM */);
     set (s, Param::masterMode, 2 /* LEGATO */);
     set (s, Param::masterGlide, 0.10f);
-    space (s, SpacePresets::Chamber, 0.22f, 0.36f, 0.46f, 0.20f);
+    space (s, SpacePresets::Dream, 0.26f, 0.44f, 0.34f, 0.22f);
 
-    lfo (s, 1, 4.60f, 0 /* SINE */, 1.0f, true, 0.60f);
+    lfo (s, 1, 3.20f, 0 /* SINE */, 1.0f, true, 0.85f);
     env (s, 1, 0.05f, 0.60f, 0.55f, 0.40f, 0.4f);
     macros (s, 0.30f, 0.35f, 0.25f, 0.45f);
 

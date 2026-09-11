@@ -52,7 +52,7 @@ void AMButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     auto textArea = b;
     const float h = chip ? juce::jlimit (8.0f, 11.0f, b.getHeight() * 0.42f) : juce::jlimit (9.0f, 13.0f, b.getHeight() * 0.34f);
     const auto textColour = (on || filled) ? Theme::textPrimary
-                                           : Theme::textSecondary.interpolatedWith (Theme::textPrimary, 0.45f + 0.55f * lit);
+                                           : Theme::textSecondary.interpolatedWith (Theme::textPrimary, 0.55f + 0.45f * lit);
     if (iconGlyph.has_value())
     {
         auto iconArea = textArea.removeFromLeft (b.getHeight()).reduced (b.getHeight() * 0.3f);

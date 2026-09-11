@@ -438,23 +438,24 @@ inline void insetWell (juce::Graphics& g, juce::Rectangle<float> bounds, float c
     const bool screen = fill.getPerceivedBrightness() < 0.4f;
 
     // Darkest under the top lip, lifting a little toward the bottom where the light
-    // bounces back in off the panel.
-    juce::ColourGradient body (screen ? fill.darker (0.45f) : fill.darker (0.10f), bounds.getCentreX(), bounds.getY(),
-                               screen ? fill.brighter (0.16f) : fill.brighter (0.06f), bounds.getCentreX(), bounds.getBottom(), false);
+    // bounces back in off the panel. The light capsule keeps that ramp small: a
+    // strong one turns a shallow groove into a chrome trough.
+    juce::ColourGradient body (screen ? fill.darker (0.45f) : fill.darker (0.045f), bounds.getCentreX(), bounds.getY(),
+                               screen ? fill.brighter (0.16f) : fill.brighter (0.045f), bounds.getCentreX(), bounds.getBottom(), false);
     g.setGradientFill (body);
     g.fillRoundedRectangle (bounds, corner);
 
     innerShadow (g, bounds, corner,
-                 juce::jmin (bounds.getHeight() * 0.45f, screen ? 26.0f : 9.0f),
-                 (screen ? 0.72f : 0.24f) * depth);
+                 juce::jmin (bounds.getHeight() * (screen ? 0.45f : 0.3f), screen ? 26.0f : 5.0f),
+                 (screen ? 0.72f : 0.22f) * depth);
 
     // The mouth of the cut: dark where it goes in at the top-left, lit where it
     // comes back up at the bottom-right.
     juce::Path p;
     p.addRoundedRectangle (bounds.reduced (0.6f), juce::jmax (0.0f, corner - 0.6f));
-    juce::ColourGradient edge (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, (screen ? 0.85f : 0.34f) * depth)),
+    juce::ColourGradient edge (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 1.0f, (screen ? 0.85f : 0.28f) * depth)),
                                bounds.getX() + bounds.getWidth() * 0.2f, bounds.getY(),
-                               juce::Colours::white.withAlpha (screen ? 0.42f : 0.80f),
+                               juce::Colours::white.withAlpha (screen ? 0.42f : 0.90f),
                                bounds.getX() + bounds.getWidth() * 0.8f, bounds.getBottom(), false);
     edge.addColour (0.45, juce::Colours::transparentBlack);
     g.setGradientFill (edge);

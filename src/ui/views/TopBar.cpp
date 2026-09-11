@@ -199,9 +199,9 @@ void TopBar::paint (juce::Graphics& g)
     {
         // A whisper of the section colour across the capsule, so the name has a
         // ground of its own rather than sitting on bare grey.
-        juce::ColourGradient back (Theme::blue.withAlpha (0.13f), pill.getCentreX(), pill.getCentreY(),
+        juce::ColourGradient back (Theme::blue.withAlpha (0.055f), pill.getCentreX(), pill.getCentreY(),
                                    Theme::blue.withAlpha (0.0f), pill.getCentreX() + pill.getWidth() * 0.5f, pill.getCentreY(), true);
-        back.addColour (0.5, Theme::blue.withAlpha (0.05f));
+        back.addColour (0.5, Theme::blue.withAlpha (0.02f));
         g.setGradientFill (back);
         g.fillRoundedRectangle (pill.reduced (1.0f), corner - 1.0f);
     }

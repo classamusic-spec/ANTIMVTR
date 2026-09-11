@@ -216,8 +216,8 @@ public:
         const auto l = ModRowLayout::forRow (getLocalBounds());
 
         // Surface: a graphite row washed with a trace of the destination's colour.
-        juce::ColourGradient surface (Theme::panelInset.interpolatedWith (tint, 0.05f * alpha), b.getX(), b.getY(),
-                                      Theme::panelInset, b.getRight(), b.getY(), false);
+        juce::ColourGradient surface (Theme::panelInset.brighter (0.35f).interpolatedWith (tint, 0.07f * alpha), b.getX(), b.getY(),
+                                      Theme::panelInset.brighter (0.35f), b.getRight(), b.getY(), false);
         g.setGradientFill (surface);
         g.fillRoundedRectangle (b, corner);
         g.setColour (tint.withAlpha (0.10f * alpha + 0.10f * hover));
@@ -237,7 +237,9 @@ public:
         const juce::String sourceText = juce::String (modSourceName (routing.source)).toUpperCase();
         draw::trackedText (g, sourceText, l.source.toFloat(), juce::Justification::centredLeft,
                            draw::fitFont (Theme::labelFontStrong (h), sourceText, (float) l.source.getWidth()),
-                           Theme::amber.withAlpha (alpha));
+                           // Amber at full strength is a pale orange on a light row: the
+                           // modulation colour has to be deepened to carry as lettering.
+                           Theme::amber.darker (0.55f).withAlpha (alpha));
 
         {
             juce::Path p;
@@ -254,7 +256,7 @@ public:
         const auto name = targetName (routing.target);
         draw::trackedText (g, name, l.destination.toFloat(), juce::Justification::centredLeft,
                            draw::fitFont (Theme::labelFont (h), name, (float) l.destination.getWidth()),
-                           tint.interpolatedWith (Theme::textPrimary, 0.35f).withAlpha (alpha));
+                           tint.darker (0.3f).interpolatedWith (Theme::textPrimary, 0.45f).withAlpha (alpha));
 
         draw::trackedText (g, depthText (routing), l.value.toFloat(), juce::Justification::centredRight,
                            Theme::valueFont (h * 0.95f), Theme::textValue.withAlpha (alpha));

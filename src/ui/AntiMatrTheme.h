@@ -34,7 +34,7 @@ struct Theme
     static inline const juce::Colour backgroundTop { 0xffe6e8ec };   // lighter toward the top
     static inline const juce::Colour panel         { 0xffeef0f3 };   // bottom of a frosted slab
     static inline const juce::Colour panelTop      { 0xfffcfdfe };   // top of a frosted slab (lit)
-    static inline const juce::Colour panelInset    { 0xffc9ccd3 };   // a light capsule cut into a panel
+    static inline const juce::Colour panelInset    { 0xffd6d9e0 };   // a light capsule cut into a panel
     static inline const juce::Colour panelEdge     { 0x2a2c3242 };   // the shadow a slab sits in
     static inline const juce::Colour border        { 0x1a2a3044 };   // hairline, now dark on light
     static inline const juce::Colour borderSoft    { 0x0d2a3044 };

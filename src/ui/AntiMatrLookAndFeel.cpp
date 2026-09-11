@@ -194,6 +194,21 @@ void AntiMatrLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
     g.drawFittedText (button.getButtonText(), b.reduced (4, 0).toNearestInt(), juce::Justification::centredLeft, 1);
 }
 
+void AntiMatrLookAndFeel::fillTextEditorBackground (juce::Graphics& g, int width, int height, juce::TextEditor&)
+{
+    // A text field is a capsule cut into the surface, like every other input.
+    auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
+    draw::capsuleTrack (g, b, juce::jmin (8.0f, b.getHeight() * 0.28f), 1.0f);
+}
+
+void AntiMatrLookAndFeel::drawTextEditorOutline (juce::Graphics& g, int width, int height, juce::TextEditor& editor)
+{
+    if (! editor.hasKeyboardFocus (true)) return;
+    auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);
+    g.setColour (Theme::blue.withAlpha (0.55f));
+    g.drawRoundedRectangle (b, juce::jmin (8.0f, b.getHeight() * 0.28f), 1.0f);
+}
+
 void AntiMatrLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool, int, int, int, int, juce::ComboBox& box)
 {
     auto b = juce::Rectangle<float> (0, 0, (float) width, (float) height).reduced (0.5f);

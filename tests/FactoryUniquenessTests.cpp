@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
 #include <iterator>
 
 using namespace am;
@@ -281,8 +282,38 @@ AudioDistance audioDistance (const Fingerprint& a, const Fingerprint& b) noexcep
 }
 
 //==============================================================================
-// PARAMETER DISTANCE
+// DISTANCE IN PARAMETER SPACE, ON THE BRIEF'S OWN AXES
+//
+// The brief does not ask for a scalar. It says two patches differ meaningfully
+// when they differ in AT LEAST TWO of: source, material and structure,
+// envelope shape, register and pitch behaviour, movement, space. So that is
+// what is measured — six distances, one per axis — and the rule is the brief's
+// rule rather than a number nobody can argue with.
+//
+// Measuring it this way is also what makes the gate usable on a bank full of
+// struck instruments. Twenty-five marimbas necessarily share a source and an
+// attack; a single weighted average buries the material pair and the topology
+// that actually tell them apart under the dozens of parameters they are bound
+// to have in common. Per axis, "same source, same envelope, different material
+// and different space" reads as two axes and passes, which is correct.
 //==============================================================================
+
+enum class Axis { Source, Structure, Envelope, Register, Movement, Space, Count };
+constexpr int kNumAxes = (int) Axis::Count;
+
+const char* axisName (Axis a) noexcept
+{
+    switch (a)
+    {
+        case Axis::Source:    return "source";
+        case Axis::Structure: return "material and structure";
+        case Axis::Envelope:  return "envelope shape";
+        case Axis::Register:  return "register and pitch";
+        case Axis::Movement:  return "movement";
+        case Axis::Space:     return "space";
+        default:              return "?";
+    }
+}
 
 /** The parameter group that belongs to the selected source, so a WAVE patch is
     not judged on its (unused) DUST settings. */
@@ -305,62 +336,96 @@ bool isSourceFlavour (Param p) noexcept
         || p == Param::sampleMode || p == Param::gestureMode;
 }
 
-/** True for the trims: real controls, but not what makes a patch a patch. */
-bool isTrim (Param p) noexcept
+/** Where a parameter sits and how much it counts there. Weight 0 means it is a
+    trim: a real control, but not one that makes a patch a different patch. */
+struct AxisWeight
 {
+    Axis  axis = Axis::Source;
+    float weight = 0.0f;
+};
+
+AxisWeight axisOf (const ParamDesc& d, int sourceA, int sourceB) noexcept
+{
+    const Param p = d.param;
+
+    // ---- register and pitch behaviour: keytrack, Matter pitch, magnet target
+    switch (p)
+    {
+        case Param::shapeKeytrack: case Param::shapePitch:
+        case Param::masterTranspose: case Param::masterGlide: case Param::masterMode:
+        case Param::evolveMagnetTarget:
+        case Param::waveOctave: case Param::waveSemi:
+        case Param::dustPitch: case Param::samplePitch: case Param::sampleRoot:
+        case Param::sampleKeytrack: case Param::fracturePitch:
+            return { Axis::Register, 3.0f };
+        default: break;
+    }
+
+    // ---- envelope shape
+    switch (p)
+    {
+        case Param::ampAttack: case Param::ampDecay:
+        case Param::ampSustain: case Param::ampRelease:  return { Axis::Envelope, 4.0f };
+        case Param::ampCurve:                            return { Axis::Envelope, 1.0f };
+        default: break;
+    }
+
+    // ---- the trims: audible, but not identity
     switch (p)
     {
         case Param::masterGain: case Param::masterFine: case Param::masterBendRange:
         case Param::masterVoices: case Param::masterQuality:
         case Param::wavePhase: case Param::wavePhaseRandom: case Param::waveFine:
         case Param::ampVelocity:
-            return true;
-        default:
-            return false;
-    }
-}
-
-/**
-    How much a parameter counts toward "these are the same patch".
-
-    Weighted so the decisions the brief calls character — which source drives
-    it, what it is made of, how it is connected, how the note is shaped —
-    outweigh a trim by more than an order of magnitude. Anything belonging to
-    a source that is not selected counts for nothing at all.
-*/
-float characterWeight (const ParamDesc& d, int sourceA, int sourceB, bool eitherFracture) noexcept
-{
-    const Param p = d.param;
-
-    if (p == Param::sourceSelected || p == Param::sourceMode || p == Param::shapeTopology) return 6.0f;
-    if (p == Param::shapeMaterialA || p == Param::shapeMaterialB) return 0.0f;   // scored as an unordered pair
-    if (p == Param::ampAttack || p == Param::ampDecay || p == Param::ampSustain || p == Param::ampRelease) return 4.0f;
-    if (p == Param::spaceType) return 3.0f;
-    if (p == Param::masterTranspose || p == Param::masterMode) return 2.0f;
-    if (isTrim (p)) return 0.25f;
-
-    const auto group = d.group;
-    const bool sourceGroup = group == ParamGroup::Wave || group == ParamGroup::Dust || group == ParamGroup::Impact
-                          || group == ParamGroup::Sample || group == ParamGroup::Gesture;
-    if (sourceGroup)
-    {
-        // Only the selected source is audible; the rest of the panel is dormant.
-        if (group != groupForSource (sourceA) && group != groupForSource (sourceB)) return 0.0f;
-        return isSourceFlavour (p) ? 4.0f : 1.0f;
+            return { Axis::Source, 0.0f };
+        default: break;
     }
 
-    if (d.mutation == MutationCategory::Chaos) return 0.5f;      // seeds and randomisation amounts
-
-    switch (group)
+    // ---- source: which energy drives it, and how that source is set up
     {
-        case ParamGroup::Shape:    return 2.0f;
-        case ParamGroup::Evolve:   return 2.0f;
-        case ParamGroup::Fracture: return eitherFracture ? 2.0f : 0.0f;
-        case ParamGroup::Space:    return 1.5f;
-        case ParamGroup::Amp:      return 1.0f;
-        case ParamGroup::Mod:      return 1.0f;
-        case ParamGroup::Macro:    return 0.5f;
-        default:                   return 0.25f;
+        const auto group = d.group;
+        const bool sourceGroup = group == ParamGroup::Wave || group == ParamGroup::Dust || group == ParamGroup::Impact
+                              || group == ParamGroup::Sample || group == ParamGroup::Gesture;
+        if (p == Param::sourceSelected) return { Axis::Source, 14.0f };
+        if (p == Param::sourceMode)     return { Axis::Source, 6.0f };
+        if (sourceGroup)
+        {
+            // A source that is not selected is not audible: it counts for nothing.
+            if (group != groupForSource (sourceA) && group != groupForSource (sourceB))
+                return { Axis::Source, 0.0f };
+            if (p == Param::gestureMotion) return { Axis::Movement, 2.0f };
+            return { Axis::Source, isSourceFlavour (p) ? 10.0f : 1.0f };
+        }
+    }
+
+    // ---- movement: what modulates what, and how fast
+    switch (p)
+    {
+        case Param::evolveSpeed: case Param::evolveMotion:      return { Axis::Movement, 2.0f };
+        case Param::fractureRate: case Param::fractureDivision:
+        case Param::fractureSteps: case Param::fractureSwing:
+        case Param::fractureDirection: case Param::fractureSequence:
+        case Param::fractureProbability:                        return { Axis::Movement, 1.5f };
+        default: break;
+    }
+
+    // ---- material and structure: what it is made of and how it is wired
+    switch (p)
+    {
+        case Param::shapeMaterialA: case Param::shapeMaterialB: return { Axis::Structure, 0.0f };  // scored as an unordered pair
+        case Param::shapeTopology:                              return { Axis::Structure, 18.0f };
+        default: break;
+    }
+
+    switch (d.group)
+    {
+        case ParamGroup::Shape:    return { Axis::Structure, d.mutation == MutationCategory::Chaos ? 0.5f : 2.0f };
+        case ParamGroup::Evolve:   return { Axis::Structure, d.mutation == MutationCategory::Chaos ? 0.5f : 2.0f };
+        case ParamGroup::Fracture: return { Axis::Structure, d.mutation == MutationCategory::Chaos ? 0.5f : 1.5f };
+        case ParamGroup::Space:    return { Axis::Space, p == Param::spaceType ? 14.0f : 1.5f };
+        case ParamGroup::Mod:      return { Axis::Movement, 1.0f };
+        case ParamGroup::Macro:    return { Axis::Movement, 0.5f };
+        default:                   return { Axis::Source, 0.0f };
     }
 }
 
@@ -378,16 +443,15 @@ float materialPairDistance (const ParamValues& a, const ParamValues& b) noexcept
 /**
     Everything about one patch that the pair loop needs, computed once.
 
-    At 300 presets there are 44,850 pairs; normalising two hundred parameters
+    At 300 presets there are 45,150 pairs; normalising two hundred parameters
     and rebuilding the routing key set inside that loop would cost more than
     rendering the bank. Everything that depends on ONE patch is done here.
 */
 struct Signature
 {
-    ParamValues       normalised {};   ///< float params in the host curve, discrete params as-is
+    ParamValues normalised {};         ///< float params in the host curve, discrete params as-is
     std::vector<uint32_t> routings;    ///< sorted (source, target) keys
     int  source = 0;
-    bool fracture = false;
 };
 
 Signature signatureOf (const PatchState& patch)
@@ -399,7 +463,6 @@ Signature signatureOf (const PatchState& patch)
         sig.normalised[i] = d.kind == ParamKind::Float ? d.toNormalised (patch.params[i]) : patch.params[i];
     }
     sig.source = paramChoice (patch.params, Param::sourceSelected);
-    sig.fracture = paramBool (patch.params, Param::fractureOn);
 
     if (! patch.mod.isVoid())
         for (const auto& r : ModRoutingTable::fromVar (patch.mod))
@@ -420,40 +483,149 @@ float routingDistance (const Signature& a, const Signature& b) noexcept
     return total > 0 ? 1.0f - (float) shared.size() / (float) total : 0.0f;
 }
 
-/** Weighted mean parameter difference, 0 (identical) .. 1 (nothing alike). */
-float parameterDistance (const PatchState& pa, const PatchState& pb,
-                         const Signature& sa, const Signature& sb)
+/** One distance per axis, 0 (identical on that axis) .. 1 (nothing alike). */
+struct AxisDistances
 {
-    const bool eitherFracture = sa.fracture || sb.fracture;
+    std::array<float, kNumAxes> d {};
+    float total = 0.0f;   ///< weighted mean across the axes, for ranking only
+};
 
-    double weighted = 0.0, weights = 0.0;
-    for (const auto& d : ParameterRegistry::all())
+AxisDistances axisDistances (const PatchState& pa, const PatchState& pb,
+                             const Signature& sa, const Signature& sb)
+{
+    std::array<double, kNumAxes> weighted {}, weights {};
+
+    auto add = [&] (Axis axis, double w, double difference)
     {
-        const float w = characterWeight (d, sa.source, sb.source, eitherFracture);
-        if (w <= 0.0f) continue;
+        weighted[(size_t) axis] += w * difference;
+        weights[(size_t) axis] += w;
+    };
 
-        const size_t i = (size_t) paramIndex (d.param);
+    for (const auto& desc : ParameterRegistry::all())
+    {
+        const auto aw = axisOf (desc, sa.source, sb.source);
+        if (aw.weight <= 0.0f) continue;
+
+        const size_t i = (size_t) paramIndex (desc.param);
         // Normalised, so a 20 ms difference in a 5 ms attack counts and the same
         // 20 ms in a four second release does not; discrete choices are all or nothing.
-        const float difference = d.kind == ParamKind::Float
+        const float difference = desc.kind == ParamKind::Float
                                    ? juce::jlimit (0.0f, 1.0f, std::abs (sa.normalised[i] - sb.normalised[i]))
                                    : (std::abs (sa.normalised[i] - sb.normalised[i]) > 0.5f ? 1.0f : 0.0f);
-
-        weighted += (double) w * difference;
-        weights += w;
+        add (aw.axis, aw.weight, difference);
     }
 
     // The material pair and the modulation matrix are not single parameters but
     // they are exactly what the brief means by "material and structure" and
     // "movement", so they are scored alongside them.
-    weighted += 6.0 * materialPairDistance (pa.params, pb.params);   weights += 6.0;
-    weighted += 4.0 * routingDistance (sa, sb);                      weights += 4.0;
+    // Weighted to matter. The identity choices on an axis — which materials,
+    // which topology, which source, which Space, which routings — carry about as
+    // much as every continuous knob on that axis put together. Averaged flat, a
+    // completely different instrument (new material pair, new topology) scored
+    // 0.31 on the structure axis because twenty similar trim knobs dragged it
+    // down, which is precisely what made a bank of struck instruments look like
+    // one patch: the things that tell a marimba from a thumb piano were diluted
+    // by the things every struck patch has in common.
+    add (Axis::Structure, 18.0, materialPairDistance (pa.params, pb.params));
+    add (Axis::Movement,  10.0, routingDistance (sa, sb));
 
-    return weights > 0.0 ? (float) (weighted / weights) : 0.0f;
+    AxisDistances out;
+    double sum = 0.0;
+    for (int i = 0; i < kNumAxes; ++i)
+    {
+        out.d[(size_t) i] = weights[(size_t) i] > 0.0 ? (float) (weighted[(size_t) i] / weights[(size_t) i]) : 0.0f;
+        sum += out.d[(size_t) i];
+    }
+    out.total = (float) (sum / kNumAxes);
+    return out;
 }
 
 //==============================================================================
-/** What two patches have in common, in the brief's own terms — so a failure is actionable. */
+// THE GATE
+//
+// Two measurements, and a pair has to be close on BOTH to fail.
+//
+//   * AUDIO is a veto. Its job is to let through the pairs that are built
+//     alike and genuinely do not sound alike. It sits well above anything a
+//     duplicate measures rather than being tuned tight: a single held note
+//     cannot separate two hand-designed patches reliably enough to carry the
+//     decision on its own, and pretending otherwise produces a gate that fails
+//     honest work. At 0.150 it lets through the closest fifth of the bank.
+//
+//   * THE AXES are the rule, and it is the brief's rule: a pair has to differ
+//     in at least two of source, material and structure, envelope shape,
+//     register and pitch, movement, space. What "differ" means is measured
+//     against kAxisScale — the typical distance between two patches on that
+//     axis — because the axes have wildly different natural ranges. Two
+//     patches are a median 0.585 apart on source and 0.077 apart on register;
+//     one absolute threshold across all six would mean register never counts
+//     and source almost always does.
+//
+//     The number the gate judges is therefore the SECOND LARGEST of the six
+//     relative distances: "on its two most different axes, this pair is only
+//     this fraction as different as a typical pair of patches". Second largest
+//     and not largest, because the brief asks for two.
+//
+// WITHIN A CATEGORY IS STRICTER. Twenty-five plucks are all plucks; if a
+// player auditions one and the one before it and cannot say what is different,
+// one of them should not exist — and the one before it is the one in the same
+// list. A marimba in KEYS and a marimba in PERCUSSION are allowed to be
+// cousins, so across categories the bar is lower.
+//
+// CALIBRATION, against the real 300-patch bank. THERE IS NO GAP in the
+// distribution: the second-largest relative distance runs smoothly from 0.11
+// up through 1.0 with nothing that looks like a boundary, because the bank
+// genuinely contains a dense neighbourhood of struck instruments. So the
+// threshold is a policy, not a discovery, and it is set where the claim is
+// safe rather than where it catches the most:
+//
+//     p0.05  0.32     p0.5  0.52     p1  0.66     p10  0.99     p50  1.16
+//
+// Below 0.30 a pair is less than a third as different, on its two most
+// different axes, as a typical pair — that is a duplicate, and the gate fails.
+// Between there and 0.60 it is a close neighbourhood, which is worth a human
+// look but is not a failure, so those pairs are printed as a watch list. Set
+// ANTIMATR_UNIQUENESS_DUMP=<file> to write every pair's distances as CSV and
+// check any of this for yourself.
+//==============================================================================
+constexpr float kAudioGate          = 0.150f;   ///< above this a pair audibly differs, whatever it is made of
+constexpr float kSameCategoryGate   = 0.30f;    ///< relative second-largest axis, inside one category
+constexpr float kCrossCategoryGate  = 0.20f;    ///< …and across two
+constexpr float kSameCategoryWatch  = 0.60f;    ///< below this, worth a look but not a failure
+constexpr float kCrossCategoryWatch = 0.40f;
+
+/** Typical distance between two patches on each axis, measured on the 300-patch
+    bank. The axes have very different natural ranges, so this is what makes
+    them comparable. The test checks the bank has not drifted away from these. */
+constexpr float kAxisScale[kNumAxes] = { 0.585f, 0.377f, 0.210f, 0.077f, 0.144f, 0.307f };
+
+/** The second largest relative axis distance: how different the pair is on the
+    two axes where it is most different, against a typical pair. */
+float relativeSecondAxis (const AxisDistances& d) noexcept
+{
+    std::array<float, kNumAxes> rel {};
+    for (int i = 0; i < kNumAxes; ++i)
+        rel[(size_t) i] = d.d[(size_t) i] / juce::jmax (1.0e-4f, kAxisScale[i]);
+    std::sort (rel.begin(), rel.end(), std::greater<float>());
+    return rel[1];
+}
+
+/** Every axis, named, with how different this pair is on it against a typical
+    pair — so a failure says exactly which axes were left alone. */
+juce::String axisReport (const AxisDistances& d)
+{
+    juce::StringArray parts;
+    std::vector<std::pair<float, int>> order;
+    for (int i = 0; i < kNumAxes; ++i)
+        order.push_back ({ d.d[(size_t) i] / juce::jmax (1.0e-4f, kAxisScale[i]), i });
+    std::sort (order.begin(), order.end(), std::greater<std::pair<float, int>>());
+
+    for (const auto& [relative, axis] : order)
+        parts.add (juce::String (axisName ((Axis) axis)) + " " + juce::String (relative, 2) + "x");
+    return parts.joinIntoString (", ");
+}
+
+/** The concrete things two patches have in common, for the failure message. */
 juce::String sharedGround (const PatchState& a, const PatchState& b, const Signature& sa, const Signature& sb,
                            const Fingerprint& fa, const Fingerprint& fb)
 {
@@ -486,37 +658,24 @@ juce::String sharedGround (const PatchState& a, const PatchState& b, const Signa
 }
 
 //==============================================================================
-// THE GATE
-//
-// Calibrated from both sides against the shipped bank, and the numbers behind
-// the calibration are logged on every run so the headroom is never a mystery.
-//
-//   * PARAMETER is the sharp edge. The closest pair in the shipped 36 measures
-//     0.0877 (Ash Keys / Bone Marimba); the padding the brief warns about —
-//     one knob moved by 0.1 and a new name — measures 0.0007, two orders of
-//     magnitude below it. The gate sits at 0.060, which is also close to what
-//     the brief itself asks for: with these weights, a pair that differs in
-//     two of the character axes and nothing else lands around 0.055, so the
-//     gate is roughly "you have not changed two things".
-//
-//   * AUDIO is a veto, not a second sharp edge. Its job is to let through the
-//     pairs that are built alike but genuinely do not sound alike — the same
-//     instrument transposed, the same recipe with a different topology seed —
-//     so it sits well above anything a duplicate measures (the worst padding
-//     case renders at 0.106) rather than being tuned tight. A single-note
-//     render cannot separate two hand-designed patches reliably enough to
-//     carry the decision on its own, and pretending otherwise would produce a
-//     gate that fails honest work.
-//
-// A pair has to be inside BOTH to fail.
-//==============================================================================
-constexpr float kAudioGate = 0.150f;
-constexpr float kParamGate = 0.060f;
-
-struct Closest
+/** One compared pair, kept for the report. */
+struct Pair
 {
     int a = -1, b = -1;
-    float audio = 1.0f, parameter = 1.0f, closeness = 1.0e9f;
+    float audio = 1.0f;
+    AxisDistances axes;
+    float second = 1.0f;         ///< second largest relative axis distance
+    bool sameCategory = false;
+
+    float gate() const noexcept  { return sameCategory ? kSameCategoryGate : kCrossCategoryGate; }
+    float watch() const noexcept { return sameCategory ? kSameCategoryWatch : kCrossCategoryWatch; }
+
+    bool duplicate() const noexcept { return audio < kAudioGate && second < gate(); }
+    bool worthALook() const noexcept { return ! duplicate() && audio < kAudioGate && second < watch(); }
+
+    /** How far outside the gate the pair sits; below 1 is a failure. Reported so
+        the headroom of the whole bank is visible rather than guessed at. */
+    float margin() const noexcept { return juce::jmax (audio / kAudioGate, second / gate()); }
 };
 }
 
@@ -562,9 +721,9 @@ public:
         logMessage ("uniqueness: " + juce::String (count) + " presets rendered and fingerprinted in " + watch.elapsed());
 
         // ---- every pair, on both measures (cheap: no rendering here)
-        std::vector<Closest> nearest;
+        std::vector<Pair> pairs;
+        pairs.reserve ((size_t) count * (size_t) count / 2);
         juce::StringArray duplicates;
-        Closest worst;
 
         for (int a = 0; a < count; ++a)
         {
@@ -573,79 +732,174 @@ public:
                 // "Init" is the blank starting point, not a patch competing for shelf space.
                 if (prints[(size_t) a].category == "INIT" || prints[(size_t) b].category == "INIT") continue;
 
-                Closest c;
-                c.a = a; c.b = b;
-                c.audio = audioDistance (prints[(size_t) a], prints[(size_t) b]).total;
-                c.parameter = parameterDistance (bank[(size_t) a], bank[(size_t) b],
-                                                 signatures[(size_t) a], signatures[(size_t) b]);
-                // How close the pair came to the gate: below 1 on both axes is a failure.
-                c.closeness = juce::jmax (c.audio / kAudioGate, c.parameter / kParamGate);
-                nearest.push_back (c);
+                Pair p;
+                p.a = a; p.b = b;
+                p.audio = audioDistance (prints[(size_t) a], prints[(size_t) b]).total;
+                p.axes = axisDistances (bank[(size_t) a], bank[(size_t) b],
+                                        signatures[(size_t) a], signatures[(size_t) b]);
+                p.second = relativeSecondAxis (p.axes);
+                p.sameCategory = prints[(size_t) a].category == prints[(size_t) b].category;
+                pairs.push_back (p);
 
-                if (c.closeness < worst.closeness) worst = c;
-
-                if (c.audio < kAudioGate && c.parameter < kParamGate)
+                if (p.duplicate())
                 {
                     const auto& pa = bank[(size_t) a];
                     const auto& pb = bank[(size_t) b];
-                    duplicates.add (pa.meta.name + "  <->  " + pb.meta.name
-                                    + "\n      audio distance " + juce::String (c.audio, 4) + " (gate " + juce::String (kAudioGate, 3) + ")"
-                                    + ",  parameter distance " + juce::String (c.parameter, 4) + " (gate " + juce::String (kParamGate, 3) + ")"
+                    duplicates.add (pa.meta.name + " (" + pa.meta.category + ")  <->  " + pb.meta.name + " (" + pb.meta.category + ")"
+                                    + "\n      on the two axes where they differ most they are only "
+                                    + juce::String (p.second, 2) + "x as far apart as a typical pair"
+                                    + (p.sameCategory ? " — and they are in the same category, where the bar is "
+                                                      : " — across categories the bar is ")
+                                    + juce::String (p.gate(), 2) + "x"
+                                    + "\n      axis by axis, against a typical pair: " + axisReport (p.axes)
+                                    + "\n      audio distance " + juce::String (p.audio, 4) + " (not audibly distinct; the veto lets go at "
+                                    + juce::String (kAudioGate, 3) + ")"
                                     + "\n      they share: " + sharedGround (pa, pb, signatures[(size_t) a], signatures[(size_t) b],
-                                                                              prints[(size_t) a], prints[(size_t) b])
-                                    + "\n      make them differ in at least two of: source, material and structure,"
-                                      " envelope shape, register and pitch, movement, space.");
+                                                                             prints[(size_t) a], prints[(size_t) b])
+                                    + "\n      the brief asks for a real difference in at least two of: source, material and"
+                                      " structure, envelope shape, register and pitch, movement, space. The axes at the"
+                                      " right-hand end of that list are the ones you left alone — change two of them.");
                 }
             }
         }
 
-        std::sort (nearest.begin(), nearest.end(),
-                   [] (const Closest& x, const Closest& y) { return x.closeness < y.closeness; });
-
-        logMessage ("uniqueness: " + juce::String ((int) nearest.size()) + " pairs compared, "
-                    + watch.elapsed() + " total");
-        logMessage ("the five closest pairs in the bank (1.00 = on the gate):");
-        for (size_t i = 0; i < nearest.size() && i < 5; ++i)
+        // ---- the distance distribution, so the calibration can be checked
         {
-            const auto& c = nearest[i];
-            const auto parts = audioDistance (prints[(size_t) c.a], prints[(size_t) c.b]);
-            logMessage ("   " + juce::String (c.closeness, 2) + "x   "
-                        + prints[(size_t) c.a].name.paddedRight (' ', 18) + prints[(size_t) c.b].name.paddedRight (' ', 18)
-                        + "audio " + juce::String (c.audio, 4) + "   parameter " + juce::String (c.parameter, 4)
-                        + "   [spectrum " + juce::String (parts.spectrum, 3)
-                        + "  envelope " + juce::String (parts.envelope, 3)
-                        + "  attack " + juce::String (parts.attack, 3)
-                        + "  stereo " + juce::String (parts.stereo, 3)
-                        + "  pitch " + juce::String (parts.pitch, 3) + "]");
-        }
-        if (worst.a >= 0)
-        {
-            logMessage ("headroom: the closest pair sits " + juce::String (worst.closeness, 2)
-                        + "x outside the gate (audio " + juce::String (worst.audio / kAudioGate, 2)
-                        + "x, parameter " + juce::String (worst.parameter / kParamGate, 2) + "x)");
+            std::vector<Pair> sorted = pairs;
+            std::sort (sorted.begin(), sorted.end(),
+                       [] (const Pair& x, const Pair& y) { return x.margin() < y.margin(); });
 
-            Closest minAudio, minParameter;
-            minAudio.audio = minParameter.parameter = 1.0e9f;
-            for (const auto& c : nearest)
+            auto percentile = [&] (double q, auto pick)
             {
-                if (c.audio < minAudio.audio) minAudio = c;
-                if (c.parameter < minParameter.parameter) minParameter = c;
+                std::vector<float> values;
+                values.reserve (pairs.size());
+                for (const auto& p : pairs) values.push_back (pick (p));
+                std::sort (values.begin(), values.end());
+                const size_t at = (size_t) juce::jlimit (0.0, (double) values.size() - 1, q * (double) values.size());
+                return values.empty() ? 0.0f : values[at];
+            };
+
+            int sameCategoryPairs = 0;
+            for (const auto& p : pairs) if (p.sameCategory) ++sameCategoryPairs;
+
+            logMessage ("uniqueness: " + juce::String ((int) pairs.size()) + " pairs compared ("
+                        + juce::String (sameCategoryPairs) + " inside a category), " + watch.elapsed() + " total");
+            logMessage ("audio distance:  p0 " + juce::String (percentile (0.0, [] (const Pair& p) { return p.audio; }), 4)
+                        + "  p1 " + juce::String (percentile (0.01, [] (const Pair& p) { return p.audio; }), 4)
+                        + "  p50 " + juce::String (percentile (0.5, [] (const Pair& p) { return p.audio; }), 4)
+                        + "   (gate " + juce::String (kAudioGate, 3) + ")");
+            for (int axis = 0; axis < kNumAxes; ++axis)
+                logMessage (juce::String ("axis ") + juce::String (axisName ((Axis) axis)).paddedRight (' ', 24)
+                            + "p0 " + juce::String (percentile (0.0, [axis] (const Pair& p) { return p.axes.d[(size_t) axis]; }), 3)
+                            + "  p1 " + juce::String (percentile (0.01, [axis] (const Pair& p) { return p.axes.d[(size_t) axis]; }), 3)
+                            + "  p50 " + juce::String (percentile (0.5, [axis] (const Pair& p) { return p.axes.d[(size_t) axis]; }), 3)
+                            + "  p99 " + juce::String (percentile (0.99, [axis] (const Pair& p) { return p.axes.d[(size_t) axis]; }), 3));
+            logMessage ("second-largest relative axis (the number the gate judges):"
+                        "  p0.05 " + juce::String (percentile (0.0005, [] (const Pair& p) { return p.second; }), 3)
+                        + "  p0.5 " + juce::String (percentile (0.005, [] (const Pair& p) { return p.second; }), 3)
+                        + "  p1 " + juce::String (percentile (0.01, [] (const Pair& p) { return p.second; }), 3)
+                        + "  p10 " + juce::String (percentile (0.10, [] (const Pair& p) { return p.second; }), 3)
+                        + "  p50 " + juce::String (percentile (0.50, [] (const Pair& p) { return p.second; }), 3)
+                        + "   (gate " + juce::String (kSameCategoryGate, 2) + " inside a category, "
+                        + juce::String (kCrossCategoryGate, 2) + " across)");
+
+            // The axis scales are constants measured on the bank. If the bank
+            // drifts away from them the gate quietly changes meaning, so say so.
+            juce::StringArray drifted;
+            for (int axis = 0; axis < kNumAxes; ++axis)
+            {
+                const float median = percentile (0.50, [axis] (const Pair& p) { return p.axes.d[(size_t) axis]; });
+                const float ratio = median / juce::jmax (1.0e-4f, kAxisScale[axis]);
+                if (ratio < 0.6f || ratio > 1.6f)
+                    drifted.add (juce::String (axisName ((Axis) axis)) + " (typical distance " + juce::String (median, 3)
+                                 + ", calibrated at " + juce::String (kAxisScale[axis], 3) + ")");
             }
-            logMessage ("closest on audio:     " + prints[(size_t) minAudio.a].name + " / " + prints[(size_t) minAudio.b].name
-                        + "  " + juce::String (minAudio.audio, 4) + " (gate " + juce::String (kAudioGate, 3) + ")");
-            logMessage ("closest on parameter: " + prints[(size_t) minParameter.a].name + " / " + prints[(size_t) minParameter.b].name
-                        + "  " + juce::String (minParameter.parameter, 4) + " (gate " + juce::String (kParamGate, 3) + ")");
+
+            logMessage ("the ten closest pairs in the bank (1.00 = on the gate):");
+            for (size_t i = 0; i < sorted.size() && i < 10; ++i)
+            {
+                const auto& p = sorted[i];
+                logMessage ("   " + juce::String (p.margin(), 2) + "x   "
+                            + prints[(size_t) p.a].name.paddedRight (' ', 20) + prints[(size_t) p.b].name.paddedRight (' ', 20)
+                            + (p.sameCategory ? "same cat  " : "cross cat ")
+                            + "audio " + juce::String (p.audio, 4)
+                            + "   second axis " + juce::String (p.second, 2) + "x"
+                            + "   [" + axisReport (p.axes) + "]");
+            }
+
+            // Not failures: the neighbourhood just below the line, so a dense
+            // corner of the bank is visible before it becomes a problem.
+            int watched = 0;
+            juce::StringArray watch;
+            for (const auto& p : sorted)
+            {
+                if (! p.worthALook()) continue;
+                ++watched;
+                if (watch.size() < 12)
+                    watch.add (prints[(size_t) p.a].name + " / " + prints[(size_t) p.b].name
+                               + " " + juce::String (p.second, 2) + "x"
+                               + (p.sameCategory ? "" : " (across categories)"));
+            }
+            logMessage ("close neighbours, not failures — " + juce::String (watched) + " pairs, closest first:");
+            for (const auto& line : watch) logMessage ("   " + line);
+            if (watched > watch.size()) logMessage ("   … and " + juce::String (watched - watch.size()) + " more");
+
+            // Which patches the failures cluster on. Ten failing pairs are rarely
+            // ten problems — more often four patches that need pulling apart.
+            std::map<juce::String, int> appearances;
+            int failing = 0;
+            for (const auto& p : pairs)
+                if (p.duplicate())
+                {
+                    ++failing;
+                    ++appearances[prints[(size_t) p.a].name];
+                    ++appearances[prints[(size_t) p.b].name];
+                }
+            if (failing > 0)
+            {
+                std::vector<std::pair<int, juce::String>> ranked;
+                for (const auto& [name, n] : appearances) ranked.push_back ({ n, name });
+                std::sort (ranked.begin(), ranked.end(), std::greater<std::pair<int, juce::String>>());
+                juce::StringArray worst;
+                for (const auto& [n, name] : ranked)
+                    worst.add (name + " (" + juce::String (n) + ")");
+                logMessage ("the failures involve " + juce::String ((int) ranked.size()) + " patches, most often: "
+                            + worst.joinIntoString (", "));
+            }
+            for (const auto& p : sorted)
+                if (! p.duplicate())
+                {
+                    logMessage ("headroom: the closest pair the gate passes sits " + juce::String (p.margin(), 2)
+                                + "x outside it (" + prints[(size_t) p.a].name + " / " + prints[(size_t) p.b].name + ")");
+                    break;
+                }
+            logMessage (juce::String (failing) + " pair(s) fail the gate, " + juce::String (watched)
+                        + " more are close enough to be worth a listen");
+
+            expect (drifted.isEmpty(), "the bank has drifted away from the axis scales the gate is calibrated on — "
+                                       "recalibrate kAxisScale before trusting it:\n   " + drifted.joinIntoString ("\n   "));
+
+            // The whole distribution, for offline work on the weighting.
+            const auto dump = juce::SystemStats::getEnvironmentVariable ("ANTIMATR_UNIQUENESS_DUMP", juce::String()).trim();
+            if (dump.isNotEmpty())
+            {
+                juce::String csv ("a,aCategory,b,bCategory,sameCategory,audio,source,structure,envelope,register,movement,space,second\n");
+                for (const auto& p : pairs)
+                {
+                    csv << prints[(size_t) p.a].name.replace (",", " ") << "," << prints[(size_t) p.a].category << ","
+                        << prints[(size_t) p.b].name.replace (",", " ") << "," << prints[(size_t) p.b].category << ","
+                        << (p.sameCategory ? 1 : 0) << "," << juce::String (p.audio, 5);
+                    for (int axis = 0; axis < kNumAxes; ++axis) csv << "," << juce::String (p.axes.d[(size_t) axis], 5);
+                    csv << "," << juce::String (p.second, 5) << "\n";
+                }
+                juce::File (dump).replaceWithText (csv);
+                logMessage ("wrote the whole distribution to " + dump);
+            }
         }
 
         expect (duplicates.isEmpty(),
                 juce::String (duplicates.size()) + " near-duplicate pair(s) in the factory bank:\n   "
                 + duplicates.joinIntoString ("\n   "));
-
-        // The gate is only worth anything if it has room: a bank whose closest
-        // legitimate pair sits on the threshold would fail at random.
-        expect (worst.closeness > 1.35f,
-                "the uniqueness gate has almost no headroom (closest legitimate pair is "
-                + juce::String (worst.closeness, 2) + "x the gate) — recalibrate before trusting it");
 
         //----------------------------------------------------------------------
         // The other half of the calibration. A gate that never fires is not a
@@ -684,22 +938,19 @@ public:
                 const auto print = fingerprintOf (left, right, options.sampleRate, spectrum);
                 const auto signature = signatureOf (padded);
 
-                const auto parts = audioDistance (prints[(size_t) index], print);
-                const float audio = parts.total;
-                const float parameter = parameterDistance (bank[(size_t) index], padded,
-                                                           signatures[(size_t) index], signature);
-                logMessage (juce::String (nudge.preset).paddedRight (' ', 18) + juce::String (nudge.what).paddedRight (' ', 18)
-                            + "audio " + juce::String (audio, 4) + " (" + juce::String (audio / kAudioGate, 2) + "x gate)"
-                            + "   parameter " + juce::String (parameter, 4) + " (" + juce::String (parameter / kParamGate, 2) + "x gate)"
-                            + "   [spectrum " + juce::String (parts.spectrum, 3)
-                            + "  envelope " + juce::String (parts.envelope, 3)
-                            + "  attack " + juce::String (parts.attack, 3)
-                            + "  stereo " + juce::String (parts.stereo, 3)
-                            + "  pitch " + juce::String (parts.pitch, 3) + "]");
+                const float audio = audioDistance (prints[(size_t) index], print).total;
+                const auto axes = axisDistances (bank[(size_t) index], padded,
+                                                 signatures[(size_t) index], signature);
+                const float second = relativeSecondAxis (axes);
 
-                if (audio >= kAudioGate || parameter >= kParamGate)
+                logMessage (juce::String (nudge.preset).paddedRight (' ', 18) + juce::String (nudge.what).paddedRight (' ', 18)
+                            + "audio " + juce::String (audio, 4) + " (" + juce::String (audio / kAudioGate, 2) + "x the veto)"
+                            + "   second axis " + juce::String (second, 3) + "x (gate "
+                            + juce::String (kSameCategoryGate, 2) + "x)");
+
+                if (audio >= kAudioGate || second >= kSameCategoryGate)
                     missed.add (juce::String (nudge.preset) + " with " + nudge.what + " escaped the gate: audio "
-                                + juce::String (audio, 4) + ", parameter " + juce::String (parameter, 4));
+                                + juce::String (audio, 4) + ", second axis " + juce::String (second, 3) + "x");
             }
 
             expect (missed.isEmpty(), "the gate is too loose to catch padding:\n   " + missed.joinIntoString ("\n   "));

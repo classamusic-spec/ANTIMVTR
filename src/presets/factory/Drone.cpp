@@ -716,11 +716,13 @@ manager.addFactory ({ "Pressure Vessel", "DRONE", { "metallic", "hollow", "morph
 
 manager.addFactory ({ "Amber Orchard", "DRONE", { "wooden", "glassy", "static", "distant", "drift" }, [] (PatchState& s)
 {
-    // FREEZE captures the object and floors its damping, so the orchard of
-    // struck wood rings on indefinitely and cannot change shape. What can
-    // change is what is being fed into it: a slow mallet roll whose rate,
+    // FREEZE captures the object and floors its damping: the orchard of struck
+    // wood cannot change shape at all, and rings for about seventy seconds
+    // rather than forever, since the damping floor is a T60 and not a hold.
+    // What can change is what is fed into it — a slow mallet roll whose rate,
     // brightness and randomness all drift, exciting different parts of a
-    // structure that is set in amber.
+    // structure set in amber — and Env3 leans that roll in harder across the
+    // first half minute to stand against the ring going quiet.
     impact (s, 2 /* PLUCK */, 0.48f, 0.50f, 0.22f, 0.70f, 0.40f, 0.45f, 0.36f, 1.0f);
     amp (s, 1.20f, 3.0f, 0.88f, 3.5f, 0.55f);
     shape (s, 0.40f, 0.22f, 0.40f, 0.60f, 0.72f, 0.24f);

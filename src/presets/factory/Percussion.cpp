@@ -187,6 +187,7 @@ manager.addFactory ({ "Frame Shell", "PERCUSSION", { "struck", "wooden", "noisy"
      .uni (ModSource::Velocity,  Param::dustDensity,      0.300f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.340f)
      .uni (ModSource::Velocity,  Param::shapeStrike,      0.200f)
+     .uni (ModSource::Velocity,  Param::shapeTension,     0.240f)
      .bi  (ModSource::KeyTrack,  Param::dustColor,        0.220f)
      .bi  (ModSource::NoteRandom, Param::dustGrain,       0.090f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.300f)
@@ -222,6 +223,7 @@ manager.addFactory ({ "Water Timpani", "PERCUSSION", { "struck", "dark", "sub", 
      .bi  (ModSource::LFO1,      Param::shapeMass,        0.050f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.300f)
      .uni (ModSource::Velocity,  Param::shapeStrike,      0.260f)
+     .uni (ModSource::Velocity,  Param::shapeTension,     0.260f)
      .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.280f)
      .bi  (ModSource::NoteRandom, Param::shapePitch,      0.120f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.380f)
@@ -512,6 +514,7 @@ manager.addFactory ({ "Anvil Tooth", "PERCUSSION", { "struck", "harsh", "metalli
     r.uni (ModSource::Env1,      Param::evolveCrush,      0.220f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.420f)
      .uni (ModSource::Velocity,  Param::evolveCrush,     -0.240f)
+     .uni (ModSource::Velocity,  Param::shapeTension,     0.220f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.240f)
      .bi  (ModSource::NoteRandom, Param::impactRandom,    0.090f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.300f)
@@ -546,6 +549,8 @@ manager.addFactory ({ "Steel Tongue", "PERCUSSION", { "struck", "warm", "metalli
     r.uni (ModSource::Env1,      Param::shapeExcite,      0.180f)
      .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.060f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.340f)
+     .uni (ModSource::Velocity,  Param::impactBrightness, 0.300f)
+     .uni (ModSource::Velocity,  Param::shapeBlend,      -0.240f)
      .uni (ModSource::Velocity,  Param::shapeStrike,      0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.260f)
      .bi  (ModSource::NoteRandom, Param::shapeCoupling,   0.070f)
@@ -583,6 +588,7 @@ manager.addFactory ({ "Bell Foundry", "PERCUSSION", { "struck", "metallic", "col
      .bi  (ModSource::LFO1,      Param::shapeTension,     0.045f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.360f)
      .uni (ModSource::Velocity,  Param::impactBrightness, 0.260f)
+     .uni (ModSource::Velocity,  Param::shapeBlend,       0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.300f)
      .bi  (ModSource::NoteRandom, Param::shapeDistribution, 0.100f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.340f)
@@ -626,6 +632,7 @@ manager.addFactory ({ "Gong Weather", "PERCUSSION", { "struck", "metallic", "evo
      .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.090f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.320f)
      .uni (ModSource::Velocity,  Param::impactRate,       0.180f)
+     .uni (ModSource::Velocity,  Param::shapeBlend,      -0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.240f)
      .bi  (ModSource::NoteRandom, Param::impactRandom,    0.120f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.420f)
@@ -681,8 +688,9 @@ manager.addFactory ({ "Hissing Dome", "PERCUSSION", { "struck", "metallic", "air
 manager.addFactory ({ "Wire Hammer", "PERCUSSION", { "struck", "bright", "rhythmic", "resonant", "melodic" }, [] (PatchState& s)
 {
     // A hammered dulcimer. Two hard beaters on a course of wires: the repeat
-    // sits at tremolo speed and a 1/16 Fracture grid throws the tremolo around
-    // the stereo field the way a real pair of hammers never quite lines up.
+    // sits at tremolo speed, a 1/16 Fracture grid throws the tremolo around the
+    // stereo field the way a real pair of hammers never quite lines up, and the
+    // synced delays of ORBIT put the board at the far end of a hall.
     impact (s, 2 /* PLUCK */, 0.56f, 0.66f, 0.08f, 0.92f, 0.32f, 0.22f, 0.44f, 0.72f);
     amp (s, 0.001f, 0.70f, 0.32f, 0.55f, 0.30f);
     set (s, Param::masterGain, -2.0f);
@@ -782,6 +790,7 @@ manager.addFactory ({ "Porcelain Crack", "PERCUSSION", { "struck", "glassy", "co
      .bi  (ModSource::Chaos1,    Param::shapeCoupling,    0.120f)
      .uni (ModSource::Velocity,  Param::evolveTear,       0.220f)
      .uni (ModSource::Velocity,  Param::sampleStart,     -0.180f)
+     .uni (ModSource::Velocity,  Param::shapeBlend,      -0.260f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.220f)
      .bi  (ModSource::NoteRandom, Param::shapeDistribution, 0.120f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.340f)
@@ -858,7 +867,7 @@ manager.addFactory ({ "Cathedral Vibes", "PERCUSSION", { "struck", "metallic", "
      .bi  (ModSource::LFO1,      Param::shapeStereo,      0.120f)
      .uni (ModSource::Env1,      Param::shapeCoupling,    0.160f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.340f)
-     .uni (ModSource::Velocity,  Param::shapeBlend,       0.220f)
+     .uni (ModSource::Velocity,  Param::shapeBlend,      -0.280f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.280f)
      .bi  (ModSource::NoteRandom, Param::shapeSurface,    0.060f)
      .uni (ModSource::Macro1,    Param::lfo1Rate,         0.220f)
@@ -896,6 +905,7 @@ manager.addFactory ({ "Stone Circle", "PERCUSSION", { "struck", "dark", "hollow"
      .uni (ModSource::Velocity,  Param::impactHardness,   0.360f)
      .uni (ModSource::Velocity,  Param::sampleStart,     -0.150f)
      .uni (ModSource::Velocity,  Param::shapeSurface,     0.200f)
+     .uni (ModSource::Velocity,  Param::shapeTension,     0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.260f)
      .bi  (ModSource::NoteRandom, Param::sampleSpread,    0.120f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.300f)
@@ -933,8 +943,8 @@ manager.addFactory ({ "Horsehair Drum", "PERCUSSION", { "scraped", "soft", "orga
     Routings r;
     r.uni (ModSource::Env1,      Param::impactLevel,      0.200f)
      .bi  (ModSource::Chaos1,    Param::gesturePosition,  0.160f)
-     .uni (ModSource::Velocity,  Param::impactLevel,      0.300f)
-     .uni (ModSource::Velocity,  Param::gestureLevel,    -0.240f)
+     .uni (ModSource::Velocity,  Param::impactLevel,      0.450f)
+     .uni (ModSource::Velocity,  Param::gestureLevel,    -0.420f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.280f)
      .bi  (ModSource::KeyTrack,  Param::gestureSpeed,     0.220f)
      .bi  (ModSource::NoteRandom, Param::gestureRoughness, 0.120f)

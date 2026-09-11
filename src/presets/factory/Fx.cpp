@@ -214,7 +214,7 @@ manager.addFactory ({ "Concrete Impact", "FX", { "dark", "wooden", "impact", "lo
      .uni (ModSource::Env1,   Param::evolveGravity,  0.120f)
      .bi  (ModSource::LFO1,   Param::spaceTone,      0.120f)
      .uni (ModSource::Velocity, Param::impactHardness, 0.400f)
-     .uni (ModSource::Velocity, Param::shapeStrike,  0.250f)
+     .uni (ModSource::Velocity, Param::shapeMass,     0.220f)
      .bi  (ModSource::KeyTrack, Param::shapeDecay,  -0.250f)
      .bi  (ModSource::NoteRandom, Param::impactRandom, 0.100f)
      .uni (ModSource::Macro1, Param::evolveMotion,   0.300f)
@@ -549,7 +549,7 @@ manager.addFactory ({ "Servo Panic", "FX", { "metallic", "harsh", "chaotic", "cl
 {
     impact (s, 1 /* CLICK */, 0.70f, 0.75f, 0.06f, 0.80f, 0.40f, 0.45f, 0.85f, 0.75f);
     amp (s, 0.002f, 1.00f, 0.78f, 0.40f, 0.35f);
-    set (s, Param::masterGain, -1.5f);
+    set (s, Param::masterGain, -2.5f);
     shape (s, 0.62f, 0.58f, 0.22f, 0.70f, 0.35f, 0.45f);
     material (s, MaterialType::Metal, MaterialType::String, 0.40f);
     topology (s, 4 /* RANDOM */, 0.50f, 0.55f, 3109);
@@ -773,7 +773,7 @@ manager.addFactory ({ "Bone Splinter", "FX", { "wooden", "dry", "close", "struck
 {
     impact (s, 2 /* PLUCK */, 0.62f, 0.55f, 0.08f, 0.90f, 0.35f, 0.25f, 0.0f, 0.90f);
     amp (s, 0.001f, 0.35f, 0.0f, 0.28f, 0.20f);
-    set (s, Param::masterGain, -4.0f);
+    set (s, Param::masterGain, -5.5f);
     shape (s, 0.34f, 0.28f, 0.35f, 0.55f, 0.30f, 0.30f);
     material (s, MaterialType::Wood, MaterialType::Organic, 0.40f);
     topology (s, 0 /* CHAIN */, 0.30f, 0.38f, 3159);
@@ -791,7 +791,7 @@ manager.addFactory ({ "Bone Splinter", "FX", { "wooden", "dry", "close", "struck
      .uni (ModSource::Env1,   Param::evolveTear,     0.180f)
      .bi  (ModSource::LFO1,   Param::shapeDistribution, 0.150f)
      .uni (ModSource::Velocity, Param::impactHardness, 0.400f)
-     .uni (ModSource::Velocity, Param::shapeStrike,  0.220f)
+     .uni (ModSource::Velocity, Param::impactLength,  0.200f)
      .bi  (ModSource::KeyTrack, Param::shapeDecay,  -0.280f)
      .bi  (ModSource::NoteRandom, Param::impactRandom, 0.200f)
      .uni (ModSource::Macro1, Param::evolveMotion,   0.300f)
@@ -899,7 +899,7 @@ manager.addFactory ({ "Iron Verdict", "FX", { "metallic", "dark", "huge", "struc
      .uni (ModSource::Env1,   Param::waveMorph,      0.250f)
      .bi  (ModSource::LFO1,   Param::spaceSize,      0.150f)
      .uni (ModSource::Velocity, Param::impactHardness, 0.350f)
-     .uni (ModSource::Velocity, Param::shapeStrike,  0.200f)
+     .uni (ModSource::Velocity, Param::shapeBlend,    0.220f)
      .bi  (ModSource::KeyTrack, Param::shapeDecay,  -0.220f)
      .bi  (ModSource::NoteRandom, Param::impactRandom, 0.120f)
      .uni (ModSource::Macro1, Param::evolveMotion,   0.300f)
@@ -915,7 +915,7 @@ manager.addFactory ({ "Circuit Bloom", "FX", { "glassy", "bright", "evolving", "
 {
     gesture (s, 5 /* ELECTRICAL */, 0.45f, 0.60f, 0.35f, 0.45f, 0.55f, 0.60f);
     amp (s, 0.05f, 2.40f, 0.80f, 1.40f, 0.55f);
-    set (s, Param::masterGain, 2.0f);
+    set (s, Param::masterGain, 0.5f);
     shape (s, 0.60f, 0.50f, 0.28f, 0.68f, 0.65f, 0.35f);
     material (s, MaterialType::Crystal, MaterialType::Liquid, 0.45f);
     topology (s, 5 /* STAR */, 0.45f, 0.58f, 3179);
@@ -924,7 +924,7 @@ manager.addFactory ({ "Circuit Bloom", "FX", { "glassy", "bright", "evolving", "
     set (s, Param::evolveBendPivot, 0.40f);
     set (s, Param::evolveBendRange, 0.55f);
     set (s, Param::evolveScatterSeed, 3181);
-    fracture (s, 3 /* EVOLVE */, 0.55f, 0.60f, 0.60f, 0.45f, 0.40f, 0.45f, 0.55f, 0.60f, 0.70f,
+    fracture (s, 3 /* EVOLVE */, 0.55f, 0.60f, 0.60f, 0.45f, 0.30f, 0.45f, 0.55f, 0.60f, 0.70f,
               1 /* 16 */, 3 /* 1/8 */, 8, 0.0f, 2 /* PINGPONG */, 0.85f, 0.30f, 3187,
               FractureShape { 16, 0.08f, 0.65f, 0.25f, 0.55f, 0.40f, 0.70f, 0.30f, 0.95f,
                               1.0f, 1.0f, 0.80f, 0.90f, kFifthTerrace, "XoLXHoLX", nullptr });

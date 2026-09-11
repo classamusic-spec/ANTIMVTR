@@ -234,12 +234,12 @@ manager.addFactory ({ "Tin Migration", "EVOLVING", { "metallic", "dirty", "morph
 
 manager.addFactory ({ "Rope Bridge", "EVOLVING", { "wooden", "organic", "bowed", "evolving", "roomy" }, [] (PatchState& s)
 {
-    // Six loose strings on a chain that tighten into one body: COUPLING goes
-    // from almost nothing to nearly full over six seconds, so separate voices
-    // become a single coupled resonance with new sum-and-difference modes.
+    // Six loose strings on a chain being tightened. Over six seconds the
+    // coupling closes, the tension comes up, the mass comes off and the modal
+    // set walks off the harmonic series: slack rope becomes a strung deck.
     gesture (s, 0 /* BOW */, 0.38f, 0.34f, 0.26f, 0.34f, 0.24f, 0.44f, 0.72f);
     amp (s, 0.42f, 3.0f, 0.66f, 1.60f, 0.5f);
-    shape (s, 0.50f, 0.26f, 0.46f, 0.62f, 0.60f, 0.24f);
+    shape (s, 0.50f, 0.26f, 0.46f, 0.62f, 0.78f, 0.24f);
     material (s, MaterialType::String, MaterialType::Wood, 0.36f);
     topology (s, 0 /* CHAIN */, 0.06f, 0.38f, 3361);
     matter (s, 0.86f, 0.50f, 0.22f, 0.66f);
@@ -512,7 +512,7 @@ manager.addFactory ({ "Bone Telegraph", "EVOLVING", { "wooden", "dry", "rhythmic
      .uni (ModSource::Env3,      Param::shapeBlend,      0.560f)
      .uni (ModSource::Env3,      Param::shapeDecay,      0.320f)
      .bi  (ModSource::LFO1,      Param::fracturePitch,   0.060f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,     0.260f)
+     .uni (ModSource::Velocity,  Param::fractureAmount,  0.260f)
      .bi  (ModSource::KeyTrack,  Param::fractureTone,    0.180f)
      .uni (ModSource::Macro1,    Param::fractureEvolve,  0.380f)
      .uni (ModSource::Macro2,    Param::fractureTone,    0.300f)
@@ -934,8 +934,8 @@ manager.addFactory ({ "Vellum Throat", "EVOLVING", { "vocal", "warm", "scraped",
 manager.addFactory ({ "Ferric Swell", "EVOLVING", { "metallic", "resonant", "evolving", "struck", "huge" }, [] (PatchState& s)
 {
     // The opposite of a bridge tightening: one welded body comes apart. The
-    // coupling falls from nearly full to almost nothing while the strikes get
-    // harder, so a single fused ring separates into individual iron strings.
+    // coupling opens out, the body weight comes off and the strikes get harder
+    // and brighter, so a fused ring separates into individual iron strings.
     impact (s, 4 /* METAL STRIKE */, 0.44f, 0.38f, 0.28f, 0.72f, 0.50f, 0.12f, 0.26f);
     amp (s, 0.004f, 6.0f, 0.70f, 3.0f, 0.45f);
     shape (s, 0.62f, 0.48f, 0.40f, 0.50f, 0.82f, 0.24f);

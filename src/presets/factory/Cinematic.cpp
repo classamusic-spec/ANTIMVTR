@@ -347,7 +347,7 @@ manager.addFactory ({ "Winter Carousel", "CINEMATIC", { "glassy", "cold", "pluck
     r.uni (ModSource::Env1,      Param::shapeSurface,    0.140f)
      .bi  (ModSource::LFO1,      Param::shapeTension,    0.040f)
      .uni (ModSource::Velocity,  Param::impactBrightness, 0.340f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,     0.200f)
+     .uni (ModSource::Velocity,  Param::shapeDecay,      0.200f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,     -0.220f)
      .uni (ModSource::Macro1,    Param::evolveMotion,    0.260f)
      .uni (ModSource::Macro2,    Param::impactBrightness, 0.300f)

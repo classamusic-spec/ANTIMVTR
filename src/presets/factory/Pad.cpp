@@ -693,7 +693,7 @@ manager.addFactory ({ "Paper Bells", "PAD", { "glassy", "soft", "plucked", "wide
 {
     impact (s, 2 /* PLUCK */, 0.22f, 0.52f, 0.30f, 0.44f, 0.60f, 0.30f, 0.20f);
     amp (s, 0.20f, 1.60f, 0.72f, 2.60f, 0.45f);
-    set (s, Param::masterGain, 3.0f);
+    set (s, Param::masterGain, 5.0f);
     shape (s, 0.44f, 0.72f, 0.22f, 0.70f, 0.72f, 0.10f);
     material (s, MaterialType::Crystal, MaterialType::Wood, 0.30f);
     topology (s, 5 /* STAR */, 0.34f, 0.66f, 293);

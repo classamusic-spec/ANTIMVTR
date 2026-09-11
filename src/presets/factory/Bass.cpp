@@ -490,7 +490,8 @@ manager.addFactory ({ "Live Wire", "BASS", { "synthetic", "dirty", "unstable", "
 // it: the most defined note in the set, and the one that survives a mono fold.
 manager.addFactory ({ "Anchor Line", "BASS", { "clean", "cold", "static", "dry", "sub" }, [] (PatchState& s)
 {
-    wave (s, 0 /* BASIC */, 0.20f, 0.14f, 0.0f, 2, 0.06f, 0.22f, -1);
+    wave (s, 0 /* BASIC */, 0.20f, 0.14f, 0.0f, 1, 0.04f, 0.14f, -1);
+    set (s, Param::wavePhaseRandom, 0.0f);   // the patch is about definition: no unison beating under it
     amp (s, 0.004f, 0.90f, 0.82f, 0.30f, 0.35f);
     set (s, Param::masterGain, -4.0f);
     shape (s, 0.30f, 0.40f, 0.72f, 0.46f, 0.48f, 0.14f);
@@ -658,7 +659,7 @@ manager.addFactory ({ "Sagging Iron", "BASS", { "dark", "morphing", "struck", "r
 // with swing, so one held key produces a bass line with a hole in every bar.
 manager.addFactory ({ "Girder Stutter", "BASS", { "metallic", "rhythmic", "dirty", "dry", "low" }, [] (PatchState& s)
 {
-    wave (s, 6 /* FRACTURED */, 0.34f, 0.24f, 0.06f, 2, 0.10f, 0.30f, -1);
+    wave (s, 6 /* FRACTURED */, 0.34f, 0.24f, 0.06f, 1, 0.05f, 0.18f, -1);
     amp (s, 0.002f, 0.90f, 0.86f, 0.22f, 0.3f);
     set (s, Param::masterGain, -1.5f);
     shape (s, 0.44f, 0.48f, 0.68f, 0.50f, 0.40f, 0.36f);
@@ -767,7 +768,7 @@ manager.addFactory ({ "Dredge Line", "BASS", { "dark", "evolving", "hollow", "ro
 manager.addFactory ({ "Grit Column", "BASS", { "dirty", "noisy", "cold", "close", "sub" }, [] (PatchState& s)
 {
     dust (s, 4 /* FILTERED */, 0.62f, 0.52f, 0.26f, 0.30f, 0.34f, 0.34f, 8171, 0.62f);
-    wave (s, 3 /* FOLDED */, 0.26f, 0.22f, 0.0f, 2, 0.06f, 0.20f, -1, 0.80f);
+    wave (s, 3 /* FOLDED */, 0.26f, 0.22f, 0.0f, 1, 0.03f, 0.10f, -1, 0.80f);
     set (s, Param::waveModRatio, 2.0f);
     set (s, Param::sourceMode, 1 /* LAYER */);
     set (s, Param::impactLevel, 0.0f);
@@ -963,10 +964,11 @@ manager.addFactory ({ "Tar Drum", "BASS", { "dark", "soft", "struck", "distant",
 // rubbery bass opens outwards like a hand instead of decaying.
 manager.addFactory ({ "Rubber Vault", "BASS", { "organic", "morphing", "soft", "roomy", "low" }, [] (PatchState& s)
 {
-    wave (s, 3 /* FOLDED */, 0.30f, 0.34f, 0.06f, 2, 0.10f, 0.26f, -1);
+    wave (s, 3 /* FOLDED */, 0.30f, 0.34f, 0.06f, 1, 0.04f, 0.12f, -1);
     set (s, Param::waveModRatio, 1.25f);
-    amp (s, 0.010f, 1.00f, 0.84f, 0.36f, 0.4f);
-    set (s, Param::masterGain, -3.5f);
+    set (s, Param::wavePhaseRandom, 0.0f);   // one voice, one phase: a sub that beats against itself is not a sub
+    amp (s, 0.010f, 1.10f, 0.90f, 0.36f, 0.4f);
+    set (s, Param::masterGain, 1.5f);
     shape (s, 0.44f, 0.36f, 0.68f, 0.36f, 0.50f, 0.34f);
     material (s, MaterialType::Liquid, MaterialType::Membrane, 0.44f);
     topology (s, 4 /* RANDOM */, 0.38f, 0.48f, 14009);

@@ -200,11 +200,11 @@ manager.addFactory ({ "Cross Weave", "SEQUENCE", { "glassy", "rhythmic", "evolvi
 {
     wave (s, 3 /* FOLDED */, 0.45f, 0.35f, 0.10f, 2, 0.14f, 0.50f);
     amp (s, 0.010f, 0.55f, 0.90f, 0.40f, 0.35f);
-    set (s, Param::masterGain, 2.5f);
+    set (s, Param::masterGain, 2.0f);
     shape (s, 0.50f, 0.40f, 0.35f, 0.62f, 0.48f, 0.28f);
     material (s, MaterialType::Crystal, MaterialType::String, 0.45f);
     topology (s, 3 /* LATTICE */, 0.44f, 0.52f, 4019);
-    matter (s, 0.82f, 0.65f, 0.10f, 0.70f);
+    matter (s, 0.55f, 0.70f, 0.10f, 0.70f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.40f, 0.50f, 0.12f, 0.0f, 0.45f, 0.25f);
     set (s, Param::evolveMagnetTarget, 1 /* FIFTH */);
     // Three steps of an eighth against a four-four bar: the pattern turns over every
@@ -242,11 +242,11 @@ manager.addFactory ({ "Bell Phase", "SEQUENCE", { "glassy", "bright", "rhythmic"
 {
     sample (s, BuiltInSamples::Kind::MetalPing, 3 /* GRANULAR */, 0.0f, 0.60f, 0.45f, 0.55f, 60, 0.90f);
     amp (s, 0.020f, 0.80f, 0.90f, 0.60f, 0.40f);
-    set (s, Param::masterGain, 4.0f);
+    set (s, Param::masterGain, 2.0f);
     shape (s, 0.45f, 0.55f, 0.30f, 0.60f, 0.55f, 0.22f);
     material (s, MaterialType::String, MaterialType::Crystal, 0.40f);
     topology (s, 5 /* STAR */, 0.35f, 0.55f, 4027);
-    matter (s, 0.88f, 0.72f, 0.12f, 0.75f);
+    matter (s, 0.70f, 0.72f, 0.30f, 0.75f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.45f, 0.48f, 0.12f, 0.0f, 0.40f, 0.30f);
     set (s, Param::evolveMagnetTarget, 2 /* MAJOR */);
     // Five triplet eighths per cycle: five thirds of a beat against four, so the bells
@@ -412,7 +412,7 @@ manager.addFactory ({ "Terrace Climb", "SEQUENCE", { "glassy", "bright", "melodi
 
     wave (s, 0 /* BASIC */, 0.25f, 0.20f, 0.05f, 3, 0.12f, 0.55f);
     amp (s, 0.010f, 0.50f, 0.88f, 0.35f, 0.30f);
-    set (s, Param::masterGain, 2.0f);
+    set (s, Param::masterGain, 0.5f);
     shape (s, 0.45f, 0.35f, 0.30f, 0.60f, 0.45f, 0.24f);
     material (s, MaterialType::Crystal, MaterialType::Membrane, 0.40f);
     topology (s, 1 /* RING */, 0.40f, 0.50f, 4057);
@@ -706,7 +706,7 @@ manager.addFactory ({ "Cicada Grid", "SEQUENCE", { "bright", "granular", "rhythm
     shape (s, 0.66f, 0.60f, 0.22f, 0.66f, 0.40f, 0.38f);
     material (s, MaterialType::Crystal, MaterialType::Organic, 0.40f);
     topology (s, 3 /* LATTICE */, 0.46f, 0.58f, 4113);
-    matter (s, 0.82f, 0.70f, 0.25f, 0.88f);
+    matter (s, 0.42f, 0.80f, 0.12f, 0.88f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.30f, 0.42f, 0.30f, 0.0f, 0.60f, 0.45f);
     set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
     set (s, Param::evolveScatterSeed, 4115);
@@ -870,16 +870,16 @@ manager.addFactory ({ "Reverse Cascade", "SEQUENCE", { "glassy", "cold", "morphi
 {
     sample (s, BuiltInSamples::Kind::GlassStrike, 2 /* REVERSE */, 0.0f, 1.0f, 0.38f, 0.60f, 60, 0.90f);
     amp (s, 0.025f, 0.90f, 0.90f, 0.60f, 0.40f);
-    set (s, Param::masterGain, 1.0f);
-    shape (s, 0.48f, 0.50f, 0.34f, 0.56f, 0.55f, 0.26f);
+    set (s, Param::masterGain, -2.0f);
+    shape (s, 0.48f, 0.50f, 0.34f, 0.56f, 0.72f, 0.26f);
     material (s, MaterialType::Liquid, MaterialType::String, 0.45f);
     topology (s, 5 /* STAR */, 0.38f, 0.52f, 4147);
-    matter (s, 0.86f, 0.62f, 0.50f, 0.80f);
+    matter (s, 0.86f, 0.62f, 0.35f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.48f, 0.46f, 0.16f, 0.0f, 0.42f, 0.32f);
     set (s, Param::evolveMagnetTarget, 3 /* MINOR */);
     // Played backwards through a falling terrace: the sequencer walks the steps in
     // reverse while the pitches fall, so the figure seems to be sucked inwards.
-    fracture (s, 1 /* RHYTHMIC */, 0.98f, 1.0f, 0.48f, 1.0f, 0.18f, 0.26f, 0.66f, 0.52f, 0.25f,
+    fracture (s, 1 /* RHYTHMIC */, 0.98f, 1.0f, 0.48f, 1.0f, 0.18f, 0.26f, 0.82f, 0.52f, 0.25f,
               1 /* 16 */, 4 /* 1/16 */, 8, 0.0f, 1 /* BACKWARD */, 1.0f, 0.12f, 4149,
               FractureShape { 16, 0.02f, 0.24f, 0.14f, 0.36f, 0.32f, 0.55f, 0.25f, 0.82f,
                               1.8f, 1.8f, 0.70f, 1.0f, kFallingTerrace, "XLoXHLoX", kFallingTerrace });
@@ -918,7 +918,7 @@ manager.addFactory ({ "Bit Ladder", "SEQUENCE", { "synthetic", "harsh", "melodic
     shape (s, 0.40f, 0.30f, 0.26f, 0.64f, 0.38f, 0.30f);
     material (s, MaterialType::Custom, MaterialType::Metal, 0.35f);
     topology (s, 3 /* LATTICE */, 0.38f, 0.48f, 4153);
-    matter (s, 0.72f, 0.68f, 0.22f, 0.55f);
+    matter (s, 0.52f, 0.72f, 0.18f, 0.55f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.30f, 0.48f, 0.12f, 0.52f, 0.45f, 0.25f);
     set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
     fracture (s, 1 /* RHYTHMIC */, 1.0f, 1.0f, 0.30f, 1.0f, 0.18f, 0.14f, 0.20f, 0.60f, 0.18f,

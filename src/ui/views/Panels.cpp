@@ -63,14 +63,14 @@ juce::Colour AMSidebar::accentFor (int index) const noexcept
 float AMSidebar::rowHeight() const noexcept
 {
     const int n = juce::jmax (1, (int) items.size());
-    const float natural = juce::jlimit (30.0f, 64.0f, (float) getWidth() * 0.24f);
+    const float natural = juce::jlimit (30.0f, 72.0f, (float) getWidth() * 0.30f);
     return juce::jmin (natural, (float) getHeight() / (float) n);
 }
 
 int AMSidebar::preferredHeight (int width) const noexcept
 {
     const int n = juce::jmax (1, (int) items.size());
-    return juce::roundToInt (juce::jlimit (30.0f, 64.0f, (float) width * 0.24f)) * n;
+    return juce::roundToInt (juce::jlimit (30.0f, 72.0f, (float) width * 0.30f)) * n;
 }
 
 juce::Rectangle<float> AMSidebar::pillBounds (int index) const
@@ -158,7 +158,7 @@ void AMSidebar::paint (juce::Graphics& g)
         Icons::draw (g, items[(size_t) i].icon, glyph,
                      sel ? tint : Theme::textDim.interpolatedWith (tint, hov ? 0.45f : 0.0f), sel ? 1.05f : 0.85f);
 
-        const bool twoLine = items[(size_t) i].caption.isNotEmpty() && pill.getHeight() > 34.0f && row.getWidth() > 54.0f;
+        const bool twoLine = items[(size_t) i].caption.isNotEmpty() && pill.getHeight() > 30.0f && row.getWidth() > 54.0f;
         const float labelH = juce::jlimit (9.0f, 13.0f, pill.getHeight() * (twoLine ? 0.26f : 0.30f));
         auto text = twoLine ? row.removeFromTop (row.getHeight() * 0.56f) : row;
         draw::trackedText (g, items[(size_t) i].label, text, juce::Justification::centredLeft,

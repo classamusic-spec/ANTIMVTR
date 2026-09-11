@@ -48,17 +48,18 @@ manager.addFactory ({ "Liquid Teeth", "LEAD", { "lead", "liquid", "biting", "mon
 
 manager.addFactory ({ "Impossible String", "LEAD", { "lead", "bowed", "string", "expressive" }, [] (PatchState& s)
 {
-    gesture (s, 0 /* BOW */, 0.58f, 0.48f, 0.24f, 0.32f, 0.22f, 0.45f);
-    amp (s, 0.12f, 0.50f, 0.88f, 0.45f, 0.5f);
-    shape (s, 0.48f, 0.12f, 0.40f, 0.62f, 0.56f, 0.22f);
-    material (s, MaterialType::String, MaterialType::Organic, 0.30f);
-    topology (s, 0 /* CHAIN */, 0.50f, 0.55f, 61);
-    matter (s, 0.95f, 0.52f, 0.25f, 0.50f);
+    gesture (s, 0 /* BOW */, 0.66f, 0.52f, 0.24f, 0.30f, 0.22f, 0.58f);
+    amp (s, 0.04f, 0.62f, 0.94f, 0.55f, 0.45f);
+    shape (s, 0.52f, 0.46f, 0.40f, 0.66f, 0.62f, 0.26f);
+    material (s, MaterialType::String, MaterialType::Crystal, 0.34f);
+    topology (s, 2 /* CLUSTERS */, 0.44f, 0.62f, 61);
+    matter (s, 0.98f, 0.74f, 0.30f, 0.50f);
+    set (s, Param::shapePitch, 7.0f);
     evolve (s, 0.16f, 0.0f, 0.0f, 0.44f, 0.48f, 0.08f, 0.0f, 0.28f, 0.24f);
     set (s, Param::evolveMagnetTarget, 6 /* CUSTOM (harmonic) */);
     set (s, Param::masterMode, 2 /* LEGATO */);
     set (s, Param::masterGlide, 0.10f);
-    space (s, SpacePresets::Chamber, 0.34f, 0.45f, 0.55f, 0.28f);
+    space (s, SpacePresets::Nebula, 0.36f, 0.58f, 0.60f, 0.34f);
 
     lfo (s, 1, 5.60f, 0 /* SINE */, 1.0f, true, 0.60f);
     lfo (s, 2, 0.22f, 5 /* SMOOTH RANDOM */, 1.0f, false);

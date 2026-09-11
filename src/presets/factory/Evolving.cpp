@@ -689,7 +689,7 @@ manager.addFactory ({ "Moth Lattice", "EVOLVING", { "soft", "scraped", "morphing
     r.commit (s);
 }});
 
-manager.addFactory ({ "Tide Organ", "EVOLVING", { "organic", "breathing", "bowed", "warm", "roomy" }, [] (PatchState& s)
+manager.addFactory ({ "Sodden Reed", "EVOLVING", { "organic", "breathing", "bowed", "warm", "roomy" }, [] (PatchState& s)
 {
     // Two clocks at once: a looping envelope breathes the bow every few
     // seconds, and underneath it the material walks ORGANIC -> LIQUID and the

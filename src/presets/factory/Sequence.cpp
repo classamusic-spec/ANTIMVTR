@@ -870,7 +870,7 @@ manager.addFactory ({ "Reverse Cascade", "SEQUENCE", { "glassy", "cold", "morphi
 {
     sample (s, BuiltInSamples::Kind::GlassStrike, 2 /* REVERSE */, 0.05f, 0.80f, 0.38f, 0.60f, 60, 0.90f);
     amp (s, 0.025f, 0.90f, 0.90f, 0.60f, 0.40f);
-    set (s, Param::masterGain, 3.5f);
+    set (s, Param::masterGain, 5.0f);
     shape (s, 0.48f, 0.50f, 0.34f, 0.56f, 0.55f, 0.26f);
     material (s, MaterialType::Liquid, MaterialType::String, 0.45f);
     topology (s, 5 /* STAR */, 0.38f, 0.52f, 4147);
@@ -879,7 +879,7 @@ manager.addFactory ({ "Reverse Cascade", "SEQUENCE", { "glassy", "cold", "morphi
     set (s, Param::evolveMagnetTarget, 3 /* MINOR */);
     // Played backwards through a falling terrace: the sequencer walks the steps in
     // reverse while the pitches fall, so the figure seems to be sucked inwards.
-    fracture (s, 1 /* RHYTHMIC */, 0.98f, 1.0f, 0.48f, 1.0f, 0.20f, 0.26f, 0.44f, 0.52f, 0.25f,
+    fracture (s, 1 /* RHYTHMIC */, 0.98f, 1.0f, 0.48f, 1.0f, 0.20f, 0.26f, 0.58f, 0.52f, 0.25f,
               1 /* 16 */, 4 /* 1/16 */, 8, 0.0f, 1 /* BACKWARD */, 1.0f, 0.12f, 4149,
               FractureShape { 16, 0.02f, 0.24f, 0.14f, 0.36f, 0.32f, 0.55f, 0.25f, 0.82f,
                               1.8f, 1.8f, 0.70f, 1.0f, kFallingTerrace, "XLoXHLoX", kFallingTerrace });

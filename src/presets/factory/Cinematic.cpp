@@ -206,7 +206,7 @@ manager.addFactory ({ "Black Harvest", "CINEMATIC", { "dirty", "dark", "harsh", 
     Routings r;
     r.bi  (ModSource::LFO1,      Param::dustColor,       0.120f)
      .bi  (ModSource::Chaos1,    Param::shapeSurface,    0.100f)
-     .uni (ModSource::Env2,      Param::evolveCrush,     0.220f)
+     .uni (ModSource::Env2,      Param::evolveCrush,     0.440f)
      .uni (ModSource::Velocity,  Param::dustDensity,     0.240f)
      .bi  (ModSource::KeyTrack,  Param::dustColor,       0.180f)
      .uni (ModSource::Macro1,    Param::evolveMotion,    0.300f)
@@ -272,7 +272,7 @@ manager.addFactory ({ "Widow Strings", "CINEMATIC", { "cold", "dark", "bowed", "
 
     Routings r;
     r.bi  (ModSource::LFO1,      Param::gestureSpeed,    0.090f)
-     .uni (ModSource::Env2,      Param::evolveMagnet,    0.200f)
+     .uni (ModSource::Env2,      Param::evolveMagnet,    0.460f)
      .uni (ModSource::Velocity,  Param::gesturePressure, 0.300f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,     -0.180f)
      .uni (ModSource::NoteRandom, Param::gesturePosition, 0.160f)

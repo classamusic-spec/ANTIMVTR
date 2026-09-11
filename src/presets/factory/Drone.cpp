@@ -812,6 +812,7 @@ manager.addFactory ({ "Tungsten Thread", "DRONE", { "metallic", "bright", "morph
     // a continuous line and back, four or five times a minute.
     wave (s, 4 /* METALLIC */, 0.52f, 0.30f, 0.0f, 3, 0.06f, 0.80f, 1, 0.82f);
     amp (s, 1.30f, 3.0f, 0.90f, 3.5f, 0.58f);
+    set (s, Param::masterGain, 4.0f);
     shape (s, 0.46f, 0.68f, 0.18f, 0.72f, 0.80f, 0.22f);
     material (s, MaterialType::Metal, MaterialType::Crystal, 0.52f);
     topology (s, 5 /* STAR */, 0.30f, 0.32f, 1103);
@@ -896,8 +897,9 @@ manager.addFactory ({ "Moth Static", "DRONE", { "granular", "cold", "unstable", 
     // random graph of dry organic matter and crystal, and a SPECTRAL Fracture
     // with long feedback keeps catching them and letting them go, so the
     // flutter is never the same twice and never quite stops.
-    dust (s, 5 /* CRACKLE */, 0.40f, 0.66f, 0.30f, 0.62f, 0.66f, 0.75f, 1151, 0.92f);
+    dust (s, 5 /* CRACKLE */, 0.74f, 0.66f, 0.44f, 0.62f, 0.66f, 0.75f, 1151, 1.0f);
     amp (s, 0.60f, 2.0f, 0.88f, 2.4f, 0.52f);
+    set (s, Param::masterGain, 5.0f);
     shape (s, 0.58f, 0.56f, 0.22f, 0.68f, 0.66f, 0.50f);
     material (s, MaterialType::Organic, MaterialType::Crystal, 0.52f);
     topology (s, 4 /* RANDOM */, 0.42f, 0.60f, 1153);
@@ -917,8 +919,8 @@ manager.addFactory ({ "Moth Static", "DRONE", { "granular", "cold", "unstable", 
     macros (s, 0.55f, 0.50f, 0.36f, 0.55f);
 
     Routings r;
-    r.bi  (ModSource::Chaos1,    Param::dustDensity,      0.320f)
-     .bi  (ModSource::Chaos1,    Param::dustJitter,       0.220f)
+    r.bi  (ModSource::Chaos1,    Param::dustDensity,      0.440f)
+     .bi  (ModSource::Chaos1,    Param::dustJitter,       0.300f)
      .bi  (ModSource::Chaos2,    Param::shapeBlend,       0.320f)
      .bi  (ModSource::Env2,      Param::shapeDistribution, 0.280f)
      .bi  (ModSource::LFO1,      Param::dustColor,        0.200f)
@@ -984,10 +986,11 @@ manager.addFactory ({ "Sympathy Wires", "DRONE", { "resonant", "wooden", "drift"
     // keeps them all alive while a mallet touches one every few seconds; the
     // COUPLING between the wires drifts on a long loop, so which wires are
     // answering each other keeps changing and the chord reshuffles itself.
-    wave (s, 0 /* BASIC */, 0.28f, 0.16f, 0.0f, 3, 0.04f, 0.45f, 0, 0.70f);
-    impact (s, 2 /* PLUCK */, 0.40f, 0.52f, 0.10f, 0.70f, 0.35f, 0.60f, 0.10f, 0.55f);
+    wave (s, 0 /* BASIC */, 0.28f, 0.16f, 0.0f, 3, 0.04f, 0.45f, 0, 0.30f);
+    impact (s, 2 /* PLUCK */, 0.40f, 0.52f, 0.12f, 0.70f, 0.35f, 0.60f, 0.16f, 0.85f);
     layerSources (s, 0 /* WAVE */, 2 /* IMPACT */);
     amp (s, 1.20f, 3.0f, 0.90f, 3.5f, 0.58f);
+    set (s, Param::masterGain, -6.0f);
     shape (s, 0.40f, 0.12f, 0.36f, 0.66f, 0.84f, 0.20f);
     material (s, MaterialType::String, MaterialType::Wood, 0.42f);
     topology (s, 0 /* CHAIN */, 0.34f, 0.44f, 1213);
@@ -1007,10 +1010,13 @@ manager.addFactory ({ "Sympathy Wires", "DRONE", { "resonant", "wooden", "drift"
 
     Routings r;
     r.bi  (ModSource::Env2,      Param::shapeCoupling,    0.400f)
+     .bi  (ModSource::Env2,      Param::shapeBlend,       0.460f)
      .bi  (ModSource::Env2,      Param::shapeDistribution, 0.220f)
-     .bi  (ModSource::LFO1,      Param::shapeTension,     0.120f)
-     .bi  (ModSource::Chaos1,    Param::impactRate,       0.220f)
-     .bi  (ModSource::Chaos1,    Param::impactBrightness, 0.200f)
+     .bi  (ModSource::LFO1,      Param::shapeTension,     0.180f)
+     .bi  (ModSource::LFO1,      Param::shapeForm,        0.140f)
+     .bi  (ModSource::Chaos1,    Param::impactRate,       0.300f)
+     .bi  (ModSource::Chaos1,    Param::impactBrightness, 0.320f)
+     .bi  (ModSource::Chaos1,    Param::shapeDecay,       0.180f)
      .uni (ModSource::Velocity,  Param::impactLevel,      0.300f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.220f)
      .bi  (ModSource::NoteRandom, Param::impactRandom,    0.140f)
@@ -1036,6 +1042,7 @@ manager.addFactory ({ "Ember Bed", "DRONE", { "warm", "dirty", "granular", "chao
     sample (s, BuiltInSamples::Kind::NoiseBurst, 3 /* GRANULAR */, 0.05f, 0.80f, 0.52f, 0.60f, 45, 0.80f);
     layerSources (s, 1 /* DUST */, 3 /* SAMPLE */);
     amp (s, 1.40f, 3.0f, 0.90f, 3.5f, 0.58f);
+    set (s, Param::masterGain, 1.5f);
     shape (s, 0.50f, 0.30f, 0.66f, 0.42f, 0.74f, 0.48f);
     material (s, MaterialType::Custom, MaterialType::Organic, 0.44f);
     topology (s, 3 /* LATTICE */, 0.48f, 0.48f, 1231);

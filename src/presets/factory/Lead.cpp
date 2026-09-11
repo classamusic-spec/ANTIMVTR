@@ -498,18 +498,17 @@ manager.addFactory ({ "Glacier Bow", "LEAD", { "cold", "glassy", "bowed", "wide"
 
 manager.addFactory ({ "Locust Voice", "LEAD", { "harsh", "noisy", "rhythmic", "mid", "melodic" }, [] (PatchState& s)
 {
-    gesture (s, 4 /* FRICTION */, 0.70f, 0.70f, 0.58f, 0.36f, 0.28f, 0.34f);
+    gesture (s, 4 /* FRICTION */, 0.62f, 0.70f, 0.58f, 0.36f, 0.28f, 0.34f);
     amp (s, 0.010f, 0.35f, 0.86f, 0.26f, 0.4f);
     shape (s, 0.56f, 0.58f, 0.32f, 0.70f, 0.48f, 0.46f);
     material (s, MaterialType::Custom, MaterialType::Metal, 0.40f);
     topology (s, 3 /* LATTICE */, 0.58f, 0.40f, 1789);
-    matter (s, 0.94f, 0.76f, 0.44f, 0.36f);
-    set (s, Param::masterGain, 1.5f);
+    matter (s, 0.90f, 0.68f, 0.36f, 0.36f);
     evolve (s, 0.0f, 0.0f, 0.16f, 0.36f, 0.46f, 0.20f, 0.0f, 0.60f, 0.26f);
     set (s, Param::evolveMagnetTarget, 4 /* CHROMATIC */);
     set (s, Param::masterMode, 1 /* MONO */);
     set (s, Param::masterGlide, 0.03f);
-    fracture (s, 1 /* RHYTHMIC */, 0.40f, 0.34f, 0.36f, 0.62f, 0.20f, 0.18f, 0.38f, 0.60f, 0.25f,
+    fracture (s, 1 /* RHYTHMIC */, 0.34f, 0.30f, 0.36f, 0.62f, 0.16f, 0.18f, 0.38f, 0.60f, 0.25f,
               1 /* 16 */, 5 /* 1/32 */, 8, 0.0f, 2 /* PINGPONG */, 0.80f, 0.30f, 1231,
               FractureShape { 16, 0.02f, 0.18f, 0.08f, 0.30f, 0.30f, 0.52f, 0.25f, 0.80f,
                               1.0f, 0.85f, 0.60f, 0.85f, nullptr, "XoXoXoXo", nullptr });

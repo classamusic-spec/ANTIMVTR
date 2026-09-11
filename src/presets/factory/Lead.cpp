@@ -142,7 +142,7 @@ manager.addFactory ({ "Steel Reed", "LEAD", { "metallic", "bowed", "bright", "mi
      .bi  (ModSource::LFO2,      Param::gesturePosition,  0.110f)
      .uni (ModSource::Env1,      Param::gesturePressure,  0.280f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.240f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,      0.300f)
+     .uni (ModSource::Velocity,  Param::shapeSurface,     0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeSurface,    -0.140f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,        0.600f)
      .uni (ModSource::Macro1,    Param::gestureMotion,    0.400f)
@@ -300,7 +300,7 @@ manager.addFactory ({ "Bowed Girder", "LEAD", { "dark", "low", "bowed", "metalli
      .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.340f)
      .uni (ModSource::Macro2,    Param::shapeSurface,     0.180f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
-     .uni (ModSource::Macro4,    Param::shapeCoupling,    0.300f);
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.340f);
     sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
     r.commit (s);
 }});
@@ -336,7 +336,7 @@ manager.addFactory ({ "Rolling Iron", "LEAD", { "metallic", "struck", "rhythmic"
      .uni (ModSource::ModWheel,   Param::impactRate,       0.400f)
      .uni (ModSource::Macro1,     Param::fractureSequence, 0.380f)
      .uni (ModSource::Macro2,     Param::impactBrightness, 0.320f)
-     .uni (ModSource::Macro2,     Param::shapeExcite,      0.200f)
+     .uni (ModSource::Macro2,     Param::fractureTone,     0.240f)
      .uni (ModSource::Macro3,     Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,     Param::fractureAmount,   0.340f);
     sharedMacros (r, Param::fractureDecay, Param::impactRandom);
@@ -448,7 +448,7 @@ manager.addFactory ({ "Amber Horn", "LEAD", { "warm", "wooden", "soft", "mid", "
      .bi  (ModSource::LFO2,      Param::waveMorph,    0.110f)
      .uni (ModSource::Env2,      Param::wavePosition, 0.240f)
      .uni (ModSource::Env2,      Param::shapeTension, 0.150f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,  0.320f)
+     .uni (ModSource::Velocity,  Param::shapeSurface, 0.300f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,  -0.180f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,    0.520f)
      .uni (ModSource::Macro1,    Param::lfo2Depth,    0.450f)
@@ -483,7 +483,7 @@ manager.addFactory ({ "Glacier Bow", "LEAD", { "cold", "glassy", "bowed", "wide"
     r.bi  (ModSource::LFO1,      Param::shapePitch,       0.005f)
      .bi  (ModSource::LFO2,      Param::gestureSpeed,     0.140f)
      .uni (ModSource::Env2,      Param::evolveMagnet,     0.260f)
-     .uni (ModSource::Env2,      Param::shapeCoupling,    0.180f)
+     .uni (ModSource::Env2,      Param::shapeBlend,       0.200f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.260f)
      .bi  (ModSource::NoteRandom, Param::gesturePosition, 0.120f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,        0.500f)
@@ -722,7 +722,7 @@ manager.addFactory ({ "Ice Pick", "LEAD", { "cold", "harsh", "glassy", "air", "m
      .uni (ModSource::LFO1,      Param::shapeExcite,    0.160f)
      .uni (ModSource::Env1,      Param::waveSync,       0.280f)
      .uni (ModSource::Velocity,  Param::waveSync,       0.220f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,    0.280f)
+     .uni (ModSource::Velocity,  Param::shapeSurface,   0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeSurface,  -0.180f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,      0.500f)
      .uni (ModSource::Macro1,    Param::lfo1Depth,      0.400f)

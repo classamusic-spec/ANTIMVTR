@@ -663,7 +663,7 @@ manager.addFactory ({ "Cymbal Weather", "TEXTURE", { "metallic", "bowed", "wide"
     r.bi  (ModSource::LFO1,      Param::gestureSpeed,     0.220f)
      .bi  (ModSource::LFO2,      Param::gesturePosition,  0.180f)
      .bi  (ModSource::Chaos1,    Param::gesturePressure,  0.160f)
-     .uni (ModSource::Env2,      Param::shapeCoupling,    0.200f)
+     .uni (ModSource::Env2,      Param::shapeBlend,       0.240f)
      .uni (ModSource::Env2,      Param::evolveTear,       0.180f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.220f)
      .bi  (ModSource::KeyTrack,  Param::gestureBandwidth, 0.160f)
@@ -671,7 +671,7 @@ manager.addFactory ({ "Cymbal Weather", "TEXTURE", { "metallic", "bowed", "wide"
      .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.320f)
      .uni (ModSource::Macro2,    Param::shapeForm,        0.220f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
-     .uni (ModSource::Macro4,    Param::shapeCoupling,    0.340f)
+     .uni (ModSource::Macro4,    Param::shapeMass,        0.280f)
      .uni (ModSource::Macro4,    Param::gestureRoughness, 0.260f);
     sharedMacros (r, Param::spaceSize, Param::evolveTear);
     r.commit (s);

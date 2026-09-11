@@ -132,13 +132,14 @@ manager.addFactory ({ "Ash Keys", "KEYS", { "keys", "electric", "soft", "vintage
 manager.addFactory ({ "Rosewood Marimba", "KEYS", { "wooden", "warm", "struck", "close", "melodic" }, [] (PatchState& s)
 {
     impact (s, 3 /* NOISE STRIKE */, 0.55f, 0.42f, 0.10f, 0.85f, 0.45f, 0.10f);
-    amp (s, 0.001f, 0.80f, 0.0f, 0.55f, 0.30f);
-    shape (s, 0.34f, 0.30f, 0.44f, 0.42f, 0.52f, 0.22f);
+    amp (s, 0.006f, 0.60f, 0.0f, 0.30f, 0.30f);
+    shape (s, 0.34f, 0.30f, 0.50f, 0.42f, 0.58f, 0.22f);
     material (s, MaterialType::Wood, MaterialType::Organic, 0.35f);
-    topology (s, 0 /* CHAIN */, 0.30f, 0.35f, 23);
+    topology (s, 2 /* CLUSTERS */, 0.34f, 0.35f, 23);
     matter (s, 0.92f, 0.60f, 0.46f, 0.45f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.46f, 0.05f, 0.0f, 0.20f, 0.10f);
-    space (s, SpacePresets::Chamber, 0.22f, 0.30f, 0.45f, 0.15f);
+    set (s, Param::masterTranspose, 12.0f);   // a marimba sits an octave above the piano
+    space (s, SpacePresets::Nebula, 0.20f, 0.45f, 0.50f, 0.18f);
 
     env (s, 1, 0.001f, 0.35f, 0.0f, 0.30f, 0.30f);
     macros (s, 0.15f, 0.35f, 0.25f, 0.30f);
@@ -154,7 +155,7 @@ manager.addFactory ({ "Rosewood Marimba", "KEYS", { "wooden", "warm", "struck", 
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
-     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
+     .uni (ModSource::Macro1,      Param::shapeDistribution, 0.220f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.350f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
@@ -241,13 +242,13 @@ manager.addFactory ({ "Glass Celeste", "KEYS", { "glassy", "bright", "struck", "
 manager.addFactory ({ "Hollow Steel", "KEYS", { "metallic", "warm", "struck", "hollow", "close" }, [] (PatchState& s)
 {
     impact (s, 6 /* MEMBRANE HIT */, 0.35f, 0.30f, 0.25f, 0.80f, 0.50f, 0.12f);
-    amp (s, 0.002f, 1.40f, 0.0f, 1.10f, 0.35f);
+    amp (s, 0.009f, 1.90f, 0.0f, 1.30f, 0.35f);
     shape (s, 0.38f, 0.40f, 0.37f, 0.46f, 0.58f, 0.14f);
     material (s, MaterialType::Metal, MaterialType::Membrane, 0.42f);
     topology (s, 1 /* RING */, 0.42f, 0.40f, 37);
     matter (s, 0.97f, 0.52f, 0.40f, 0.50f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.58f, 0.06f, 0.0f, 0.20f, 0.12f);
-    space (s, SpacePresets::Chamber, 0.28f, 0.45f, 0.42f, 0.20f);
+    space (s, SpacePresets::Orbit, 0.26f, 0.45f, 0.45f, 0.30f);
 
     env (s, 1, 0.001f, 0.70f, 0.0f, 0.50f, 0.30f);
     macros (s, 0.20f, 0.30f, 0.25f, 0.35f);
@@ -368,7 +369,7 @@ manager.addFactory ({ "Tine Bark", "KEYS", { "metallic", "bright", "struck", "cl
     wave (s, 1 /* HARMONIC */, 0.15f, 0.20f, 0.0f, 1, 0.05f, 0.30f, 0, 0.50f);
     impact (s, 1 /* CLICK */, 0.62f, 0.55f, 0.12f, 0.90f, 0.40f, 0.10f, 0.0f, 0.55f);
     layerOnly (s, Param::waveLevel, Param::impactLevel);
-    amp (s, 0.002f, 1.60f, 0.10f, 0.90f, 0.45f);
+    amp (s, 0.003f, 2.00f, 0.14f, 1.10f, 0.45f);
     shape (s, 0.30f, 0.20f, 0.45f, 0.52f, 0.50f, 0.18f);
     material (s, MaterialType::Metal, MaterialType::String, 0.50f);
     topology (s, 0 /* CHAIN */, 0.30f, 0.40f, 53);
@@ -458,13 +459,13 @@ manager.addFactory ({ "Wet Tine", "KEYS", { "organic", "warm", "struck", "unstab
 manager.addFactory ({ "Felt Upright", "KEYS", { "wooden", "soft", "struck", "close", "chords" }, [] (PatchState& s)
 {
     impact (s, 3 /* NOISE STRIKE */, 0.22f, 0.28f, 0.18f, 0.90f, 0.55f, 0.08f);
-    amp (s, 0.003f, 1.10f, 0.0f, 0.45f, 0.40f);
+    amp (s, 0.012f, 2.40f, 0.0f, 0.30f, 0.40f);
     shape (s, 0.42f, 0.12f, 0.44f, 0.56f, 0.52f, 0.12f);
     material (s, MaterialType::String, MaterialType::Wood, 0.30f);
-    topology (s, 0 /* CHAIN */, 0.35f, 0.30f, 71);
+    topology (s, 3 /* LATTICE */, 0.38f, 0.30f, 71);
     matter (s, 0.94f, 0.52f, 0.55f, 0.35f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.03f, 0.0f, 0.15f, 0.08f);
-    space (s, SpacePresets::Chamber, 0.18f, 0.25f, 0.40f, 0.12f);
+    space (s, SpacePresets::Chamber, 0.18f, 0.34f, 0.40f, 0.12f);
 
     env (s, 1, 0.001f, 0.40f, 0.0f, 0.30f, 0.30f);
     macros (s, 0.15f, 0.30f, 0.20f, 0.30f);
@@ -546,14 +547,15 @@ manager.addFactory ({ "Prepared Grand", "KEYS", { "metallic", "dirty", "struck",
 manager.addFactory ({ "Steel Clavier", "KEYS", { "metallic", "bright", "struck", "dry", "melodic" }, [] (PatchState& s)
 {
     impact (s, 1 /* CLICK */, 0.70f, 0.60f, 0.06f, 0.90f, 0.35f, 0.06f);
-    amp (s, 0.001f, 0.55f, 0.10f, 0.25f, 0.30f);
+    amp (s, 0.0006f, 0.30f, 0.04f, 0.10f, 0.25f);
     shape (s, 0.30f, 0.14f, 0.30f, 0.62f, 0.44f, 0.10f);
     material (s, MaterialType::String, MaterialType::Crystal, 0.25f);
-    topology (s, 0 /* CHAIN */, 0.25f, 0.28f, 173);
+    topology (s, 1 /* RING */, 0.25f, 0.28f, 173);
     matter (s, 0.93f, 0.60f, 0.58f, 0.30f);
     evolve (s, 0.10f, 0.0f, 0.0f, 0.0f, 0.50f, 0.04f, 0.0f, 0.20f, 0.10f);
     set (s, Param::evolveBendPivot, 0.50f);
     set (s, Param::evolveBendRange, 0.20f);
+    set (s, Param::masterTranspose, 12.0f);   // a clavichord is a small, high box
     space (s, SpacePresets::Chamber, 0.16f, 0.22f, 0.55f, 0.10f);
 
     env (s, 1, 0.001f, 0.30f, 0.0f, 0.20f, 0.25f);
@@ -583,7 +585,7 @@ manager.addFactory ({ "Steel Clavier", "KEYS", { "metallic", "bright", "struck",
 manager.addFactory ({ "Cimbalom Wire", "KEYS", { "metallic", "bright", "struck", "resonant", "roomy" }, [] (PatchState& s)
 {
     impact (s, 3 /* NOISE STRIKE */, 0.60f, 0.55f, 0.08f, 0.85f, 0.45f, 0.12f);
-    amp (s, 0.001f, 1.80f, 0.0f, 1.40f, 0.30f);
+    amp (s, 0.0015f, 1.20f, 0.0f, 0.80f, 0.30f);
     shape (s, 0.50f, 0.16f, 0.38f, 0.58f, 0.62f, 0.16f);
     material (s, MaterialType::String, MaterialType::Metal, 0.45f);
     topology (s, 3 /* LATTICE */, 0.45f, 0.50f, 227);
@@ -632,14 +634,15 @@ manager.addFactory ({ "Cimbalom Wire", "KEYS", { "metallic", "bright", "struck",
 
 manager.addFactory ({ "Paper Damper", "KEYS", { "wooden", "soft", "struck", "dry", "hollow" }, [] (PatchState& s)
 {
-    impact (s, 3 /* NOISE STRIKE */, 0.40f, 0.22f, 0.20f, 0.85f, 0.60f, 0.10f);
-    amp (s, 0.002f, 0.40f, 0.0f, 0.24f, 0.30f);
+    impact (s, 0 /* IMPULSE */, 0.40f, 0.22f, 0.40f, 0.85f, 0.60f, 0.10f);
+    amp (s, 0.004f, 0.26f, 0.0f, 0.14f, 0.30f);
     shape (s, 0.55f, 0.33f, 0.54f, 0.35f, 0.24f, 0.30f);
     material (s, MaterialType::Membrane, MaterialType::Wood, 0.50f);
     topology (s, 2 /* CLUSTERS */, 0.40f, 0.40f, 419);
     matter (s, 0.88f, 0.50f, 0.60f, 0.40f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.62f, 0.05f, 0.0f, 0.20f, 0.10f);
-    space (s, SpacePresets::Chamber, 0.14f, 0.20f, 0.35f, 0.10f);
+    set (s, Param::masterTranspose, -12.0f);   // cloth on the bass strings
+    space (s, SpacePresets::Dust, 0.20f, 0.35f, 0.40f, 0.15f);
 
     env (s, 1, 0.001f, 0.25f, 0.0f, 0.18f, 0.25f);
     macros (s, 0.15f, 0.25f, 0.15f, 0.35f);

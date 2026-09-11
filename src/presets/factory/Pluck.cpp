@@ -127,13 +127,14 @@ manager.addFactory ({ "Copper Thorn", "PLUCK", { "pluck", "metal", "short", "per
 manager.addFactory ({ "Nylon Thumb", "PLUCK", { "warm", "soft", "plucked", "close", "melodic" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.30f, 0.30f, 0.10f, 0.85f, 0.55f, 0.06f);
-    amp (s, 0.002f, 0.95f, 0.0f, 0.55f, 0.35f);
+    amp (s, 0.003f, 0.70f, 0.0f, 0.36f, 0.35f);
     shape (s, 0.36f, 0.10f, 0.42f, 0.48f, 0.45f, 0.16f);
     material (s, MaterialType::String, MaterialType::Organic, 0.40f);
     topology (s, 0 /* CHAIN */, 0.28f, 0.30f, 19);
     matter (s, 0.94f, 0.48f, 0.55f, 0.35f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.52f, 0.04f, 0.0f, 0.18f, 0.08f);
-    space (s, SpacePresets::Chamber, 0.20f, 0.28f, 0.42f, 0.15f);
+    set (s, Param::masterTranspose, -12.0f);   // a guitar sounds an octave below the stave
+    space (s, SpacePresets::Nebula, 0.24f, 0.45f, 0.50f, 0.20f);
 
     env (s, 1, 0.001f, 0.30f, 0.0f, 0.25f, 0.30f);
     macros (s, 0.15f, 0.35f, 0.20f, 0.35f);
@@ -149,7 +150,7 @@ manager.addFactory ({ "Nylon Thumb", "PLUCK", { "warm", "soft", "plucked", "clos
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.220f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
-     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
+     .uni (ModSource::Macro1,      Param::shapeDistribution, 0.200f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
@@ -362,10 +363,10 @@ manager.addFactory ({ "Glass Inhale", "PLUCK", { "glassy", "cold", "plucked", "b
 manager.addFactory ({ "Rubber Band", "PLUCK", { "organic", "soft", "plucked", "morphing", "dry" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.25f, 0.30f, 0.14f, 0.85f, 0.60f, 0.10f);
-    amp (s, 0.002f, 0.75f, 0.0f, 0.40f, 0.35f);
+    amp (s, 0.005f, 0.50f, 0.0f, 0.26f, 0.35f);
     shape (s, 0.45f, 0.34f, 0.50f, 0.30f, 0.45f, 0.35f);
-    material (s, MaterialType::Membrane, MaterialType::Organic, 0.45f);
-    topology (s, 1 /* RING */, 0.45f, 0.40f, 383);
+    material (s, MaterialType::Membrane, MaterialType::Liquid, 0.42f);
+    topology (s, 0 /* CHAIN */, 0.45f, 0.40f, 383);
     matter (s, 0.90f, 0.55f, 0.48f, 0.45f);
     evolve (s, 0.0f, 0.45f, 0.0f, 0.0f, 0.58f, 0.08f, 0.0f, 0.40f, 0.30f);
     space (s, SpacePresets::Chamber, 0.20f, 0.30f, 0.40f, 0.15f);
@@ -399,13 +400,13 @@ manager.addFactory ({ "Rubber Band", "PLUCK", { "organic", "soft", "plucked", "m
 manager.addFactory ({ "Thumb Iron", "PLUCK", { "metallic", "wooden", "plucked", "close", "melodic" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.60f, 0.45f, 0.06f, 0.85f, 0.45f, 0.10f);
-    amp (s, 0.001f, 1.00f, 0.0f, 0.60f, 0.30f);
+    amp (s, 0.0025f, 1.30f, 0.0f, 0.75f, 0.30f);
     shape (s, 0.33f, 0.48f, 0.45f, 0.50f, 0.52f, 0.20f);
-    material (s, MaterialType::Metal, MaterialType::Wood, 0.45f);
-    topology (s, 2 /* CLUSTERS */, 0.40f, 0.38f, 431);
+    material (s, MaterialType::Metal, MaterialType::Organic, 0.40f);
+    topology (s, 5 /* STAR */, 0.36f, 0.38f, 431);
     matter (s, 0.93f, 0.54f, 0.54f, 0.50f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f, 0.10f, 0.0f, 0.22f, 0.12f);
-    space (s, SpacePresets::Chamber, 0.24f, 0.35f, 0.45f, 0.18f);
+    space (s, SpacePresets::Shimmer, 0.28f, 0.50f, 0.60f, 0.25f);
 
     env (s, 1, 0.001f, 0.35f, 0.0f, 0.25f, 0.25f);
     macros (s, 0.15f, 0.35f, 0.25f, 0.35f);
@@ -421,7 +422,7 @@ manager.addFactory ({ "Thumb Iron", "PLUCK", { "metallic", "wooden", "plucked", 
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
-     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
+     .uni (ModSource::Macro1,      Param::shapeDistribution, 0.200f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
@@ -440,9 +441,9 @@ manager.addFactory ({ "Thumb Iron", "PLUCK", { "metallic", "wooden", "plucked", 
 manager.addFactory ({ "Sitar Shadow", "PLUCK", { "metallic", "bright", "plucked", "resonant", "roomy" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.68f, 0.60f, 0.07f, 0.90f, 0.40f, 0.10f);
-    amp (s, 0.001f, 1.90f, 0.0f, 1.30f, 0.30f);
+    amp (s, 0.0008f, 2.60f, 0.0f, 1.80f, 0.30f);
     shape (s, 0.48f, 0.20f, 0.36f, 0.60f, 0.58f, 0.28f);
-    material (s, MaterialType::String, MaterialType::Metal, 0.50f);
+    material (s, MaterialType::String, MaterialType::Void, 0.42f);
     topology (s, 4 /* RANDOM */, 0.50f, 0.55f, 449);
     matter (s, 0.96f, 0.55f, 0.62f, 0.60f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.48f, 0.06f, 0.0f, 0.20f, 0.12f);
@@ -454,9 +455,9 @@ manager.addFactory ({ "Sitar Shadow", "PLUCK", { "metallic", "bright", "plucked"
     sympathetic.decayLow    = 0.40f; sympathetic.decayHigh    = 0.68f;
     sympathetic.spreadLow   = 0.30f; sympathetic.spreadHigh   = 0.90f;
     sympathetic.panWidth    = 0.70f;
-    sympathetic.pitchCycle  = kFifthTerrace;
+    sympathetic.pitchCycle  = kMinorTerrace;
     sympathetic.pattern     = "XLXHXLXH";
-    fracture (s, 0 /* SPECTRAL */, 0.45f, 0.32f, 0.60f, 0.25f, 0.38f, 0.28f, 0.62f, 0.60f, 0.06f,
+    fracture (s, 2 /* TRANSIENT */, 0.45f, 0.32f, 0.60f, 0.25f, 0.38f, 0.28f, 0.62f, 0.60f, 0.06f,
               2 /* 32 */, 4, 8, 0.0f, 0, 1.0f, 0.18f, 521, sympathetic);
 
     space (s, SpacePresets::Nebula, 0.32f, 0.55f, 0.50f, 0.25f);
@@ -578,13 +579,13 @@ manager.addFactory ({ "Ice Splinter", "PLUCK", { "cold", "glassy", "plucked", "h
 manager.addFactory ({ "Palm Mute", "PLUCK", { "dark", "soft", "plucked", "dry", "rhythmic" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.60f, 0.45f, 0.05f, 0.90f, 0.45f, 0.06f);
-    amp (s, 0.001f, 0.28f, 0.0f, 0.15f, 0.25f);
+    amp (s, 0.0005f, 0.22f, 0.0f, 0.10f, 0.25f);
     shape (s, 0.38f, 0.12f, 0.48f, 0.50f, 0.16f, 0.25f);
     material (s, MaterialType::String, MaterialType::Membrane, 0.40f);
-    topology (s, 0 /* CHAIN */, 0.32f, 0.30f, 587);
+    topology (s, 4 /* RANDOM */, 0.34f, 0.30f, 587);
     matter (s, 0.92f, 0.50f, 0.75f, 0.30f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f, 0.04f, 0.0f, 0.20f, 0.08f);
-    space (s, SpacePresets::Chamber, 0.14f, 0.20f, 0.45f, 0.10f);
+    space (s, SpacePresets::Machine, 0.18f, 0.30f, 0.50f, 0.20f);
 
     env (s, 1, 0.001f, 0.15f, 0.0f, 0.12f, 0.25f);
     macros (s, 0.15f, 0.35f, 0.15f, 0.40f);
@@ -618,7 +619,7 @@ manager.addFactory ({ "Dust Harp", "PLUCK", { "glassy", "noisy", "plucked", "gra
     amp (s, 0.002f, 1.20f, 0.05f, 0.70f, 0.35f);
     shape (s, 0.44f, 0.78f, 0.30f, 0.55f, 0.55f, 0.12f);
     material (s, MaterialType::Custom, MaterialType::Crystal, 0.50f);
-    topology (s, 3 /* LATTICE */, 0.30f, 0.55f, 967);
+    topology (s, 2 /* CLUSTERS */, 0.34f, 0.55f, 967);
     matter (s, 0.96f, 0.60f, 0.45f, 0.70f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.48f, 0.08f, 0.0f, 0.25f, 0.15f);
     space (s, SpacePresets::Dust, 0.32f, 0.50f, 0.55f, 0.25f);
@@ -727,13 +728,13 @@ manager.addFactory ({ "Bow Snap", "PLUCK", { "organic", "warm", "bowed", "plucke
     gesture (s, 0 /* BOW */, 0.75f, 0.60f, 0.40f, 0.25f, 0.10f, 0.55f, 0.50f);
     impact (s, 2 /* PLUCK */, 0.50f, 0.50f, 0.06f, 0.90f, 0.40f, 0.06f, 0.0f, 0.60f);
     layerOnly (s, Param::gestureLevel, Param::impactLevel);
-    amp (s, 0.001f, 1.10f, 0.0f, 0.60f, 0.30f);
+    amp (s, 0.0008f, 0.70f, 0.0f, 0.34f, 0.30f);
     shape (s, 0.38f, 0.18f, 0.36f, 0.55f, 0.50f, 0.20f);
     material (s, MaterialType::Organic, MaterialType::String, 0.50f);
-    topology (s, 0 /* CHAIN */, 0.30f, 0.40f, 877);
+    topology (s, 1 /* RING */, 0.32f, 0.40f, 877);
     matter (s, 0.93f, 0.58f, 0.50f, 0.40f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.05f, 0.0f, 0.20f, 0.10f);
-    space (s, SpacePresets::Chamber, 0.26f, 0.40f, 0.50f, 0.20f);
+    space (s, SpacePresets::Dream, 0.28f, 0.50f, 0.52f, 0.24f);
 
     env (s, 1, 0.001f, 0.18f, 0.0f, 0.15f, 0.25f);
     macros (s, 0.20f, 0.35f, 0.25f, 0.40f);
@@ -814,10 +815,10 @@ manager.addFactory ({ "Crush Zither", "PLUCK", { "metallic", "synthetic", "pluck
 manager.addFactory ({ "Torn Wire", "PLUCK", { "metallic", "cold", "plucked", "unstable", "wide" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.55f, 0.50f, 0.08f, 0.90f, 0.45f, 0.10f);
-    amp (s, 0.001f, 1.60f, 0.0f, 1.00f, 0.30f);
+    amp (s, 0.0015f, 2.20f, 0.0f, 1.40f, 0.30f);
     shape (s, 0.50f, 0.22f, 0.38f, 0.58f, 0.58f, 0.25f);
-    material (s, MaterialType::Metal, MaterialType::Liquid, 0.35f);
-    topology (s, 2 /* CLUSTERS */, 0.45f, 0.50f, 1103);
+    material (s, MaterialType::Metal, MaterialType::Void, 0.38f);
+    topology (s, 4 /* RANDOM */, 0.48f, 0.50f, 1103);
     matter (s, 0.96f, 0.55f, 0.48f, 0.65f);
     evolve (s, 0.0f, 0.0f, 0.40f, 0.0f, 0.50f, 0.10f, 0.0f, 0.30f, 0.25f);
     space (s, SpacePresets::Dream, 0.32f, 0.55f, 0.50f, 0.25f);
@@ -897,13 +898,13 @@ manager.addFactory ({ "Frozen Pluck", "PLUCK", { "glassy", "cold", "plucked", "r
 manager.addFactory ({ "Bamboo Tongue", "PLUCK", { "wooden", "hollow", "plucked", "dry", "melodic" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.45f, 0.35f, 0.09f, 0.85f, 0.50f, 0.10f);
-    amp (s, 0.001f, 0.80f, 0.0f, 0.45f, 0.30f);
+    amp (s, 0.0015f, 0.55f, 0.0f, 0.28f, 0.30f);
     shape (s, 0.36f, 0.26f, 0.42f, 0.44f, 0.44f, 0.25f);
-    material (s, MaterialType::Wood, MaterialType::Membrane, 0.40f);
+    material (s, MaterialType::Wood, MaterialType::Crystal, 0.32f);
     topology (s, 1 /* RING */, 0.42f, 0.35f, 1249);
     matter (s, 0.92f, 0.52f, 0.55f, 0.45f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.55f, 0.08f, 0.0f, 0.22f, 0.10f);
-    space (s, SpacePresets::Chamber, 0.22f, 0.32f, 0.42f, 0.16f);
+    space (s, SpacePresets::Void, 0.22f, 0.55f, 0.35f, 0.22f);
 
     env (s, 1, 0.001f, 0.30f, 0.0f, 0.22f, 0.25f);
     macros (s, 0.15f, 0.30f, 0.20f, 0.35f);

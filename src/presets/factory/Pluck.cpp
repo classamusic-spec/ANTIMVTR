@@ -148,6 +148,8 @@ manager.addFactory ({ "Nylon Thumb", "PLUCK", { "warm", "soft", "plucked", "clos
      .bi  (ModSource::NoteRandom,  Param::shapeSurface,     0.050f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.220f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
@@ -183,11 +185,15 @@ manager.addFactory ({ "Gut Course", "PLUCK", { "organic", "wooden", "plucked", "
      .bi  (ModSource::NoteRandom,  Param::shapeTension,     0.040f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::dustColor,        0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::dustLevel,        0.300f)
-     .uni (ModSource::Macro4,      Param::shapeCoupling,    0.200f);
+     .uni (ModSource::Macro4,      Param::dustGrain,        0.300f);
     sharedMacros (r, Param::ampDecay, Param::dustJitter);
     r.commit (s);
 }});
@@ -229,8 +235,11 @@ manager.addFactory ({ "Steel Fret", "PLUCK", { "metallic", "bright", "plucked", 
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::fractureEvolve,   0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::fractureMix,      0.300f)
      .uni (ModSource::Macro4,      Param::shapeSurface,     0.200f);
     sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
@@ -264,9 +273,11 @@ manager.addFactory ({ "Koto Bridge", "PLUCK", { "wooden", "bright", "plucked", "
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::evolveBend,       0.300f)
      .uni (ModSource::Macro4,      Param::evolveBendRange,  0.250f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
@@ -297,12 +308,15 @@ manager.addFactory ({ "Wire Harp", "PLUCK", { "metallic", "bright", "plucked", "
      .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.006f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.220f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::spaceTone,        0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
      .uni (ModSource::Macro3,      Param::spaceSize,        0.250f)
      .uni (ModSource::Macro4,      Param::evolveGravity,    0.250f)
-     .uni (ModSource::Macro4,      Param::shapeCoupling,    0.200f);
+     .uni (ModSource::Macro4,      Param::shapeMass,        0.250f);
     sharedMacros (r, Param::spaceFeedback, Param::impactRandom);
     r.commit (s);
 }});
@@ -332,8 +346,11 @@ manager.addFactory ({ "Glass Inhale", "PLUCK", { "glassy", "cold", "plucked", "b
      .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.005f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::spaceTone,        0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
      .uni (ModSource::Macro3,      Param::spaceSize,        0.200f)
      .uni (ModSource::Macro4,      Param::sampleLevel,      0.300f)
@@ -366,11 +383,15 @@ manager.addFactory ({ "Rubber Band", "PLUCK", { "organic", "soft", "plucked", "m
      .bi  (ModSource::KeyTrack,    Param::shapeMass,       -0.180f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::evolveMelt,       0.300f)
-     .uni (ModSource::Macro4,      Param::shapeTension,     0.200f);
+     .uni (ModSource::Macro4,      Param::shapeTension,     0.200f)
+     .uni (ModSource::Macro4,      Param::shapeMass,        0.250f)
+     .uni (ModSource::Macro4,      Param::impactLength,     0.250f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -399,10 +420,13 @@ manager.addFactory ({ "Thumb Iron", "PLUCK", { "metallic", "wooden", "plucked", 
      .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.007f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
-     .uni (ModSource::Macro4,      Param::shapeCoupling,    0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
+     .uni (ModSource::Macro4,      Param::shapeMass,        0.280f)
      .uni (ModSource::Macro4,      Param::shapeSurface,     0.200f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
@@ -451,9 +475,12 @@ manager.addFactory ({ "Sitar Shadow", "PLUCK", { "metallic", "bright", "plucked"
      .bi  (ModSource::KeyTrack,    Param::fractureTone,     0.150f)
      .uni (ModSource::Macro1,      Param::fractureEvolve,   0.300f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::fractureTone,     0.200f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::fractureMix,      0.300f)
      .uni (ModSource::Macro4,      Param::shapeSurface,     0.200f);
     sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
@@ -484,6 +511,8 @@ manager.addFactory ({ "Void Pizzicato", "PLUCK", { "dark", "hollow", "plucked", 
      .bi  (ModSource::KeyTrack,    Param::shapeMass,       -0.220f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.180f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
@@ -533,11 +562,15 @@ manager.addFactory ({ "Ice Splinter", "PLUCK", { "cold", "glassy", "plucked", "h
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::fractureEvolve,   0.300f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::spaceTone,        0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::fractureMix,      0.300f)
-     .uni (ModSource::Macro4,      Param::shapeTension,     0.200f);
+     .uni (ModSource::Macro4,      Param::shapeTension,     0.200f)
+     .uni (ModSource::Macro4,      Param::shapeDecay,       0.250f);
     sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
     r.commit (s);
 }});
@@ -565,9 +598,12 @@ manager.addFactory ({ "Palm Mute", "PLUCK", { "dark", "soft", "plucked", "dry", 
      .bi  (ModSource::NoteRandom,  Param::shapeSurface,     0.060f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.150f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::shapeDecay,       0.350f)
      .uni (ModSource::Macro4,      Param::ampDecay,         0.300f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
@@ -600,9 +636,12 @@ manager.addFactory ({ "Dust Harp", "PLUCK", { "glassy", "noisy", "plucked", "gra
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::dustJitter,       0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::dustColor,        0.300f)
      .uni (ModSource::Macro2,      Param::shapeExcite,      0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::dustDensity,      0.300f)
      .uni (ModSource::Macro4,      Param::dustGrain,        0.250f);
     sharedMacros (r, Param::ampDecay, Param::dustJitter);
@@ -633,6 +672,8 @@ manager.addFactory ({ "Needle Ping", "PLUCK", { "metallic", "clean", "plucked", 
      .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.006f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro2,      Param::spaceTone,        0.250f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
@@ -667,11 +708,16 @@ manager.addFactory ({ "Nail Scrape", "PLUCK", { "wooden", "harsh", "scraped", "d
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.180f)
      .uni (ModSource::Macro1,      Param::gestureMotion,    0.300f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::gestureBandwidth, 0.300f)
      .uni (ModSource::Macro2,      Param::gestureRoughness, 0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::gesturePressure,  0.300f)
-     .uni (ModSource::Macro4,      Param::shapeSurface,     0.200f);
+     .uni (ModSource::Macro4,      Param::shapeSurface,     0.200f)
+     .uni (ModSource::Macro4,      Param::shapeMass,        0.250f)
+     .uni (ModSource::Macro4,      Param::gestureSpeed,     0.300f);
     sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
     r.commit (s);
 }});
@@ -702,9 +748,12 @@ manager.addFactory ({ "Bow Snap", "PLUCK", { "organic", "warm", "bowed", "plucke
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::gestureMotion,    0.300f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::gestureBandwidth, 0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::gestureLevel,     0.300f)
      .uni (ModSource::Macro4,      Param::gestureRoughness, 0.250f);
     sharedMacros (r, Param::ampDecay, Param::gestureRoughness);
@@ -751,8 +800,11 @@ manager.addFactory ({ "Crush Zither", "PLUCK", { "metallic", "synthetic", "pluck
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::fractureEvolve,   0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::evolveCrush,      0.350f)
      .uni (ModSource::Macro4,      Param::shapeSurface,     0.200f);
     sharedMacros (r, Param::fractureDecay, Param::impactRandom);
@@ -782,25 +834,26 @@ manager.addFactory ({ "Torn Wire", "PLUCK", { "metallic", "cold", "plucked", "un
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::evolveTear,       0.300f)
-     .uni (ModSource::Macro4,      Param::shapeCoupling,    0.250f);
+     .uni (ModSource::Macro4,      Param::shapeMass,        0.250f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
 
-manager.addFactory ({ "Frozen Pluck", "PLUCK", { "glassy", "cold", "plucked", "static", "wide" }, [] (PatchState& s)
+manager.addFactory ({ "Frozen Pluck", "PLUCK", { "glassy", "cold", "plucked", "resonant", "wide" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.55f, 0.50f, 0.07f, 0.85f, 0.45f, 0.08f);
-    amp (s, 0.001f, 0.45f, 0.35f, 0.55f, 0.30f);
-    shape (s, 0.35f, 0.80f, 0.30f, 0.58f, 0.45f, 0.06f);
+    amp (s, 0.001f, 1.20f, 0.10f, 0.90f, 0.30f);
+    shape (s, 0.35f, 0.80f, 0.30f, 0.58f, 0.66f, 0.06f);
     material (s, MaterialType::Crystal, MaterialType::Void, 0.50f);
     topology (s, 1 /* RING */, 0.22f, 0.50f, 1171);
     matter (s, 0.97f, 0.50f, 0.60f, 0.70f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.48f, 0.05f, 0.0f, 0.10f, 0.12f);
-    set (s, Param::evolveFreeze, 1.0f);
 
     FractureShape held;
     held.fragments   = 16;
@@ -821,20 +874,22 @@ manager.addFactory ({ "Frozen Pluck", "PLUCK", { "glassy", "cold", "plucked", "s
 
     Routings r;
     r.uni (ModSource::Env1,        Param::shapeSurface,     0.150f)
-     .uni (ModSource::Velocity,    Param::ampSustain,       0.200f)
+     .uni (ModSource::Velocity,    Param::shapeDecay,       0.200f)
      .uni (ModSource::Velocity,    Param::impactBrightness, 0.300f)
      .uni (ModSource::Velocity,    Param::shapeBlend,       0.220f)
      .uni (ModSource::Velocity,    Param::shapeMass,       -0.150f)
      .bi  (ModSource::NoteRandom,  Param::shapePitch,       0.005f)
-     .bi  (ModSource::KeyTrack,    Param::ampSustain,      -0.150f)
+     .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.180f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
      .uni (ModSource::Macro1,      Param::fractureEvolve,   0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::spaceTone,        0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
      .uni (ModSource::Macro3,      Param::spaceSize,        0.200f)
-     .uni (ModSource::Macro4,      Param::ampSustain,       0.300f)
-     .uni (ModSource::Macro4,      Param::shapeBlend,       0.250f);
+     .uni (ModSource::Macro4,      Param::shapeBlend,       0.300f)
+     .uni (ModSource::Macro4,      Param::shapeMix,         0.200f);
     sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
     r.commit (s);
 }});
@@ -863,11 +918,14 @@ manager.addFactory ({ "Bamboo Tongue", "PLUCK", { "wooden", "hollow", "plucked",
      .bi  (ModSource::NoteRandom,  Param::shapeTension,     0.040f)
      .bi  (ModSource::KeyTrack,    Param::shapeDecay,      -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro3,      Param::spaceSize,         0.250f)
      .uni (ModSource::Macro4,      Param::shapeMass,        0.250f)
-     .uni (ModSource::Macro4,      Param::shapeCoupling,    0.250f);
+     .uni (ModSource::Macro4,      Param::shapeDecay,       0.250f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -898,6 +956,8 @@ manager.addFactory ({ "Stone Pluck", "PLUCK", { "dark", "wooden", "plucked", "dr
      .bi  (ModSource::NoteRandom,  Param::shapeMass,        0.050f)
      .bi  (ModSource::KeyTrack,    Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.300f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro1,      Param::evolveSpeed,      0.250f)
      .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.250f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
@@ -948,8 +1008,10 @@ manager.addFactory ({ "Rain Comb", "PLUCK", { "glassy", "bright", "plucked", "ch
      .bi  (ModSource::KeyTrack,    Param::fractureDelay,   -0.150f)
      .uni (ModSource::Macro1,      Param::fractureEvolve,   0.300f)
      .uni (ModSource::Macro1,      Param::evolveMotion,     0.250f)
+     .uni (ModSource::Macro1,      Param::evolveScatter,    0.300f)
      .uni (ModSource::Macro2,      Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,      Param::fractureTone,     0.250f)
+     .uni (ModSource::Macro2,      Param::shapeMass,       -0.200f)
      .uni (ModSource::Macro3,      Param::spaceMix,         0.300f)
      .uni (ModSource::Macro3,      Param::spaceFeedback,    0.200f)
      .uni (ModSource::Macro4,      Param::fractureMix,      0.300f)

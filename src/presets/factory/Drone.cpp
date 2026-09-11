@@ -210,7 +210,12 @@ manager.addFactory ({ "Corroded Vowel", "DRONE", { "vocal", "formant", "dirty", 
      .uni (ModSource::Macro2,    Param::fractureTone,     0.260f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveMelt,       0.320f)
-     .uni (ModSource::Macro4,    Param::shapeBlend,       0.280f);
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.280f)
+     .uni (ModSource::Macro1,    Param::chaos1Rate,            0.020f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::evolveSpeed,           0.300f)
+     .uni (ModSource::Macro1,    Param::env2Attack,            -0.500f)
+     .uni (ModSource::Macro1,    Param::env2Decay,             -0.400f);
     sharedMacros (r, Param::fractureDecay, Param::chaos1Depth);
     r.commit (s);
 }});
@@ -252,7 +257,10 @@ manager.addFactory ({ "Salt Lamp", "DRONE", { "glassy", "warm", "breathing", "cl
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro3,    Param::spaceSize,        0.220f)
      .uni (ModSource::Macro4,    Param::evolveBendRange,  0.320f)
-     .uni (ModSource::Macro4,    Param::shapeBlend,       0.260f);
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.260f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::lfo2Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::evolveSpeed,           0.300f);
     sharedMacros (r, Param::spaceSize, Param::evolveBendCurve);
     r.commit (s);
 }});
@@ -371,7 +379,12 @@ manager.addFactory ({ "Bowed Monolith", "DRONE", { "bowed", "metallic", "cold", 
      .uni (ModSource::Macro2,    Param::spaceTone,        0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveMagnet,     0.300f)
-     .uni (ModSource::Macro4,    Param::shapeForm,        0.260f);
+     .uni (ModSource::Macro4,    Param::shapeForm,        0.260f)
+     .uni (ModSource::Macro1,    Param::chaos1Rate,            0.020f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::evolveSpeed,           0.300f)
+     .uni (ModSource::Macro4,    Param::shapeSurface,          0.520f)
+     .uni (ModSource::Macro5,    Param::ampDecay,              0.300f);
     sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
     r.commit (s);
 }});
@@ -388,7 +401,6 @@ manager.addFactory ({ "Marrow Pipe", "DRONE", { "scraped", "hollow", "organic", 
     material (s, MaterialType::Wood, MaterialType::Organic, 0.44f);
     topology (s, 0 /* CHAIN */, 0.40f, 0.52f, 887);
     matter (s, 1.0f, 0.70f, 0.20f, 0.60f);
-    set (s, Param::masterGain, 1.0f);
     evolve (s, 0.0f, 0.18f, 0.0f, 0.0f, 0.42f, 0.34f, 0.0f, 0.28f, 0.50f);
     set (s, Param::evolveScatterSeed, 907);
     space (s, SpacePresets::Chamber, 0.32f, 0.40f, 0.60f, 0.30f);
@@ -459,7 +471,16 @@ manager.addFactory ({ "Cooling Tower", "DRONE", { "synthetic", "dirty", "chaotic
      .uni (ModSource::Macro2,    Param::waveScan,         0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveCrush,      0.300f)
-     .uni (ModSource::Macro4,    Param::spaceDistDrive,   0.280f);
+     .uni (ModSource::Macro4,    Param::spaceDistDrive,   0.280f)
+     .uni (ModSource::Macro1,    Param::chaos2Rate,            0.020f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::evolveSpeed,           0.300f)
+     .uni (ModSource::Macro3,    Param::spaceSize,             0.300f)
+     .uni (ModSource::Macro3,    Param::spaceFeedback,         0.250f)
+     .uni (ModSource::Macro4,    Param::shapeMass,             0.300f)
+     .uni (ModSource::Macro1,    Param::chaos1Rate,            0.060f)
+     .uni (ModSource::Macro1,    Param::evolveScatter,    0.300f)
+     .uni (ModSource::Macro6,    Param::shapeDistribution, 0.320f);
     sharedMacros (r, Param::spaceSize, Param::chaos1Rate);
     r.commit (s);
 }});
@@ -503,7 +524,8 @@ manager.addFactory ({ "Glacier Slab", "DRONE", { "cold", "glassy", "morphing", "
      .uni (ModSource::Macro2,    Param::fractureTone,     0.260f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveMelt,       0.320f)
-     .uni (ModSource::Macro4,    Param::shapeBlend,       0.280f);
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.280f)
+     .uni (ModSource::Macro2,    Param::spaceTone,             0.300f);
     sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
     r.commit (s);
 }});
@@ -543,7 +565,8 @@ manager.addFactory ({ "Cinder Cloud", "DRONE", { "granular", "dark", "chaotic", 
      .uni (ModSource::Macro2,    Param::dustColor,        0.320f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::dustGrain,        0.320f)
-     .uni (ModSource::Macro4,    Param::shapeSurface,     0.260f);
+     .uni (ModSource::Macro4,    Param::shapeSurface,     0.260f)
+     .uni (ModSource::Macro4,    Param::shapeMass,             0.300f);
     sharedMacros (r, Param::spaceSize, Param::chaos1Depth);
     r.commit (s);
 }});
@@ -626,7 +649,12 @@ manager.addFactory ({ "Breath Cavern", "DRONE", { "vocal", "organic", "breathing
      .uni (ModSource::Macro2,    Param::spaceTone,        0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::sampleGrain,      0.320f)
-     .uni (ModSource::Macro4,    Param::shapeSurface,     0.260f);
+     .uni (ModSource::Macro4,    Param::shapeSurface,     0.260f)
+     .uni (ModSource::Macro1,    Param::chaos1Rate,            0.020f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::evolveSpeed,           0.300f)
+     .uni (ModSource::Macro6,    Param::sampleSpread,          0.300f)
+     .uni (ModSource::Macro6,    Param::shapeDistribution,     0.300f);
     sharedMacros (r, Param::spaceSize, Param::chaos1Depth);
     r.commit (s);
 }});
@@ -756,7 +784,8 @@ manager.addFactory ({ "Amber Orchard", "DRONE", { "wooden", "glassy", "static", 
      .uni (ModSource::Macro2,    Param::impactBrightness, 0.320f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
      .uni (ModSource::Macro4,    Param::impactRandom,     0.300f)
-     .uni (ModSource::Macro4,    Param::shapeBlend,       0.260f);
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.260f)
+     .uni (ModSource::Macro5,    Param::impactLength,          0.300f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -802,7 +831,8 @@ manager.addFactory ({ "Harbour Buoy", "DRONE", { "metallic", "cold", "distant", 
      .uni (ModSource::Macro2,    Param::spaceTone,        0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveMagnet,     0.300f)
-     .uni (ModSource::Macro4,    Param::fractureAmount,   0.260f);
+     .uni (ModSource::Macro4,    Param::fractureAmount,   0.260f)
+     .uni (ModSource::Macro4,    Param::shapeMass,             0.300f);
     sharedMacros (r, Param::fractureDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -817,7 +847,6 @@ manager.addFactory ({ "Tungsten Thread", "DRONE", { "metallic", "bright", "morph
     // a continuous line and back, four or five times a minute.
     wave (s, 4 /* METALLIC */, 0.52f, 0.30f, 0.0f, 3, 0.06f, 0.80f, 1, 0.82f);
     amp (s, 1.30f, 3.0f, 0.90f, 3.5f, 0.58f);
-    set (s, Param::masterGain, 4.0f);
     shape (s, 0.46f, 0.68f, 0.18f, 0.72f, 0.80f, 0.22f);
     material (s, MaterialType::Metal, MaterialType::Crystal, 0.52f);
     topology (s, 5 /* STAR */, 0.30f, 0.32f, 1103);
@@ -847,7 +876,13 @@ manager.addFactory ({ "Tungsten Thread", "DRONE", { "metallic", "bright", "morph
      .uni (ModSource::Macro2,    Param::fractureTone,     0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveCrush,      0.320f)
-     .uni (ModSource::Macro4,    Param::shapeTension,     0.240f);
+     .uni (ModSource::Macro4,    Param::shapeTension,     0.240f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::lfo2Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::env2Attack,            -0.450f)
+     .uni (ModSource::Macro1,    Param::env2Decay,             -0.350f)
+     .uni (ModSource::Macro6,    Param::shapeDistribution,     0.300f)
+     .uni (ModSource::Macro1,    Param::fractureAmount,   0.300f);
     sharedMacros (r, Param::fractureDecay, Param::evolveSpeed);
     r.commit (s);
 }});
@@ -903,13 +938,13 @@ manager.addFactory ({ "Moth Static", "DRONE", { "granular", "cold", "unstable", 
     // random graph of dry organic matter and crystal, and a SPECTRAL Fracture
     // with long feedback keeps catching them and letting them go, so the
     // flutter is never the same twice and never quite stops.
-    dust (s, 5 /* CRACKLE */, 0.74f, 0.66f, 0.44f, 0.62f, 0.66f, 0.75f, 1151, 1.0f);
-    amp (s, 0.60f, 2.0f, 0.88f, 2.4f, 0.52f);
-    set (s, Param::masterGain, 5.0f);
+    dust (s, 5 /* CRACKLE */, 0.82f, 0.66f, 0.44f, 0.62f, 0.66f, 0.75f, 1151, 1.0f);
+    amp (s, 0.60f, 2.0f, 0.95f, 2.4f, 0.52f);
+    set (s, Param::masterGain, 2.0f);
     shape (s, 0.58f, 0.56f, 0.22f, 0.68f, 0.66f, 0.50f);
     material (s, MaterialType::Organic, MaterialType::Crystal, 0.52f);
     topology (s, 4 /* RANDOM */, 0.42f, 0.60f, 1153);
-    matter (s, 0.96f, 0.64f, 0.20f, 0.78f);
+    matter (s, 1.0f, 0.64f, 0.20f, 0.78f);
     evolve (s, 0.0f, 0.0f, 0.18f, 0.0f, 0.40f, 0.42f, 0.0f, 0.34f, 0.52f);
     set (s, Param::evolveScatterSeed, 1163);
     fracture (s, 0 /* SPECTRAL */, 0.42f, 0.38f, 0.78f, 0.34f, 0.52f, 0.35f, 0.66f, 0.72f, 0.30f,
@@ -981,7 +1016,10 @@ manager.addFactory ({ "Bellows Vault", "DRONE", { "warm", "hollow", "pulsing", "
      .uni (ModSource::Macro2,    Param::spaceTone,        0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
      .uni (ModSource::Macro4,    Param::dustLevel,        0.300f)
-     .uni (ModSource::Macro4,    Param::shapeMass,        0.240f);
+     .uni (ModSource::Macro4,    Param::shapeMass,        0.240f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::evolveSpeed,           0.300f)
+     .uni (ModSource::Macro6,    Param::shapeDistribution,     0.300f);
     sharedMacros (r, Param::spaceSize, Param::dustJitter);
     r.commit (s);
 }});
@@ -1049,7 +1087,6 @@ manager.addFactory ({ "Ember Bed", "DRONE", { "warm", "dirty", "granular", "chao
     sample (s, BuiltInSamples::Kind::NoiseBurst, 3 /* GRANULAR */, 0.05f, 0.80f, 0.52f, 0.60f, 45, 0.80f);
     layerSources (s, 1 /* DUST */, 3 /* SAMPLE */);
     amp (s, 1.40f, 3.0f, 0.90f, 3.5f, 0.58f);
-    set (s, Param::masterGain, 1.5f);
     shape (s, 0.50f, 0.30f, 0.66f, 0.42f, 0.74f, 0.48f);
     material (s, MaterialType::Custom, MaterialType::Organic, 0.44f);
     topology (s, 3 /* LATTICE */, 0.48f, 0.48f, 1231);
@@ -1078,7 +1115,10 @@ manager.addFactory ({ "Ember Bed", "DRONE", { "warm", "dirty", "granular", "chao
      .uni (ModSource::Macro2,    Param::shapeExcite,      0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::sampleGrain,      0.320f)
-     .uni (ModSource::Macro4,    Param::shapeSurface,     0.260f);
+     .uni (ModSource::Macro4,    Param::shapeSurface,     0.260f)
+     .uni (ModSource::Macro1,    Param::chaos1Rate,            0.020f)
+     .uni (ModSource::Macro1,    Param::lfo1Rate,              0.020f)
+     .uni (ModSource::Macro1,    Param::evolveSpeed,           0.300f);
     sharedMacros (r, Param::spaceSize, Param::chaos1Depth);
     r.commit (s);
 }});

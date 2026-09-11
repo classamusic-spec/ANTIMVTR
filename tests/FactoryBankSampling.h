@@ -320,14 +320,34 @@ inline int testThreadCount()
 
     The per-preset gates — the validator level check and the keyboard range —
     are the two tests that MUST stay at full coverage as the bank grows, which
-    means their cost grows with it: 300 presets is 300 full renders plus 900
+    means their cost grows with it: 300 presets is 300 full renders plus 600
     short ones however carefully the rest of the suite is sampled. Renders are
     independent, so they are spread over the machine instead.
 
-    Each worker owns its SynthEngine and prepares it once. Failures are written
-    into a slot per preset, never appended to a shared list, so the report comes
-    out in preset order and is identical however the work happened to be
-    scheduled — set ANTIMATR_TEST_THREADS=1 and the output does not change.
+    EVERY ITEM GETS ITS OWN ENGINE, and that is not an accident.
+
+    SynthEngine::reset() does not return the engine to the state it was
+    constructed in. At least the smoothed voice-sum headroom and the note
+    counter that seeds every randomised element of a note (wave phase, dust,
+    the strikes inside IMPACT, gesture noise, sample grains, Evolve scatter)
+    carry over, and resetting those two is not enough on its own either. So a
+    patch rendered through an engine that has already rendered something else
+    measures differently: Pulse Lattice peaks at 0.179 on a clean engine and
+    0.150 once the bank has been through it — a 16 % swing on a level that is
+    judged against a category window.
+
+    That made the old serial gate quietly order-dependent, and spreading the
+    renders over the cores would have turned it into a coin toss. A new engine
+    per item removes the question: it is the same thing AntiMatrRender does, so
+    the gate measures exactly what scripts/render.sh reports back to an author,
+    it costs about five milliseconds against renders that cost hundreds, and
+    the answer no longer depends on how the work was scheduled. The test "a
+    preset measures the same whatever was rendered before it" holds that line.
+
+    Failures are written into a slot per preset, never appended to a shared
+    list, so the report comes out in preset order and is identical however the
+    work happened to be scheduled — set ANTIMATR_TEST_THREADS=1 and nothing
+    about the output changes.
 */
 template <typename Body>
 juce::StringArray parallelPresetSweep (int count, const dev::PresetValidatorOptions& options, Body body)
@@ -341,12 +361,12 @@ juce::StringArray parallelPresetSweep (int count, const dev::PresetValidatorOpti
 
     auto work = [&]
     {
-        auto engine = std::make_unique<SynthEngine>();
-        engine->prepare (options.sampleRate, options.blockSize);
         for (;;)
         {
             const int i = next.fetch_add (1, std::memory_order_relaxed);
             if (i >= count) break;
+            auto engine = std::make_unique<SynthEngine>();
+            engine->prepare (options.sampleRate, options.blockSize);
             body (*engine, i, perPreset[(size_t) i]);
         }
     };

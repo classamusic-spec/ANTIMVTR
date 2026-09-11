@@ -330,6 +330,47 @@ public:
             expect (expensive.isEmpty(), "presets are too expensive to play:\n   " + expensive.joinIntoString ("\n   "));
         }
 
+        beginTest ("a preset measures the same whatever was rendered before it");
+        {
+            // SynthEngine::reset() does not return the engine to the state it was
+            // constructed in, so a patch rendered through an engine that has
+            // already rendered something else measures differently — Pulse
+            // Lattice peaks at 0.179 on a clean engine and 0.150 once the bank
+            // has been through it. The gate spreads its renders over the
+            // machine's cores, so if it reused engines the answer would depend on
+            // how the work was scheduled and the gate would be a coin toss. Every
+            // render gets a new engine instead, which is also what AntiMatrRender
+            // does — so the number the gate judges is the number
+            // scripts/render.sh gives the author. This test is what keeps that
+            // true; if it ever fails, something started reusing an engine.
+            //
+            // This checks that at the size the sweep actually runs at: the whole
+            // bank goes through the sweep, then three patches sensitive to it
+            // (their peak is in the attack) are rendered again on their own.
+            const auto options = safetyRenderOptions();
+            std::vector<RenderResult> swept ((size_t) count);
+            parallelPresetSweep (count, options,
+                [&] (SynthEngine& engine, int i, juce::StringArray&)
+                {
+                    swept[(size_t) i] = renderPatch (engine, bank.patch (i), options, 60, true);
+                });
+
+            for (const char* name : { "Pulse Lattice", "Bone Marimba", "Void Bloom" })
+            {
+                const int index = presets.findFactory (name);
+                if (index < 0) continue;
+
+                auto engine = std::make_unique<SynthEngine>();
+                engine->prepare (options.sampleRate, options.blockSize);
+                const auto alone = renderPatch (*engine, bank.patch (index), options, 60, true);
+
+                expectWithinAbsoluteError (swept[(size_t) index].peak, alone.peak, 1.0e-6f,
+                                           juce::String (name) + ": the sweep measured a different peak from a clean render");
+                expectWithinAbsoluteError (swept[(size_t) index].rms, alone.rms, 1.0e-6f,
+                                           juce::String (name) + ": the sweep measured a different rms from a clean render");
+            }
+        }
+
         beginTest ("every preset is playable across the keyboard");
         {
             // Full coverage, every preset, at both ends of the keyboard: a patch

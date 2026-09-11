@@ -162,7 +162,7 @@ manager.addFactory ({ "Offbeat Thicket", "SEQUENCE", { "wooden", "dry", "rhythmi
 {
     dust (s, 5 /* CRACKLE */, 0.82f, 0.42f, 0.44f, 0.30f, 0.55f, 0.60f, 4007);
     amp (s, 0.002f, 0.50f, 0.90f, 0.35f, 0.30f);
-    set (s, Param::masterGain, 2.5f);
+    set (s, Param::masterGain, 0.5f);
     shape (s, 0.40f, 0.30f, 0.45f, 0.50f, 0.42f, 0.30f);
     material (s, MaterialType::Wood, MaterialType::Organic, 0.40f);
     topology (s, 2 /* CLUSTERS */, 0.38f, 0.50f, 4009);
@@ -288,7 +288,7 @@ manager.addFactory ({ "Rust Cycle", "SEQUENCE", { "metallic", "dirty", "evolving
     set (s, Param::sampleLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.004f, 0.70f, 0.88f, 0.50f, 0.35f);
-    set (s, Param::masterGain, 4.0f);
+    set (s, Param::masterGain, 3.0f);
     shape (s, 0.58f, 0.50f, 0.45f, 0.50f, 0.50f, 0.42f);
     material (s, MaterialType::Metal, MaterialType::Organic, 0.50f);
     topology (s, 4 /* RANDOM */, 0.50f, 0.55f, 4033);
@@ -369,7 +369,7 @@ manager.addFactory ({ "Breath Pump", "SEQUENCE", { "organic", "breathing", "soft
 {
     gesture (s, 3 /* BREATH */, 0.55f, 0.40f, 0.30f, 0.50f, 0.35f, 0.55f);
     amp (s, 0.08f, 1.00f, 0.90f, 0.80f, 0.50f);
-    set (s, Param::masterGain, 7.0f);
+    set (s, Param::masterGain, 5.5f);
     shape (s, 0.50f, 0.28f, 0.35f, 0.50f, 0.55f, 0.30f);
     material (s, MaterialType::Organic, MaterialType::Membrane, 0.50f);
     topology (s, 2 /* CLUSTERS */, 0.38f, 0.50f, 4049);
@@ -490,7 +490,7 @@ manager.addFactory ({ "Cold Ladder", "SEQUENCE", { "glassy", "cold", "close", "s
 {
     impact (s, 5 /* DAMPED SINE */, 0.55f, 0.60f, 0.18f, 0.85f, 0.40f, 0.15f, 0.75f, 0.75f);
     amp (s, 0.002f, 0.60f, 0.90f, 0.35f, 0.30f);
-    set (s, Param::masterGain, 2.0f);
+    set (s, Param::masterGain, 0.0f);
     shape (s, 0.46f, 0.42f, 0.30f, 0.62f, 0.42f, 0.24f);
     material (s, MaterialType::Crystal, MaterialType::Liquid, 0.40f);
     topology (s, 3 /* LATTICE */, 0.42f, 0.50f, 4067);
@@ -530,7 +530,7 @@ manager.addFactory ({ "Stutter Relay", "SEQUENCE", { "synthetic", "unstable", "c
 {
     dust (s, 8 /* FROZEN */, 0.62f, 0.55f, 0.48f, 0.40f, 0.60f, 0.70f, 4073);
     amp (s, 0.002f, 0.60f, 0.90f, 0.30f, 0.30f);
-    set (s, Param::masterGain, 3.5f);
+    set (s, Param::masterGain, 1.5f);
     shape (s, 0.60f, 0.62f, 0.26f, 0.62f, 0.38f, 0.42f);
     material (s, MaterialType::Void, MaterialType::Crystal, 0.45f);
     topology (s, 4 /* RANDOM */, 0.48f, 0.55f, 4075);
@@ -576,7 +576,7 @@ manager.addFactory ({ "Broken Clock", "SEQUENCE", { "hollow", "unstable", "rhyth
     set (s, Param::sampleLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.002f, 0.70f, 0.88f, 0.40f, 0.30f);
-    set (s, Param::masterGain, 1.0f);
+    set (s, Param::masterGain, -1.0f);
     shape (s, 0.48f, 0.55f, 0.42f, 0.48f, 0.45f, 0.35f);
     material (s, MaterialType::Void, MaterialType::Wood, 0.45f);
     topology (s, 2 /* CLUSTERS */, 0.40f, 0.52f, 4085);
@@ -622,7 +622,7 @@ manager.addFactory ({ "Hammer Floor", "SEQUENCE", { "dark", "low", "pulsing", "s
     set (s, Param::sampleLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.003f, 0.90f, 0.88f, 0.55f, 0.30f);
-    set (s, Param::masterGain, -2.0f);
+    set (s, Param::masterGain, -3.5f);
     shape (s, 0.32f, 0.40f, 0.80f, 0.30f, 0.52f, 0.20f);
     material (s, MaterialType::Membrane, MaterialType::Wood, 0.45f);
     topology (s, 0 /* CHAIN */, 0.30f, 0.42f, 4093);
@@ -662,7 +662,7 @@ manager.addFactory ({ "Rubber Steps", "SEQUENCE", { "organic", "soft", "rhythmic
 {
     gesture (s, 2 /* RUB */, 0.58f, 0.55f, 0.40f, 0.45f, 0.35f, 0.50f);
     amp (s, 0.006f, 0.70f, 0.90f, 0.45f, 0.35f);
-    set (s, Param::masterGain, 4.0f);
+    set (s, Param::masterGain, 2.5f);
     shape (s, 0.48f, 0.35f, 0.45f, 0.42f, 0.50f, 0.35f);
     material (s, MaterialType::Liquid, MaterialType::Membrane, 0.45f);
     topology (s, 1 /* RING */, 0.44f, 0.50f, 4099);
@@ -702,7 +702,7 @@ manager.addFactory ({ "Cicada Grid", "SEQUENCE", { "bright", "granular", "rhythm
 {
     dust (s, 7 /* CLOUD */, 0.85f, 0.72f, 0.25f, 0.45f, 0.90f, 0.85f, 4111);
     amp (s, 0.004f, 0.70f, 0.90f, 0.40f, 0.35f);
-    set (s, Param::masterGain, 10.5f);
+    set (s, Param::masterGain, 8.5f);
     shape (s, 0.66f, 0.60f, 0.22f, 0.66f, 0.40f, 0.38f);
     material (s, MaterialType::Crystal, MaterialType::Organic, 0.40f);
     topology (s, 3 /* LATTICE */, 0.46f, 0.58f, 4113);
@@ -775,6 +775,266 @@ manager.addFactory ({ "Tape Shuffle", "SEQUENCE", { "wooden", "warm", "rhythmic"
      .uni (ModSource::Macro4, Param::fractureSwing, -0.320f)
      .uni (ModSource::Macro4, Param::evolveCrush,    0.220f);
     sharedMacros (r, Param::fractureDecay, Param::sampleSpread);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Bowed Pump", "SEQUENCE", { "bowed", "organic", "breathing", "roomy", "low" }, [] (PatchState& s)
+{
+    gesture (s, 0 /* BOW */, 0.66f, 0.38f, 0.28f, 0.32f, 0.30f, 0.45f);
+    amp (s, 0.12f, 1.40f, 0.92f, 1.00f, 0.50f);
+    set (s, Param::masterGain, -7.0f);
+    shape (s, 0.42f, 0.22f, 0.62f, 0.48f, 0.66f, 0.24f);
+    material (s, MaterialType::String, MaterialType::Organic, 0.45f);
+    topology (s, 0 /* CHAIN */, 0.42f, 0.48f, 4127);
+    matter (s, 0.82f, 0.55f, 0.15f, 0.72f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.32f, 0.58f, 0.14f, 0.0f, 0.30f, 0.30f);
+    set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
+    // Quarter notes with a long step decay: the bow keeps sounding underneath and the
+    // pattern leans on it rather than chopping it up.
+    fracture (s, 1 /* RHYTHMIC */, 0.94f, 1.0f, 0.40f, 1.0f, 0.22f, 0.30f, 0.70f, 0.45f, 0.22f,
+              1 /* 16 */, 2 /* 1/4 */, 8, 0.18f, 0 /* FORWARD */, 1.0f, 0.10f, 4129,
+              FractureShape { 16, 0.04f, 0.30f, 0.12f, 0.30f, 0.45f, 0.62f, 0.25f, 0.80f,
+                              1.5f, 1.5f, 0.55f, 1.0f, kFifthTerrace, "XLXoXHXL", nullptr });
+    space (s, SpacePresets::Chamber, 0.36f, 0.55f, 0.45f, 0.38f);
+
+    env (s, 2, 0.50f, 2.20f, 0.75f, 1.00f, 0.55f);
+    lfo (s, 1, 0.15f, 0 /* SINE */, 1.0f, true, 0.6f);
+    macros (s, 0.35f, 0.45f, 0.45f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env2,   Param::gesturePressure, 0.220f)
+     .uni (ModSource::Env2,   Param::gestureSpeed,   0.200f)
+     .bi  (ModSource::LFO1,   Param::gesturePosition, 0.180f)
+     .uni (ModSource::Velocity, Param::gesturePressure, 0.300f)
+     .bi  (ModSource::KeyTrack, Param::shapeDecay,  -0.180f)
+     .bi  (ModSource::NoteRandom, Param::gestureRoughness, 0.140f)
+     .uni (ModSource::Macro1, Param::fractureEvolve, 0.300f)
+     .uni (ModSource::Macro1, Param::evolveMotion,   0.250f)
+     .uni (ModSource::Macro2, Param::gestureBandwidth, 0.300f)
+     .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
+     .uni (ModSource::Macro4, Param::fractureDecay, -0.300f)
+     .uni (ModSource::Macro4, Param::shapeMass,      0.220f);
+    sharedMacros (r, Param::ampDecay, Param::fractureRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Split Register", "SEQUENCE", { "cold", "hollow", "rhythmic", "wide", "layer" }, [] (PatchState& s)
+{
+    wave (s, 5 /* SPECTRAL */, 0.38f, 0.30f, 0.12f, 2, 0.14f, 0.60f, 0, 0.70f);
+    dust (s, 3 /* BLUE */, 0.55f, 0.62f, 0.30f, 0.25f, 0.75f, 0.80f, 4133, 0.45f);
+    set (s, Param::sourceSelected, 0 /* WAVE holds the bottom, DUST the top */);
+    set (s, Param::sourceMode, 1 /* LAYER */);
+    set (s, Param::impactLevel, 0.0f);
+    set (s, Param::sampleLevel, 0.0f);
+    set (s, Param::gestureLevel, 0.0f);
+    amp (s, 0.005f, 0.80f, 0.90f, 0.45f, 0.35f);
+    set (s, Param::masterGain, 4.0f);
+    shape (s, 0.54f, 0.58f, 0.40f, 0.58f, 0.50f, 0.30f);
+    material (s, MaterialType::Void, MaterialType::Metal, 0.45f);
+    topology (s, 5 /* STAR */, 0.44f, 0.55f, 4135);
+    matter (s, 0.84f, 0.66f, 0.18f, 0.90f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.28f, 0.50f, 0.20f, 0.0f, 0.45f, 0.30f);
+    set (s, Param::evolveMagnetTarget, 1 /* FIFTH */);
+    // The step masks do the work: L opens the bottom half of the spectrum and H the top,
+    // so the two halves of the object answer each other across the bar.
+    fracture (s, 1 /* RHYTHMIC */, 1.0f, 1.0f, 0.55f, 1.0f, 0.20f, 0.18f, 0.28f, 0.52f, 0.22f,
+              2 /* 32 */, 4 /* 1/16 */, 16, 0.0f, 0 /* FORWARD */, 1.0f, 0.10f, 4139,
+              FractureShape { 32, 0.01f, 0.18f, 0.10f, 0.28f, 0.30f, 0.55f, 0.30f, 0.90f,
+                              1.8f, 1.8f, 0.85f, 1.0f, kOctaveTerrace, "LLHHL.H.LHLHL.H.", nullptr });
+    space (s, SpacePresets::Orbit, 0.34f, 0.48f, 0.58f, 0.45f);
+
+    env (s, 1, 0.002f, 0.26f, 0.10f, 0.20f, 0.30f);
+    lfo (s, 1, 0.12f, 1 /* TRIANGLE */, 1.0f, false);
+    set (s, Param::lfo1Sync, 1.0f);
+    set (s, Param::lfo1Division, 2.0f /* 2/1 — two bars */);
+    macros (s, 0.45f, 0.50f, 0.40f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,   Param::fractureTone,   0.280f)
+     .bi  (ModSource::LFO1,   Param::dustColor,      0.200f)
+     .uni (ModSource::Env1,   Param::shapeExcite,    0.180f)
+     .uni (ModSource::Velocity, Param::waveMorph,    0.280f)
+     .bi  (ModSource::KeyTrack, Param::dustDensity, -0.200f)
+     .bi  (ModSource::NoteRandom, Param::wavePosition, 0.150f)
+     .uni (ModSource::Macro1, Param::fractureEvolve, 0.300f)
+     .uni (ModSource::Macro1, Param::evolveMotion,   0.250f)
+     .uni (ModSource::Macro2, Param::fractureTone,   0.320f)
+     .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
+     .uni (ModSource::Macro4, Param::fractureSpread, 0.300f)
+     .uni (ModSource::Macro4, Param::waveSpread,     0.220f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Reverse Cascade", "SEQUENCE", { "glassy", "cold", "morphing", "distant", "melodic" }, [] (PatchState& s)
+{
+    sample (s, BuiltInSamples::Kind::GlassStrike, 2 /* REVERSE */, 0.05f, 0.80f, 0.38f, 0.60f, 60, 0.90f);
+    amp (s, 0.025f, 0.90f, 0.90f, 0.60f, 0.40f);
+    set (s, Param::masterGain, 3.5f);
+    shape (s, 0.48f, 0.50f, 0.34f, 0.56f, 0.55f, 0.26f);
+    material (s, MaterialType::Liquid, MaterialType::String, 0.45f);
+    topology (s, 5 /* STAR */, 0.38f, 0.52f, 4147);
+    matter (s, 0.86f, 0.62f, 0.20f, 0.80f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.48f, 0.46f, 0.16f, 0.0f, 0.42f, 0.32f);
+    set (s, Param::evolveMagnetTarget, 3 /* MINOR */);
+    // Played backwards through a falling terrace: the sequencer walks the steps in
+    // reverse while the pitches fall, so the figure seems to be sucked inwards.
+    fracture (s, 1 /* RHYTHMIC */, 0.98f, 1.0f, 0.48f, 1.0f, 0.20f, 0.26f, 0.44f, 0.52f, 0.25f,
+              1 /* 16 */, 4 /* 1/16 */, 8, 0.0f, 1 /* BACKWARD */, 1.0f, 0.12f, 4149,
+              FractureShape { 16, 0.02f, 0.24f, 0.14f, 0.36f, 0.32f, 0.55f, 0.25f, 0.82f,
+                              1.8f, 1.8f, 0.70f, 1.0f, kFallingTerrace, "XLoXHLoX", kFallingTerrace });
+    space (s, SpacePresets::Dream, 0.44f, 0.66f, 0.55f, 0.34f);
+
+    env (s, 1, 0.002f, 0.28f, 0.12f, 0.24f, 0.30f);
+    lfo (s, 1, 0.21f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    macros (s, 0.40f, 0.45f, 0.55f, 0.50f);
+
+    Routings r;
+    r.uni (ModSource::Env1,   Param::sampleGrain,    0.180f)
+     .bi  (ModSource::LFO1,   Param::sampleStart,    0.150f)
+     .uni (ModSource::Velocity, Param::sampleGrain,  0.280f)
+     .uni (ModSource::Velocity, Param::fractureAmount, 0.100f)
+     .bi  (ModSource::KeyTrack, Param::shapeExcite,  0.200f)
+     .bi  (ModSource::NoteRandom, Param::samplePitch, 0.050f)
+     .uni (ModSource::Macro1, Param::fractureEvolve, 0.300f)
+     .uni (ModSource::Macro1, Param::evolveMotion,   0.250f)
+     .uni (ModSource::Macro2, Param::fractureTone,   0.300f)
+     .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
+     .uni (ModSource::Macro4, Param::fracturePitch, -0.150f)
+     .uni (ModSource::Macro4, Param::sampleSpread,   0.250f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureProbability);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Bit Ladder", "SEQUENCE", { "synthetic", "harsh", "melodic", "close", "high" }, [] (PatchState& s)
+{
+    // Four notes up and three back down: a square-wave arpeggio with the corners filed off.
+    static constexpr float kBitRungs[8] = { 0.0f, 7.0f, 12.0f, 19.0f, 24.0f, 19.0f, 12.0f, 7.0f };
+
+    wave (s, 0 /* BASIC */, 0.70f, 0.15f, 0.0f, 1, 0.04f, 0.30f);
+    amp (s, 0.002f, 0.55f, 0.90f, 0.25f, 0.30f);
+    set (s, Param::masterGain, 4.0f);
+    shape (s, 0.40f, 0.30f, 0.26f, 0.64f, 0.38f, 0.30f);
+    material (s, MaterialType::Custom, MaterialType::Metal, 0.35f);
+    topology (s, 3 /* LATTICE */, 0.38f, 0.48f, 4153);
+    matter (s, 0.72f, 0.68f, 0.22f, 0.55f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.30f, 0.48f, 0.12f, 0.52f, 0.45f, 0.25f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    fracture (s, 1 /* RHYTHMIC */, 1.0f, 1.0f, 0.30f, 1.0f, 0.18f, 0.14f, 0.20f, 0.60f, 0.18f,
+              0 /* 8 */, 4 /* 1/16 */, 8, 0.0f, 0 /* FORWARD */, 1.0f, 0.06f, 4157,
+              FractureShape { 8, 0.01f, 0.14f, 0.08f, 0.24f, 0.28f, 0.48f, 0.15f, 0.60f,
+                              1.9f, 1.9f, 0.40f, 1.0f, kOctaveTerrace, "XXXXXXXX", kBitRungs });
+    space (s, SpacePresets::Machine, 0.22f, 0.26f, 0.55f, 0.30f);
+
+    env (s, 1, 0.001f, 0.14f, 0.0f, 0.12f, 0.25f);
+    lfo (s, 1, 0.19f, 3 /* SQUARE */, 1.0f, false);
+    set (s, Param::lfo1Sync, 1.0f);
+    set (s, Param::lfo1Division, 3.0f /* 1/1 — one bar */);
+    macros (s, 0.40f, 0.50f, 0.25f, 0.60f);
+
+    Routings r;
+    r.uni (ModSource::Env1,   Param::shapeExcite,    0.200f)
+     .bi  (ModSource::LFO1,   Param::fracturePitch,  0.060f)
+     .uni (ModSource::Velocity, Param::evolveCrush, -0.250f)
+     .uni (ModSource::Velocity, Param::wavePosition, 0.250f)
+     .bi  (ModSource::KeyTrack, Param::fractureTone, 0.200f)
+     .bi  (ModSource::NoteRandom, Param::waveFine,   0.060f)
+     .uni (ModSource::Macro1, Param::fractureEvolve, 0.300f)
+     .uni (ModSource::Macro1, Param::evolveMotion,   0.250f)
+     .uni (ModSource::Macro2, Param::wavePosition,   0.320f)
+     .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
+     .uni (ModSource::Macro4, Param::evolveCrush,    0.300f)
+     .uni (ModSource::Macro4, Param::fractureSwing,  0.250f);
+    sharedMacros (r, Param::fractureDecay, Param::evolveCrush);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Pulse Cloud", "SEQUENCE", { "soft", "evolving", "granular", "wide", "drift" }, [] (PatchState& s)
+{
+    dust (s, 7 /* CLOUD */, 0.70f, 0.50f, 0.40f, 0.35f, 0.85f, 0.80f, 4159, 0.75f);
+    gesture (s, 1 /* SCRAPE */, 0.45f, 0.35f, 0.45f, 0.40f, 0.40f, 0.50f, 0.40f);
+    set (s, Param::sourceSelected, 1 /* DUST is the cloud, GESTURE the grain in it */);
+    set (s, Param::sourceMode, 1 /* LAYER */);
+    set (s, Param::waveLevel, 0.0f);
+    set (s, Param::impactLevel, 0.0f);
+    set (s, Param::sampleLevel, 0.0f);
+    amp (s, 0.05f, 1.20f, 0.90f, 0.80f, 0.45f);
+    set (s, Param::masterGain, 2.0f);
+    shape (s, 0.62f, 0.66f, 0.34f, 0.54f, 0.58f, 0.40f);
+    material (s, MaterialType::Liquid, MaterialType::Void, 0.45f);
+    topology (s, 2 /* CLUSTERS */, 0.48f, 0.58f, 4161);
+    matter (s, 0.86f, 0.64f, 0.20f, 0.88f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.40f, 0.44f, 0.28f, 0.0f, 0.55f, 0.55f);
+    set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
+    set (s, Param::evolveScatterSeed, 4163);
+    // EVOLVE mode: the fragments are given new pitches, delays and pans on every step
+    // and take half a step to get there, so the pulse is still a pulse but the cloud
+    // inside it is never twice the same.
+    fracture (s, 3 /* EVOLVE */, 0.92f, 1.0f, 0.60f, 0.85f, 0.35f, 0.40f, 0.55f, 0.55f, 0.80f,
+              2 /* 32 */, 6 /* 1/4T */, 12, 0.0f, 2 /* PINGPONG */, 0.90f, 0.25f, 4167,
+              FractureShape { 32, 0.05f, 0.45f, 0.20f, 0.42f, 0.40f, 0.68f, 0.30f, 0.95f,
+                              1.6f, 1.6f, 0.85f, 0.92f, kMinorTerrace, "XLoH.XoL.HXo", nullptr });
+    space (s, SpacePresets::Dust, 0.44f, 0.62f, 0.55f, 0.45f);
+
+    lfo (s, 1, 0.14f, 5 /* SMOOTH RANDOM */, 1.0f, false);
+    chaos (s, 1, 4 /* TARGETS */, 0.80f, 0.45f, 0.55f, 0.5f, 4169);
+    env (s, 2, 0.40f, 2.00f, 0.70f, 1.00f, 0.50f);
+    macros (s, 0.55f, 0.50f, 0.50f, 0.55f);
+
+    Routings r;
+    r.bi  (ModSource::LFO1,   Param::dustGrain,      0.200f)
+     .bi  (ModSource::Chaos1, Param::fractureSpread, 0.200f)
+     .uni (ModSource::Env2,   Param::dustDensity,    0.220f)
+     .uni (ModSource::Velocity, Param::dustColor,    0.280f)
+     .bi  (ModSource::KeyTrack, Param::fractureTone, 0.180f)
+     .bi  (ModSource::NoteRandom, Param::gesturePosition, 0.180f)
+     .uni (ModSource::Macro1, Param::fractureEvolve, 0.320f)
+     .uni (ModSource::Macro1, Param::evolveMotion,   0.280f)
+     .uni (ModSource::Macro2, Param::dustColor,      0.300f)
+     .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
+     .uni (ModSource::Macro4, Param::fractureSpread, 0.300f)
+     .uni (ModSource::Macro4, Param::evolveScatter,  0.220f);
+    sharedMacros (r, Param::fractureDecay, Param::fractureProbability);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Anvil Waltz", "SEQUENCE", { "metallic", "wooden", "rhythmic", "roomy", "mid" }, [] (PatchState& s)
+{
+    impact (s, 4 /* METAL STRIKE */, 0.62f, 0.50f, 0.16f, 0.88f, 0.38f, 0.18f, 0.70f, 0.72f);
+    amp (s, 0.002f, 0.70f, 0.90f, 0.40f, 0.30f);
+    set (s, Param::masterGain, 0.0f);
+    shape (s, 0.46f, 0.52f, 0.48f, 0.54f, 0.46f, 0.28f);
+    material (s, MaterialType::Metal, MaterialType::Membrane, 0.42f);
+    topology (s, 1 /* RING */, 0.40f, 0.50f, 4171);
+    matter (s, 0.86f, 0.64f, 0.50f, 0.65f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.34f, 0.54f, 0.12f, 0.0f, 0.35f, 0.22f);
+    set (s, Param::evolveMagnetTarget, 2 /* MAJOR */);
+    // Six eighths to the cycle: a three-beat lope laid over whatever the host thinks
+    // the bar is, with the weight on one and the answer on four.
+    fracture (s, 1 /* RHYTHMIC */, 0.98f, 1.0f, 0.38f, 1.0f, 0.26f, 0.24f, 0.26f, 0.48f, 0.20f,
+              1 /* 16 */, 3 /* 1/8 */, 6, 0.08f, 0 /* FORWARD */, 1.0f, 0.10f, 4177,
+              FractureShape { 16, 0.02f, 0.24f, 0.14f, 0.36f, 0.30f, 0.52f, 0.22f, 0.76f,
+                              1.8f, 1.8f, 0.60f, 1.0f, kFifthTerrace, "X..Lo.", nullptr });
+    space (s, SpacePresets::Chamber, 0.32f, 0.48f, 0.48f, 0.35f);
+
+    env (s, 1, 0.001f, 0.22f, 0.0f, 0.18f, 0.25f);
+    lfo (s, 1, 0.16f, 1 /* TRIANGLE */, 1.0f, true);
+    macros (s, 0.35f, 0.45f, 0.40f, 0.55f);
+
+    Routings r;
+    r.uni (ModSource::Env1,   Param::shapeStrike,    0.200f)
+     .bi  (ModSource::LFO1,   Param::impactRate,     0.120f)
+     .uni (ModSource::Velocity, Param::impactHardness, 0.320f)
+     .uni (ModSource::Velocity, Param::impactBrightness, 0.220f)
+     .bi  (ModSource::KeyTrack, Param::shapeDecay,  -0.200f)
+     .bi  (ModSource::NoteRandom, Param::impactRandom, 0.150f)
+     .uni (ModSource::Macro1, Param::fractureEvolve, 0.300f)
+     .uni (ModSource::Macro1, Param::evolveMotion,   0.250f)
+     .uni (ModSource::Macro2, Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro3, Param::spaceMix,       0.300f)
+     .uni (ModSource::Macro4, Param::fractureSwing,  0.300f)
+     .uni (ModSource::Macro4, Param::impactRate,     0.250f);
+    sharedMacros (r, Param::fractureDecay, Param::impactRandom);
     r.commit (s);
 }});
 }

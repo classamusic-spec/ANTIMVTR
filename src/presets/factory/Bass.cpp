@@ -183,7 +183,7 @@ manager.addFactory ({ "Plank Drop", "BASS", { "wooden", "struck", "dark", "sub",
     set (s, Param::sampleLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.003f, 0.80f, 0.70f, 0.28f, 0.30f);
-    set (s, Param::masterGain, -3.0f);
+    set (s, Param::masterGain, -4.5f);
     shape (s, 0.30f, 0.22f, 0.80f, 0.38f, 0.44f, 0.30f);
     material (s, MaterialType::Wood, MaterialType::Membrane, 0.42f);
     topology (s, 2 /* CLUSTERS */, 0.28f, 0.34f, 173);
@@ -309,11 +309,11 @@ manager.addFactory ({ "Well Stone", "BASS", { "hollow", "struck", "dark", "dista
 {
     sample (s, BuiltInSamples::Kind::StoneDrop, 0 /* ONE SHOT */, 0.0f, 0.80f, 0.22f, 0.30f, 48, 0.90f);
     amp (s, 0.004f, 0.90f, 0.72f, 0.38f, 0.3f);
-    set (s, Param::masterGain, 0.0f);
+    set (s, Param::masterGain, -2.0f);
     shape (s, 0.32f, 0.28f, 0.82f, 0.30f, 0.52f, 0.26f);
     material (s, MaterialType::Wood, MaterialType::Void, 0.46f);
     topology (s, 2 /* CLUSTERS */, 0.32f, 0.30f, 587);
-    matter (s, 0.86f, 0.40f, 0.36f, 0.40f);
+    matter (s, 0.86f, 0.56f, 0.36f, 0.40f);
     evolve (s, 0.0f, 0.14f, 0.0f, 0.0f, 0.66f, 0.10f, 0.0f, 0.16f, 0.18f);
     set (s, Param::masterMode, 1 /* MONO */);
     set (s, Param::masterGlide, 0.03f);
@@ -350,7 +350,7 @@ manager.addFactory ({ "Bridge Iron", "BASS", { "metallic", "struck", "harsh", "c
 {
     impact (s, 4 /* METAL STRIKE */, 0.70f, 0.64f, 0.34f, 0.76f, 0.35f, 0.16f);
     amp (s, 0.002f, 0.80f, 0.76f, 0.28f, 0.3f);
-    set (s, Param::masterGain, -1.5f);
+    set (s, Param::masterGain, -3.0f);
     shape (s, 0.40f, 0.58f, 0.70f, 0.56f, 0.52f, 0.40f);
     material (s, MaterialType::Metal, MaterialType::Wood, 0.48f);
     topology (s, 5 /* STAR */, 0.44f, 0.36f, 743);
@@ -490,7 +490,8 @@ manager.addFactory ({ "Live Wire", "BASS", { "synthetic", "dirty", "unstable", "
 // it: the most defined note in the set, and the one that survives a mono fold.
 manager.addFactory ({ "Anchor Line", "BASS", { "clean", "cold", "static", "dry", "sub" }, [] (PatchState& s)
 {
-    wave (s, 0 /* BASIC */, 0.20f, 0.14f, 0.0f, 2, 0.06f, 0.22f, -1);
+    wave (s, 0 /* BASIC */, 0.20f, 0.14f, 0.0f, 1, 0.04f, 0.14f, -1);
+    set (s, Param::wavePhaseRandom, 0.0f);   // the patch is about definition: no unison beating under it
     amp (s, 0.004f, 0.90f, 0.82f, 0.30f, 0.35f);
     set (s, Param::masterGain, -4.0f);
     shape (s, 0.30f, 0.40f, 0.72f, 0.46f, 0.48f, 0.14f);
@@ -658,7 +659,7 @@ manager.addFactory ({ "Sagging Iron", "BASS", { "dark", "morphing", "struck", "r
 // with swing, so one held key produces a bass line with a hole in every bar.
 manager.addFactory ({ "Girder Stutter", "BASS", { "metallic", "rhythmic", "dirty", "dry", "low" }, [] (PatchState& s)
 {
-    wave (s, 6 /* FRACTURED */, 0.34f, 0.24f, 0.06f, 2, 0.10f, 0.30f, -1);
+    wave (s, 6 /* FRACTURED */, 0.34f, 0.24f, 0.06f, 1, 0.05f, 0.18f, -1);
     amp (s, 0.002f, 0.90f, 0.86f, 0.22f, 0.3f);
     set (s, Param::masterGain, -1.5f);
     shape (s, 0.44f, 0.48f, 0.68f, 0.50f, 0.40f, 0.36f);
@@ -767,7 +768,7 @@ manager.addFactory ({ "Dredge Line", "BASS", { "dark", "evolving", "hollow", "ro
 manager.addFactory ({ "Grit Column", "BASS", { "dirty", "noisy", "cold", "close", "sub" }, [] (PatchState& s)
 {
     dust (s, 4 /* FILTERED */, 0.62f, 0.52f, 0.26f, 0.30f, 0.34f, 0.34f, 8171, 0.62f);
-    wave (s, 3 /* FOLDED */, 0.26f, 0.22f, 0.0f, 2, 0.06f, 0.20f, -1, 0.80f);
+    wave (s, 3 /* FOLDED */, 0.26f, 0.22f, 0.0f, 1, 0.03f, 0.10f, -1, 0.80f);
     set (s, Param::waveModRatio, 2.0f);
     set (s, Param::sourceMode, 1 /* LAYER */);
     set (s, Param::impactLevel, 0.0f);
@@ -862,18 +863,18 @@ manager.addFactory ({ "Knuckle Wood", "BASS", { "wooden", "granular", "rhythmic"
 {
     sample (s, BuiltInSamples::Kind::WoodKnock, 3 /* GRANULAR */, 0.0f, 0.70f, 0.58f, 0.46f, 48, 0.95f);
     amp (s, 0.004f, 1.10f, 0.86f, 0.30f, 0.35f);
-    set (s, Param::masterGain, 2.5f);
-    shape (s, 0.36f, 0.12f, 0.72f, 0.42f, 0.56f, 0.30f);
+    set (s, Param::masterGain, -0.5f);
+    shape (s, 0.36f, 0.12f, 0.72f, 0.42f, 0.66f, 0.30f);
     material (s, MaterialType::Wood, MaterialType::Membrane, 0.38f);
     topology (s, 1 /* RING */, 0.40f, 0.42f, 11003);
-    matter (s, 0.86f, 0.54f, 0.34f, 0.34f);
+    matter (s, 0.86f, 0.80f, 0.42f, 0.34f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.24f, 0.56f, 0.10f, 0.0f, 0.26f, 0.16f);
     set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
     set (s, Param::masterMode, 1 /* MONO */);
     set (s, Param::masterGlide, 0.03f);
     space (s, SpacePresets::Dust, 0.18f, 0.30f, 0.44f, 0.20f);
     set (s, Param::spaceCompOn, 1.0f);
-    set (s, Param::spaceCompAmount, 0.55f);   // knocks arrive in gusts; a bass part cannot
+    set (s, Param::spaceCompAmount, 0.75f);   // knocks arrive in gusts; a bass part cannot
 
     FractureShape f;
     f.fragments = 8;
@@ -923,7 +924,7 @@ manager.addFactory ({ "Tar Drum", "BASS", { "dark", "soft", "struck", "distant",
     set (s, Param::impactLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.006f, 1.00f, 0.72f, 0.42f, 0.3f);
-    set (s, Param::masterGain, -1.0f);
+    set (s, Param::masterGain, -2.5f);
     shape (s, 0.28f, 0.20f, 0.84f, 0.32f, 0.52f, 0.22f);
     material (s, MaterialType::Void, MaterialType::Membrane, 0.48f);
     topology (s, 5 /* STAR */, 0.30f, 0.28f, 13001);
@@ -963,10 +964,11 @@ manager.addFactory ({ "Tar Drum", "BASS", { "dark", "soft", "struck", "distant",
 // rubbery bass opens outwards like a hand instead of decaying.
 manager.addFactory ({ "Rubber Vault", "BASS", { "organic", "morphing", "soft", "roomy", "low" }, [] (PatchState& s)
 {
-    wave (s, 3 /* FOLDED */, 0.30f, 0.34f, 0.06f, 2, 0.10f, 0.26f, -1);
+    wave (s, 3 /* FOLDED */, 0.30f, 0.34f, 0.06f, 1, 0.04f, 0.12f, -1);
     set (s, Param::waveModRatio, 1.25f);
-    amp (s, 0.010f, 1.00f, 0.84f, 0.36f, 0.4f);
-    set (s, Param::masterGain, -3.5f);
+    set (s, Param::wavePhaseRandom, 0.0f);   // one voice, one phase: a sub that beats against itself is not a sub
+    amp (s, 0.010f, 1.10f, 0.90f, 0.36f, 0.4f);
+    set (s, Param::masterGain, -0.5f);
     shape (s, 0.44f, 0.36f, 0.68f, 0.36f, 0.50f, 0.34f);
     material (s, MaterialType::Liquid, MaterialType::Membrane, 0.44f);
     topology (s, 4 /* RANDOM */, 0.38f, 0.48f, 14009);

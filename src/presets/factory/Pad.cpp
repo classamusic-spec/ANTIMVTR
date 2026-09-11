@@ -119,13 +119,13 @@ manager.addFactory ({ "Membrane Sky", "PAD", { "pad", "airy", "membrane", "breat
 // held — the note is brighter at the end of the bar than at the start.
 manager.addFactory ({ "Bowed Pane", "PAD", { "glassy", "bowed", "breathing", "wide", "chords" }, [] (PatchState& s)
 {
-    gesture (s, 0 /* BOW */, 0.52f, 0.30f, 0.16f, 0.42f, 0.26f, 0.30f);
+    gesture (s, 0 /* BOW */, 0.70f, 0.32f, 0.16f, 0.42f, 0.26f, 0.30f);
     amp (s, 0.80f, 2.20f, 0.88f, 3.20f, 0.55f);
-    set (s, Param::masterGain, 5.0f);   // a bowed plate feeds Matter gently: make the level up after it
+    set (s, Param::masterGain, 1.0f);
     shape (s, 0.56f, 0.60f, 0.30f, 0.64f, 0.78f, 0.14f);
     material (s, MaterialType::Crystal, MaterialType::Liquid, 0.36f);
     topology (s, 3 /* LATTICE */, 0.46f, 0.62f, 41);
-    matter (s, 0.94f, 0.44f, 0.05f, 0.84f);
+    matter (s, 0.94f, 0.70f, 0.05f, 0.84f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.44f, 0.08f, 0.0f, 0.10f, 0.26f);
     space (s, SpacePresets::Dream, 0.48f, 0.66f, 0.62f, 0.28f);
 
@@ -288,13 +288,13 @@ manager.addFactory ({ "Cedar Loom", "PAD", { "wooden", "warm", "soft", "roomy", 
 // the key drives the whole star harder rather than louder.
 manager.addFactory ({ "Hollow Reeds", "PAD", { "blown", "hollow", "organic", "breathing", "chords" }, [] (PatchState& s)
 {
-    gesture (s, 3 /* BREATH */, 0.52f, 0.36f, 0.30f, 0.30f, 0.30f, 0.44f);
+    gesture (s, 3 /* BREATH */, 0.72f, 0.40f, 0.30f, 0.30f, 0.30f, 0.44f);
     amp (s, 0.55f, 1.80f, 0.84f, 2.20f, 0.45f);
-    shape (s, 0.44f, 0.36f, 0.46f, 0.42f, 0.66f, 0.24f);
+    shape (s, 0.44f, 0.36f, 0.46f, 0.42f, 0.74f, 0.24f);
     material (s, MaterialType::Membrane, MaterialType::Wood, 0.40f);
     topology (s, 5 /* STAR */, 0.50f, 0.42f, 89);
-    matter (s, 0.86f, 0.54f, 0.08f, 0.62f);
-    set (s, Param::masterGain, 6.0f);   // breath through wood is a low-output excitation
+    matter (s, 0.86f, 0.80f, 0.08f, 0.62f);
+    set (s, Param::masterGain, 1.0f);
     evolve (s, 0.0f, 0.14f, 0.0f, 0.0f, 0.50f, 0.10f, 0.0f, 0.20f, 0.32f);
     space (s, SpacePresets::Chamber, 0.40f, 0.46f, 0.52f, 0.24f);
 
@@ -328,16 +328,16 @@ manager.addFactory ({ "Salt Choir", "PAD", { "vocal", "formant", "granular", "wi
 {
     sample (s, BuiltInSamples::Kind::Breath, 3 /* GRANULAR */, 0.06f, 0.92f, 0.58f, 0.55f, 60, 0.95f);
     amp (s, 0.70f, 2.20f, 0.86f, 3.00f, 0.55f);
-    shape (s, 0.54f, 0.30f, 0.44f, 0.48f, 0.80f, 0.22f);
+    shape (s, 0.54f, 0.30f, 0.44f, 0.48f, 0.86f, 0.22f);
     material (s, MaterialType::Organic, MaterialType::Membrane, 0.46f);
     topology (s, 2 /* CLUSTERS */, 0.44f, 0.58f, 233);
-    matter (s, 0.86f, 0.58f, 0.14f, 0.86f);
-    set (s, Param::masterGain, 5.5f);   // grains leave gaps: the object has to be driven harder to sing
+    matter (s, 0.86f, 0.84f, 0.14f, 0.86f);
+    set (s, Param::masterGain, 3.0f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.20f, 0.46f, 0.14f, 0.0f, 0.16f, 0.30f);
     set (s, Param::evolveMagnetTarget, 2 /* MAJOR */);
     space (s, SpacePresets::Nebula, 0.50f, 0.68f, 0.58f, 0.32f);
     set (s, Param::spaceCompOn, 1.0f);
-    set (s, Param::spaceCompAmount, 0.40f);   // a choir has to breathe evenly, not in grain-sized gusts
+    set (s, Param::spaceCompAmount, 0.62f);   // a choir has to breathe evenly, not in grain-sized gusts
 
     lfo (s, 1, 0.13f, 5 /* SMOOTH RANDOM */, 1.0f, false, 1.5f);
     lfo (s, 2, 0.21f, 0 /* SINE */, 1.0f, false, 0.5f);
@@ -373,8 +373,8 @@ manager.addFactory ({ "Tide Sheet", "PAD", { "soft", "morphing", "wide", "mid", 
     shape (s, 0.58f, 0.42f, 0.50f, 0.46f, 0.76f, 0.28f);
     material (s, MaterialType::Liquid, MaterialType::Membrane, 0.48f);
     topology (s, 4 /* RANDOM */, 0.40f, 0.52f, 401);
-    matter (s, 0.88f, 0.44f, 0.10f, 0.80f);
-    set (s, Param::masterGain, 4.0f);
+    matter (s, 0.88f, 0.70f, 0.10f, 0.80f);
+    set (s, Param::masterGain, 0.5f);
     evolve (s, 0.0f, 0.46f, 0.0f, 0.0f, 0.58f, 0.12f, 0.0f, 0.10f, 0.42f);
     space (s, SpacePresets::Dream, 0.52f, 0.70f, 0.44f, 0.34f);
 
@@ -407,13 +407,13 @@ manager.addFactory ({ "Tide Sheet", "PAD", { "soft", "morphing", "wide", "mid", 
 // as weather and resolves into harmony while the key is still down.
 manager.addFactory ({ "Magnet Vespers", "PAD", { "cold", "evolving", "resonant", "huge", "chords" }, [] (PatchState& s)
 {
-    dust (s, 4 /* FILTERED */, 0.60f, 0.44f, 0.30f, 0.34f, 0.60f, 0.70f, 1013);
+    dust (s, 4 /* FILTERED */, 0.74f, 0.44f, 0.30f, 0.34f, 0.60f, 0.70f, 1013);
     amp (s, 0.90f, 2.20f, 0.88f, 3.40f, 0.55f);
     shape (s, 0.70f, 0.68f, 0.40f, 0.62f, 0.78f, 0.16f);
     material (s, MaterialType::Void, MaterialType::Crystal, 0.52f);
     topology (s, 2 /* CLUSTERS */, 0.56f, 0.70f, 547);
-    matter (s, 0.92f, 0.46f, 0.06f, 0.82f);
-    set (s, Param::masterGain, 5.0f);
+    matter (s, 0.92f, 0.76f, 0.06f, 0.82f);
+    set (s, Param::masterGain, 0.5f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.30f, 0.44f, 0.18f, 0.0f, 0.12f, 0.30f);
     set (s, Param::evolveMagnetTarget, 2 /* MAJOR */);
     space (s, SpacePresets::Shimmer, 0.48f, 0.74f, 0.56f, 0.34f);
@@ -445,7 +445,7 @@ manager.addFactory ({ "Magnet Vespers", "PAD", { "cold", "evolving", "resonant",
 // LAYER — brown dust blowing across a corrugated iron sheet that something
 // keeps knocking, a long way off. The knocks arrive about twice a second and
 // the wind never stops, so the pad has a foreground and a background at once.
-manager.addFactory ({ "Iron Weather", "PAD", { "metallic", "cold", "noisy", "distant", "drift" }, [] (PatchState& s)
+manager.addFactory ({ "Corrugated Wind", "PAD", { "metallic", "cold", "noisy", "distant", "drift" }, [] (PatchState& s)
 {
     impact (s, 3 /* NOISE STRIKE */, 0.40f, 0.34f, 0.46f, 0.50f, 0.55f, 0.60f, 0.22f, 0.55f);
     dust (s, 2 /* BROWN */, 0.72f, 0.26f, 0.34f, 0.36f, 0.72f, 0.85f, 733, 0.70f);
@@ -494,22 +494,22 @@ manager.addFactory ({ "Iron Weather", "PAD", { "metallic", "cold", "noisy", "dis
 // the same air. The organ never quite speaks; the fog keeps eating the edges.
 manager.addFactory ({ "Fog Organ", "PAD", { "hollow", "vocal", "breathing", "huge", "chords" }, [] (PatchState& s)
 {
-    sample (s, BuiltInSamples::Kind::Breath, 1 /* LOOP */, 0.12f, 0.86f, 0.30f, 0.48f, 60, 0.55f);
+    sample (s, BuiltInSamples::Kind::Breath, 1 /* LOOP */, 0.12f, 0.86f, 0.30f, 0.48f, 60, 0.72f);
     dust (s, 7 /* CLOUD */, 0.62f, 0.30f, 0.44f, 0.34f, 0.70f, 0.80f, 353, 0.88f);
     set (s, Param::sourceMode, 1 /* LAYER */);
     set (s, Param::waveLevel, 0.0f);
     set (s, Param::impactLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 1.10f, 2.60f, 0.90f, 4.00f, 0.6f);
-    set (s, Param::masterGain, 5.5f);
-    shape (s, 0.46f, 0.26f, 0.50f, 0.40f, 0.78f, 0.18f);
+    set (s, Param::masterGain, 3.5f);
+    shape (s, 0.46f, 0.26f, 0.50f, 0.40f, 0.86f, 0.18f);
     material (s, MaterialType::Membrane, MaterialType::Liquid, 0.50f);
     topology (s, 3 /* LATTICE */, 0.50f, 0.44f, 907);
-    matter (s, 0.90f, 0.52f, 0.10f, 0.88f);
+    matter (s, 0.90f, 0.84f, 0.10f, 0.88f);
     evolve (s, 0.0f, 0.20f, 0.0f, 0.0f, 0.40f, 0.18f, 0.0f, 0.12f, 0.38f);
     space (s, SpacePresets::Nebula, 0.56f, 0.78f, 0.46f, 0.36f);
     set (s, Param::spaceCompOn, 1.0f);
-    set (s, Param::spaceCompAmount, 0.42f);   // fog is even; the loop's own gusts are not
+    set (s, Param::spaceCompAmount, 0.60f);   // fog is even; the loop's own gusts are not
 
     lfo (s, 1, 0.06f, 0 /* SINE */, 1.0f, false, 2.5f);
     lfo (s, 2, 0.11f, 5 /* SMOOTH RANDOM */, 1.0f, false, 1.5f);
@@ -588,11 +588,11 @@ manager.addFactory ({ "Shiver Plate", "PAD", { "metallic", "bright", "rhythmic",
 {
     wave (s, 4 /* METALLIC */, 0.36f, 0.26f, 0.14f, 3, 0.14f, 0.62f, 0, 0.85f);
     amp (s, 0.35f, 1.80f, 0.80f, 2.20f, 0.45f);
-    set (s, Param::masterGain, 3.0f);
-    shape (s, 0.60f, 0.64f, 0.34f, 0.62f, 0.64f, 0.20f);
+    set (s, Param::masterGain, 0.0f);
+    shape (s, 0.60f, 0.64f, 0.34f, 0.62f, 0.74f, 0.20f);
     material (s, MaterialType::Metal, MaterialType::Crystal, 0.55f);
     topology (s, 1 /* RING */, 0.52f, 0.56f, 601);
-    matter (s, 0.86f, 0.54f, 0.22f, 0.74f);
+    matter (s, 0.86f, 0.76f, 0.22f, 0.74f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.42f, 0.16f, 0.0f, 0.34f, 0.28f);
     space (s, SpacePresets::Orbit, 0.34f, 0.44f, 0.58f, 0.26f);
 
@@ -691,13 +691,13 @@ manager.addFactory ({ "Spectral Shroud", "PAD", { "dark", "cold", "evolving", "h
 // and throws them out sparsely across the stereo field. Air, not weight.
 manager.addFactory ({ "Paper Bells", "PAD", { "glassy", "soft", "plucked", "wide", "air" }, [] (PatchState& s)
 {
-    impact (s, 2 /* PLUCK */, 0.22f, 0.52f, 0.30f, 0.44f, 0.60f, 0.30f, 0.20f);
-    amp (s, 0.20f, 1.60f, 0.72f, 2.60f, 0.45f);
-    set (s, Param::masterGain, 3.0f);
-    shape (s, 0.44f, 0.72f, 0.22f, 0.70f, 0.72f, 0.10f);
+    impact (s, 2 /* PLUCK */, 0.22f, 0.52f, 0.30f, 0.72f, 0.60f, 0.30f, 0.20f);
+    amp (s, 0.20f, 1.60f, 0.82f, 2.60f, 0.45f);
+    set (s, Param::masterGain, 0.5f);
+    shape (s, 0.44f, 0.72f, 0.28f, 0.70f, 0.80f, 0.10f);
     material (s, MaterialType::Crystal, MaterialType::Wood, 0.30f);
     topology (s, 5 /* STAR */, 0.34f, 0.66f, 293);
-    matter (s, 0.92f, 0.62f, 0.34f, 0.90f);
+    matter (s, 0.92f, 0.84f, 0.48f, 0.90f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.34f, 0.26f, 0.0f, 0.22f, 0.40f);
     set (s, Param::evolveScatterSeed, 787);
     space (s, SpacePresets::Shimmer, 0.46f, 0.60f, 0.66f, 0.30f);
@@ -745,13 +745,13 @@ manager.addFactory ({ "Paper Bells", "PAD", { "glassy", "soft", "plucked", "wide
 // an envelope pulls the tearing wider through the note without retriggering.
 manager.addFactory ({ "Wire Meadow", "PAD", { "metallic", "unstable", "bowed", "wide", "drift" }, [] (PatchState& s)
 {
-    gesture (s, 1 /* SCRAPE */, 0.42f, 0.28f, 0.22f, 0.46f, 0.28f, 0.36f);
-    amp (s, 0.70f, 2.20f, 0.84f, 3.00f, 0.5f);
-    set (s, Param::masterGain, 4.0f);
-    shape (s, 0.64f, 0.20f, 0.36f, 0.72f, 0.76f, 0.24f);
+    gesture (s, 1 /* SCRAPE */, 0.60f, 0.30f, 0.22f, 0.46f, 0.28f, 0.36f);
+    amp (s, 0.70f, 2.20f, 0.90f, 3.00f, 0.5f);
+    set (s, Param::masterGain, 3.0f);
+    shape (s, 0.64f, 0.20f, 0.36f, 0.72f, 0.84f, 0.24f);
     material (s, MaterialType::String, MaterialType::Metal, 0.42f);
     topology (s, 3 /* LATTICE */, 0.56f, 0.58f, 1319);
-    matter (s, 0.90f, 0.48f, 0.10f, 0.88f);
+    matter (s, 0.90f, 0.74f, 0.10f, 0.88f);
     evolve (s, 0.0f, 0.0f, 0.34f, 0.0f, 0.46f, 0.20f, 0.0f, 0.14f, 0.44f);
     set (s, Param::evolveScatterSeed, 1993);
     space (s, SpacePresets::Dream, 0.46f, 0.64f, 0.54f, 0.32f);
@@ -786,13 +786,13 @@ manager.addFactory ({ "Wire Meadow", "PAD", { "metallic", "unstable", "bowed", "
 // which bands survive, so the recording decays differently every bar.
 manager.addFactory ({ "Wax Cathedral", "PAD", { "dirty", "warm", "granular", "huge", "drift" }, [] (PatchState& s)
 {
-    sample (s, BuiltInSamples::Kind::VinylDust, 1 /* LOOP */, 0.04f, 0.94f, 0.34f, 0.50f, 60, 0.92f);
+    sample (s, BuiltInSamples::Kind::VinylDust, 1 /* LOOP */, 0.04f, 0.94f, 0.34f, 0.50f, 60, 1.0f);
     amp (s, 0.80f, 2.40f, 0.88f, 3.60f, 0.55f);
-    set (s, Param::masterGain, 4.5f);
-    shape (s, 0.56f, 0.18f, 0.60f, 0.38f, 0.76f, 0.32f);
+    set (s, Param::masterGain, 0.5f);
+    shape (s, 0.56f, 0.18f, 0.60f, 0.38f, 0.84f, 0.32f);
     material (s, MaterialType::Organic, MaterialType::Void, 0.40f);
     topology (s, 0 /* CHAIN */, 0.40f, 0.48f, 617);
-    matter (s, 0.84f, 0.46f, 0.14f, 0.78f);
+    matter (s, 0.84f, 0.78f, 0.14f, 0.78f);
     evolve (s, 0.0f, 0.16f, 0.0f, 0.24f, 0.46f, 0.20f, 0.0f, 0.16f, 0.36f);
     set (s, Param::evolveMagnetTarget, 3 /* MINOR */);
     space (s, SpacePresets::Dust, 0.52f, 0.72f, 0.42f, 0.34f);
@@ -919,18 +919,18 @@ manager.addFactory ({ "Crush Chorale", "PAD", { "synthetic", "cold", "morphing",
 // The liquid-crystal object underneath turns the swell into a settling chord.
 manager.addFactory ({ "Bell Sediment", "PAD", { "glassy", "cold", "breathing", "distant", "intro" }, [] (PatchState& s)
 {
-    dust (s, 8 /* FROZEN */, 0.46f, 0.52f, 0.36f, 0.20f, 0.66f, 0.78f, 4409, 0.60f);
-    sample (s, BuiltInSamples::Kind::GlassStrike, 2 /* REVERSE */, 0.02f, 0.96f, 0.26f, 0.44f, 60, 0.82f);
+    dust (s, 8 /* FROZEN */, 0.58f, 0.52f, 0.36f, 0.20f, 0.66f, 0.78f, 4409, 0.80f);
+    sample (s, BuiltInSamples::Kind::GlassStrike, 2 /* REVERSE */, 0.02f, 0.96f, 0.26f, 0.44f, 60, 0.95f);
     set (s, Param::sourceMode, 1 /* LAYER */);
     set (s, Param::waveLevel, 0.0f);
     set (s, Param::impactLevel, 0.0f);
     set (s, Param::gestureLevel, 0.0f);
     amp (s, 0.90f, 2.60f, 0.86f, 3.60f, 0.6f);
-    set (s, Param::masterGain, 5.5f);
-    shape (s, 0.52f, 0.54f, 0.38f, 0.58f, 0.78f, 0.14f);
+    set (s, Param::masterGain, 3.5f);
+    shape (s, 0.52f, 0.54f, 0.38f, 0.58f, 0.86f, 0.14f);
     material (s, MaterialType::Liquid, MaterialType::Crystal, 0.44f);
     topology (s, 2 /* CLUSTERS */, 0.46f, 0.54f, 3517);
-    matter (s, 0.90f, 0.46f, 0.12f, 0.88f);
+    matter (s, 0.90f, 0.78f, 0.12f, 0.88f);
     evolve (s, 0.12f, 0.0f, 0.0f, 0.0f, 0.40f, 0.16f, 0.0f, 0.14f, 0.30f);
     set (s, Param::evolveBendPivot, 0.66f);
     set (s, Param::evolveBendRange, 0.24f);
@@ -966,13 +966,13 @@ manager.addFactory ({ "Bell Sediment", "PAD", { "glassy", "cold", "breathing", "
 // keeps answering itself two bands up, always a beat behind the hand.
 manager.addFactory ({ "Kelp Column", "PAD", { "organic", "soft", "morphing", "wide", "drift" }, [] (PatchState& s)
 {
-    gesture (s, 2 /* RUB */, 0.46f, 0.22f, 0.26f, 0.50f, 0.32f, 0.34f);
+    gesture (s, 2 /* RUB */, 0.62f, 0.24f, 0.26f, 0.50f, 0.32f, 0.34f);
     amp (s, 0.75f, 2.20f, 0.86f, 3.20f, 0.55f);
-    set (s, Param::masterGain, 3.0f);
+    set (s, Param::masterGain, 0.0f);
     shape (s, 0.54f, 0.12f, 0.54f, 0.44f, 0.74f, 0.26f);
     material (s, MaterialType::Organic, MaterialType::Liquid, 0.50f);
     topology (s, 0 /* CHAIN */, 0.50f, 0.44f, 5711);
-    matter (s, 0.86f, 0.46f, 0.08f, 0.84f);
+    matter (s, 0.86f, 0.72f, 0.08f, 0.84f);
     evolve (s, 0.0f, 0.18f, 0.0f, 0.0f, 0.44f, 0.18f, 0.0f, 0.16f, 0.40f);
     space (s, SpacePresets::Dream, 0.50f, 0.68f, 0.50f, 0.30f);
 
@@ -1058,18 +1058,18 @@ manager.addFactory ({ "Basalt Bed", "PAD", { "dark", "warm", "hollow", "low", "l
 // reverb tail below the top of the spectrum. It sits over a mix, not in it.
 manager.addFactory ({ "Ice Ceiling", "PAD", { "cold", "bright", "glassy", "air", "layer" }, [] (PatchState& s)
 {
-    dust (s, 3 /* BLUE */, 0.80f, 0.72f, 0.22f, 0.26f, 0.72f, 0.86f, 8867);
+    dust (s, 3 /* BLUE */, 0.90f, 0.72f, 0.22f, 0.26f, 0.72f, 0.86f, 8867);
     amp (s, 0.50f, 2.00f, 0.86f, 2.60f, 0.5f);
-    set (s, Param::masterGain, 9.0f);   // an object with almost no mass returns almost no energy
-    shape (s, 0.66f, 0.78f, 0.16f, 0.68f, 0.70f, 0.10f);
+    set (s, Param::masterGain, 3.5f);
+    shape (s, 0.66f, 0.78f, 0.44f, 0.68f, 0.88f, 0.10f);
     material (s, MaterialType::Crystal, MaterialType::Metal, 0.36f);
     topology (s, 1 /* RING */, 0.50f, 0.72f, 9631);
-    matter (s, 0.92f, 0.58f, 0.06f, 0.92f);
+    matter (s, 0.92f, 0.90f, 0.06f, 0.92f);
     set (s, Param::shapePitch, 12.0f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.24f, 0.34f, 0.14f, 0.0f, 0.20f, 0.34f);
     set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
     space (s, SpacePresets::Shimmer, 0.44f, 0.56f, 0.74f, 0.28f);
-    set (s, Param::spaceEqLow, -3.0f);
+    set (s, Param::spaceEqLow, -2.0f);
 
     lfo (s, 1, 0.15f, 5 /* SMOOTH RANDOM */, 1.0f, false, 1.0f);
     lfo (s, 2, 0.22f, 0 /* SINE */, 1.0f, false, 0.5f);

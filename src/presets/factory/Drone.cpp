@@ -285,7 +285,7 @@ manager.addFactory ({ "Beacon Hum", "DRONE", { "metallic", "cold", "pulsing", "u
      .bi  (ModSource::Chaos1,    Param::shapeDistribution, 0.100f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.200f)
-     .bi  (ModSource::NoteRandom, Param::shapeCoupling,   0.120f)
+     .bi  (ModSource::NoteRandom, Param::shapeDistribution, 0.120f)
      .uni (ModSource::Macro1,    Param::evolveMotion,     0.400f)
      .uni (ModSource::Macro1,    Param::gestureMotion,    0.280f)
      .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.320f)
@@ -361,7 +361,7 @@ manager.addFactory ({ "Bowed Monolith", "DRONE", { "bowed", "metallic", "cold", 
     r.bi  (ModSource::Env2,      Param::evolveMagnet,     0.420f)
      .bi  (ModSource::Env2,      Param::shapeForm,        0.180f)
      .bi  (ModSource::LFO1,      Param::gesturePressure,  0.160f)
-     .bi  (ModSource::Chaos1,    Param::shapeCoupling,    0.160f)
+     .bi  (ModSource::Chaos1,    Param::shapeMass,        0.100f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.220f)
      .bi  (ModSource::NoteRandom, Param::shapeDistribution, 0.120f)
@@ -449,7 +449,7 @@ manager.addFactory ({ "Cooling Tower", "DRONE", { "synthetic", "dirty", "chaotic
     r.bi  (ModSource::Chaos1,    Param::shapeBlend,       0.480f)
      .bi  (ModSource::Chaos2,    Param::dustColor,        0.220f)
      .bi  (ModSource::LFO1,      Param::waveMorph,        0.220f)
-     .bi  (ModSource::LFO2,      Param::shapeCoupling,    0.100f)
+     .bi  (ModSource::LFO2,      Param::shapeMass,        0.080f)
      .uni (ModSource::Env2,      Param::evolveCrush,      0.240f)
      .uni (ModSource::Velocity,  Param::dustDensity,      0.220f)
      .bi  (ModSource::KeyTrack,  Param::dustColor,        0.200f)
@@ -574,7 +574,7 @@ manager.addFactory ({ "Vinyl Chapel", "DRONE", { "noisy", "warm", "distant", "br
     r.bi  (ModSource::Chaos1,    Param::sampleStart,      0.320f)
      .bi  (ModSource::Env2,      Param::spaceSize,        0.300f)
      .uni (ModSource::Env2,      Param::evolveMagnet,     0.280f)
-     .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.180f)
+     .bi  (ModSource::LFO1,      Param::shapeMass,        0.140f)
      .bi  (ModSource::LFO2,      Param::sampleGrain,      0.200f)
      .uni (ModSource::Velocity,  Param::shapeExcite,      0.220f)
      .bi  (ModSource::KeyTrack,  Param::sampleGrain,      0.220f)
@@ -597,6 +597,7 @@ manager.addFactory ({ "Breath Cavern", "DRONE", { "vocal", "organic", "breathing
     // that throat on a twenty-second cycle.
     sample (s, BuiltInSamples::Kind::Breath, 3 /* GRANULAR */, 0.10f, 0.90f, 0.42f, 0.65f, 55, 0.92f);
     amp (s, 1.10f, 2.5f, 0.90f, 3.0f, 0.58f);
+    set (s, Param::masterGain, 2.5f);
     shape (s, 0.44f, 0.40f, 0.48f, 0.52f, 0.70f, 0.46f);
     material (s, MaterialType::Organic, MaterialType::Membrane, 0.42f);
     topology (s, 1 /* RING */, 0.60f, 0.46f, 1021);
@@ -614,7 +615,7 @@ manager.addFactory ({ "Breath Cavern", "DRONE", { "vocal", "organic", "breathing
     Routings r;
     r.bi  (ModSource::Env2,      Param::shapeTension,     0.220f)
      .bi  (ModSource::Env2,      Param::sampleGrain,      0.240f)
-     .bi  (ModSource::Env3,      Param::shapeCoupling,    0.300f)
+     .bi  (ModSource::Env3,      Param::shapeMass,        0.180f)
      .bi  (ModSource::Chaos1,    Param::sampleStart,      0.280f)
      .bi  (ModSource::LFO1,      Param::shapeForm,        0.140f)
      .uni (ModSource::Velocity,  Param::sampleGrain,      0.220f)
@@ -638,6 +639,7 @@ manager.addFactory ({ "Cleaved String", "DRONE", { "metallic", "unstable", "hars
     // and a looped envelope decides how far apart they are allowed to get.
     wave (s, 0 /* BASIC */, 0.46f, 0.22f, 0.03f, 4, 0.05f, 0.60f, 0, 0.85f);
     amp (s, 0.80f, 2.2f, 0.90f, 2.8f, 0.55f);
+    set (s, Param::masterGain, -2.5f);
     shape (s, 0.42f, 0.14f, 0.38f, 0.66f, 0.76f, 0.30f);
     material (s, MaterialType::String, MaterialType::Metal, 0.40f);
     topology (s, 1 /* RING */, 0.44f, 0.38f, 1039);
@@ -657,7 +659,7 @@ manager.addFactory ({ "Cleaved String", "DRONE", { "metallic", "unstable", "hars
 
     Routings r;
     r.bi  (ModSource::Env2,      Param::evolveTear,       0.240f)
-     .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.200f)
+     .bi  (ModSource::LFO1,      Param::shapeMass,        0.140f)
      .bi  (ModSource::Chaos1,    Param::shapeDistribution, 0.220f)
      .bi  (ModSource::Chaos1,    Param::waveDetune,       0.120f)
      .uni (ModSource::Velocity,  Param::shapeExcite,      0.220f)
@@ -667,7 +669,7 @@ manager.addFactory ({ "Cleaved String", "DRONE", { "metallic", "unstable", "hars
      .uni (ModSource::Macro2,    Param::fractureTone,     0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::evolveTear,       0.320f)
-     .uni (ModSource::Macro4,    Param::shapeCoupling,    0.260f);
+     .uni (ModSource::Macro4,    Param::shapeDecay,       0.260f);
     sharedMacros (r, Param::fractureDecay, Param::chaos1Depth);
     r.commit (s);
 }});
@@ -700,7 +702,7 @@ manager.addFactory ({ "Pressure Vessel", "DRONE", { "metallic", "hollow", "morph
      .bi  (ModSource::LFO1,      Param::shapeMass,        0.160f)
      .bi  (ModSource::LFO1,      Param::shapeDensity,     0.200f)
      .bi  (ModSource::LFO2,      Param::shapeForm,        0.240f)
-     .bi  (ModSource::LFO2,      Param::shapeCoupling,    0.120f)
+     .bi  (ModSource::LFO2,      Param::shapeSurface,     0.120f)
      .uni (ModSource::Velocity,  Param::shapeExcite,      0.220f)
      .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.220f)
      .bi  (ModSource::NoteRandom, Param::waveDetune,      0.120f)
@@ -716,11 +718,13 @@ manager.addFactory ({ "Pressure Vessel", "DRONE", { "metallic", "hollow", "morph
 
 manager.addFactory ({ "Amber Orchard", "DRONE", { "wooden", "glassy", "static", "distant", "drift" }, [] (PatchState& s)
 {
-    // FREEZE captures the object and floors its damping, so the orchard of
-    // struck wood rings on indefinitely and cannot change shape. What can
-    // change is what is being fed into it: a slow mallet roll whose rate,
+    // FREEZE captures the object and floors its damping: the orchard of struck
+    // wood cannot change shape at all, and rings for about seventy seconds
+    // rather than forever, since the damping floor is a T60 and not a hold.
+    // What can change is what is fed into it — a slow mallet roll whose rate,
     // brightness and randomness all drift, exciting different parts of a
-    // structure that is set in amber.
+    // structure set in amber — and Env3 leans that roll in harder across the
+    // first half minute to stand against the ring going quiet.
     impact (s, 2 /* PLUCK */, 0.48f, 0.50f, 0.22f, 0.70f, 0.40f, 0.45f, 0.36f, 1.0f);
     amp (s, 1.20f, 3.0f, 0.88f, 3.5f, 0.55f);
     shape (s, 0.40f, 0.22f, 0.40f, 0.60f, 0.72f, 0.24f);
@@ -760,15 +764,16 @@ manager.addFactory ({ "Amber Orchard", "DRONE", { "wooden", "glassy", "static", 
 manager.addFactory ({ "Harbour Buoy", "DRONE", { "metallic", "cold", "distant", "huge", "pulsing" }, [] (PatchState& s)
 {
     // A bell buoy on a long swell: a strike about every second and a half, the
-    // interval jittered so it never becomes a tempo, into a plate with a tail
-    // longer than the gap between strikes. The drone is the overlap of tolls
-    // that have not finished yet.
+    // interval jittered so it never becomes a tempo, into a bell hung off a
+    // single STAR hub whose tail is longer than the gap between strikes. The
+    // drone is the overlap of tolls that have not finished yet, heard from far
+    // enough away that the water has softened them.
     impact (s, 4 /* METAL STRIKE */, 0.50f, 0.34f, 0.62f, 0.75f, 0.55f, 0.55f, 0.06f, 0.62f);
     amp (s, 0.60f, 2.5f, 0.90f, 3.0f, 0.55f);
     set (s, Param::masterGain, -2.0f);
-    shape (s, 0.48f, 0.60f, 0.62f, 0.52f, 0.86f, 0.26f);
+    shape (s, 0.42f, 0.60f, 0.62f, 0.56f, 0.86f, 0.26f);
     material (s, MaterialType::Metal, MaterialType::Void, 0.40f);
-    topology (s, 2 /* CLUSTERS */, 0.48f, 0.42f, 1091);
+    topology (s, 5 /* STAR */, 0.36f, 0.30f, 1091);
     matter (s, 0.96f, 0.50f, 0.44f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.34f, 0.52f, 0.22f, 0.0f, 0.07f, 0.34f);
     set (s, Param::evolveMagnetTarget, 1 /* FIFTH */);
@@ -776,7 +781,7 @@ manager.addFactory ({ "Harbour Buoy", "DRONE", { "metallic", "cold", "distant", 
               2 /* 32 */, 0 /* 1/1 */, 8, 0.0f, 3 /* RANDOM */, 0.70f, 0.35f, 1093,
               FractureShape { 32, 0.20f, 0.80f, 0.30f, 0.60f, 0.58f, 0.86f, 0.35f, 0.95f,
                               1.0f, 0.85f, 0.75f, 0.85f, kOctaveTerrace, "XLXHXLXH", nullptr });
-    space (s, SpacePresets::Void, 0.50f, 0.92f, 0.36f, 0.46f);
+    space (s, SpacePresets::Dream, 0.50f, 0.86f, 0.48f, 0.46f);
 
     env (s, 2, 16.0f, 20.0f, 0.45f, 9.0f, 0.60f, true);
     lfo (s, 1, 0.026f, 0 /* SINE */, 1.0f, false, 5.0f);
@@ -787,7 +792,7 @@ manager.addFactory ({ "Harbour Buoy", "DRONE", { "metallic", "cold", "distant", 
     r.bi  (ModSource::Env2,      Param::evolveMagnet,     0.320f)
      .bi  (ModSource::Env2,      Param::impactLength,     0.200f)
      .bi  (ModSource::Chaos1,    Param::impactRate,       0.180f)
-     .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.180f)
+     .bi  (ModSource::LFO1,      Param::shapeMass,        0.140f)
      .uni (ModSource::Velocity,  Param::impactHardness,   0.280f)
      .uni (ModSource::Velocity,  Param::impactRate,       0.160f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.220f)
@@ -812,6 +817,7 @@ manager.addFactory ({ "Tungsten Thread", "DRONE", { "metallic", "bright", "morph
     // a continuous line and back, four or five times a minute.
     wave (s, 4 /* METALLIC */, 0.52f, 0.30f, 0.0f, 3, 0.06f, 0.80f, 1, 0.82f);
     amp (s, 1.30f, 3.0f, 0.90f, 3.5f, 0.58f);
+    set (s, Param::masterGain, 4.0f);
     shape (s, 0.46f, 0.68f, 0.18f, 0.72f, 0.80f, 0.22f);
     material (s, MaterialType::Metal, MaterialType::Crystal, 0.52f);
     topology (s, 5 /* STAR */, 0.30f, 0.32f, 1103);
@@ -849,9 +855,10 @@ manager.addFactory ({ "Tungsten Thread", "DRONE", { "metallic", "bright", "morph
 manager.addFactory ({ "Drowned Nave", "DRONE", { "organic", "soft", "wide", "breathing", "distant" }, [] (PatchState& s)
 {
     // A flooded church. A hand rubbing a wet stone edge, layered with pink
-    // noise for the water in the air, resonating in a random graph that is
-    // more liquid than solid. The whole thing sits far back and the room
-    // breathes around it.
+    // noise for the water in the air, resonating in a random graph that is more
+    // liquid than solid. The room breathes around it on one long cycle while a
+    // second walks the ring time of the material, so the building fills and
+    // drains; the whole thing sits far back.
     dust (s, 1 /* PINK */, 0.44f, 0.42f, 0.36f, 0.40f, 0.68f, 0.80f, 1117, 0.34f);
     gesture (s, 2 /* RUB */, 0.52f, 0.26f, 0.40f, 0.36f, 0.42f, 0.36f, 0.80f);
     layerSources (s, 1 /* DUST */, 4 /* GESTURE */);
@@ -871,7 +878,7 @@ manager.addFactory ({ "Drowned Nave", "DRONE", { "organic", "soft", "wide", "bre
     macros (s, 0.45f, 0.34f, 0.58f, 0.50f);
 
     Routings r;
-    r.bi  (ModSource::Env2,      Param::shapeCoupling,    0.320f)
+    r.bi  (ModSource::Env2,      Param::shapeDecay,       0.280f)
      .uni (ModSource::Env2,      Param::evolveMagnet,     0.260f)
      .bi  (ModSource::LFO1,      Param::spaceSize,        0.260f)
      .bi  (ModSource::LFO2,      Param::gesturePosition,  0.200f)
@@ -896,8 +903,9 @@ manager.addFactory ({ "Moth Static", "DRONE", { "granular", "cold", "unstable", 
     // random graph of dry organic matter and crystal, and a SPECTRAL Fracture
     // with long feedback keeps catching them and letting them go, so the
     // flutter is never the same twice and never quite stops.
-    dust (s, 5 /* CRACKLE */, 0.40f, 0.66f, 0.30f, 0.62f, 0.66f, 0.75f, 1151, 0.92f);
+    dust (s, 5 /* CRACKLE */, 0.74f, 0.66f, 0.44f, 0.62f, 0.66f, 0.75f, 1151, 1.0f);
     amp (s, 0.60f, 2.0f, 0.88f, 2.4f, 0.52f);
+    set (s, Param::masterGain, 5.0f);
     shape (s, 0.58f, 0.56f, 0.22f, 0.68f, 0.66f, 0.50f);
     material (s, MaterialType::Organic, MaterialType::Crystal, 0.52f);
     topology (s, 4 /* RANDOM */, 0.42f, 0.60f, 1153);
@@ -917,8 +925,8 @@ manager.addFactory ({ "Moth Static", "DRONE", { "granular", "cold", "unstable", 
     macros (s, 0.55f, 0.50f, 0.36f, 0.55f);
 
     Routings r;
-    r.bi  (ModSource::Chaos1,    Param::dustDensity,      0.320f)
-     .bi  (ModSource::Chaos1,    Param::dustJitter,       0.220f)
+    r.bi  (ModSource::Chaos1,    Param::dustDensity,      0.440f)
+     .bi  (ModSource::Chaos1,    Param::dustJitter,       0.300f)
      .bi  (ModSource::Chaos2,    Param::shapeBlend,       0.320f)
      .bi  (ModSource::Env2,      Param::shapeDistribution, 0.280f)
      .bi  (ModSource::LFO1,      Param::dustColor,        0.200f)
@@ -964,7 +972,7 @@ manager.addFactory ({ "Bellows Vault", "DRONE", { "warm", "hollow", "pulsing", "
      .bi  (ModSource::Env2,      Param::dustDensity,      0.240f)
      .bi  (ModSource::Env3,      Param::shapeMass,        0.240f)
      .uni (ModSource::Env3,      Param::evolveMagnet,     0.240f)
-     .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.200f)
+     .bi  (ModSource::LFO1,      Param::shapeBlend,       0.180f)
      .uni (ModSource::Velocity,  Param::shapeExcite,      0.220f)
      .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.260f)
      .bi  (ModSource::NoteRandom, Param::waveDetune,      0.100f)
@@ -981,13 +989,15 @@ manager.addFactory ({ "Bellows Vault", "DRONE", { "warm", "hollow", "pulsing", "
 manager.addFactory ({ "Sympathy Wires", "DRONE", { "resonant", "wooden", "drift", "roomy", "mid" }, [] (PatchState& s)
 {
     // A bank of sympathetic strings behind a soundboard. A quiet bowed tone
-    // keeps them all alive while a mallet touches one every few seconds; the
-    // COUPLING between the wires drifts on a long loop, so which wires are
-    // answering each other keeps changing and the chord reshuffles itself.
-    wave (s, 0 /* BASIC */, 0.28f, 0.16f, 0.0f, 3, 0.04f, 0.45f, 0, 0.70f);
-    impact (s, 2 /* PLUCK */, 0.40f, 0.52f, 0.10f, 0.70f, 0.35f, 0.60f, 0.10f, 0.55f);
+    // keeps them all alive while a mallet touches one every few seconds, and a
+    // long loop walks the material's ring time, so the wires hand the note
+    // between them: the short ones drop out, the long ones take over, and the
+    // chord reshuffles itself without anybody playing a new note.
+    wave (s, 0 /* BASIC */, 0.28f, 0.16f, 0.0f, 3, 0.04f, 0.45f, 0, 0.30f);
+    impact (s, 2 /* PLUCK */, 0.40f, 0.52f, 0.12f, 0.70f, 0.35f, 0.60f, 0.16f, 0.85f);
     layerSources (s, 0 /* WAVE */, 2 /* IMPACT */);
     amp (s, 1.20f, 3.0f, 0.90f, 3.5f, 0.58f);
+    set (s, Param::masterGain, -6.0f);
     shape (s, 0.40f, 0.12f, 0.36f, 0.66f, 0.84f, 0.20f);
     material (s, MaterialType::String, MaterialType::Wood, 0.42f);
     topology (s, 0 /* CHAIN */, 0.34f, 0.44f, 1213);
@@ -1006,11 +1016,14 @@ manager.addFactory ({ "Sympathy Wires", "DRONE", { "resonant", "wooden", "drift"
     macros (s, 0.42f, 0.42f, 0.46f, 0.50f);
 
     Routings r;
-    r.bi  (ModSource::Env2,      Param::shapeCoupling,    0.400f)
+    r.bi  (ModSource::Env2,      Param::shapeDecay,       0.300f)
+     .bi  (ModSource::Env2,      Param::shapeBlend,       0.460f)
      .bi  (ModSource::Env2,      Param::shapeDistribution, 0.220f)
-     .bi  (ModSource::LFO1,      Param::shapeTension,     0.120f)
-     .bi  (ModSource::Chaos1,    Param::impactRate,       0.220f)
-     .bi  (ModSource::Chaos1,    Param::impactBrightness, 0.200f)
+     .bi  (ModSource::LFO1,      Param::shapeTension,     0.180f)
+     .bi  (ModSource::LFO1,      Param::shapeForm,        0.140f)
+     .bi  (ModSource::Chaos1,    Param::impactRate,       0.300f)
+     .bi  (ModSource::Chaos1,    Param::impactBrightness, 0.320f)
+     .bi  (ModSource::Chaos1,    Param::shapeDecay,       0.180f)
      .uni (ModSource::Velocity,  Param::impactLevel,      0.300f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.220f)
      .bi  (ModSource::NoteRandom, Param::impactRandom,    0.140f)
@@ -1019,7 +1032,7 @@ manager.addFactory ({ "Sympathy Wires", "DRONE", { "resonant", "wooden", "drift"
      .uni (ModSource::Macro2,    Param::impactBrightness, 0.300f)
      .uni (ModSource::Macro2,    Param::wavePosition,     0.240f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
-     .uni (ModSource::Macro4,    Param::shapeCoupling,    0.320f)
+     .uni (ModSource::Macro4,    Param::shapeMass,        0.280f)
      .uni (ModSource::Macro4,    Param::evolveMagnet,     0.260f);
     sharedMacros (r, Param::fractureDecay, Param::impactRandom);
     r.commit (s);
@@ -1036,6 +1049,7 @@ manager.addFactory ({ "Ember Bed", "DRONE", { "warm", "dirty", "granular", "chao
     sample (s, BuiltInSamples::Kind::NoiseBurst, 3 /* GRANULAR */, 0.05f, 0.80f, 0.52f, 0.60f, 45, 0.80f);
     layerSources (s, 1 /* DUST */, 3 /* SAMPLE */);
     amp (s, 1.40f, 3.0f, 0.90f, 3.5f, 0.58f);
+    set (s, Param::masterGain, 1.5f);
     shape (s, 0.50f, 0.30f, 0.66f, 0.42f, 0.74f, 0.48f);
     material (s, MaterialType::Custom, MaterialType::Organic, 0.44f);
     topology (s, 3 /* LATTICE */, 0.48f, 0.48f, 1231);

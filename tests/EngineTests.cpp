@@ -72,7 +72,7 @@ public:
         params[(size_t) paramIndex (Param::spaceMix)] = 0.0f;     // these tests measure the voice envelope, not the Space tail
         params[(size_t) paramIndex (Param::shapeMix)] = 0.0f;     // ...nor Matter's ring-out (covered by MatterTests)
 
-        beginTest ("reset returns the voice path to its constructed state");
+        beginTest ("reset returns the whole engine to its constructed state");
         {
             // A host loads a patch, the player plays it, the host loads another. The second patch
             // must sound exactly as it does on a freshly opened plugin — anything the engine carries

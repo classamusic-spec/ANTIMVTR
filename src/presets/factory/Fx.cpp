@@ -549,7 +549,7 @@ manager.addFactory ({ "Servo Panic", "FX", { "metallic", "harsh", "chaotic", "cl
 {
     impact (s, 1 /* CLICK */, 0.70f, 0.75f, 0.06f, 0.80f, 0.40f, 0.45f, 0.85f, 0.75f);
     amp (s, 0.002f, 1.00f, 0.78f, 0.40f, 0.35f);
-    set (s, Param::masterGain, 0.5f);
+    set (s, Param::masterGain, -1.5f);
     shape (s, 0.62f, 0.58f, 0.22f, 0.70f, 0.35f, 0.45f);
     material (s, MaterialType::Metal, MaterialType::String, 0.40f);
     topology (s, 4 /* RANDOM */, 0.50f, 0.55f, 3109);

@@ -58,6 +58,23 @@ struct PresetValidatorOptions
     float  silenceRms     = 1.0e-5f; ///< below this the preset is flagged as silent
     float  cpuLimit       = 80.0f;   ///< average % of block budget
     float  dcLimit        = 0.02f;
+
+    /** Whether an over-budget CPU reading counts as a failure.
+
+        The CPU figure is wall-clock against the block budget, so it measures
+        the machine as much as the preset: render four presets at once, or
+        share the box with a build, and every one of them looks expensive. A
+        caller that renders in parallel clears this, reads the number, and
+        re-measures anything that looks over budget on its own before judging
+        it. The measurement itself is always taken. */
+    bool   flagCpu = true;
+
+    /** Set when the caller has already prepared the engine it passes to
+        `validateOne` at this sample rate and block size. Preparing allocates
+        the whole voice pool, the Fracture buffers and the Space tails, and it
+        is identical for every preset — a bank of 300 pays for it 300 times
+        otherwise. The engine is still reset between presets. */
+    bool   engineAlreadyPrepared = false;
 };
 
 /**

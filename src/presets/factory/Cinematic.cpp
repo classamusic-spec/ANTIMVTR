@@ -51,8 +51,8 @@ manager.addFactory ({ "Event Horizon", "CINEMATIC", { "cinematic", "riser", "gra
     sample (s, BuiltInSamples::Kind::StoneDrop, 3 /* GRANULAR */, 0.0f, 0.90f, 0.45f, 0.85f);
     amp (s, 1.80f, 3.0f, 0.90f, 3.50f, 0.7f);
     shape (s, 0.70f, 0.32f, 0.62f, 0.48f, 0.78f, 0.30f);
-    material (s, MaterialType::Void, MaterialType::Membrane, 0.38f);
-    topology (s, 2 /* CLUSTERS */, 0.58f, 0.45f, 1181);
+    material (s, MaterialType::Void, MaterialType::Liquid, 0.34f);
+    topology (s, 3 /* LATTICE */, 0.58f, 0.45f, 1181);
     matter (s, 0.90f, 0.58f, 0.18f, 0.92f);
     evolve (s, 0.34f, 0.18f, 0.0f, 0.24f, 0.40f, 0.24f, 0.0f, 0.14f, 0.48f);
     set (s, Param::evolveBendPivot, 0.30f);
@@ -332,8 +332,8 @@ manager.addFactory ({ "Winter Carousel", "CINEMATIC", { "glassy", "cold", "pluck
     impact (s, 2 /* PLUCK */, 0.70f, 0.58f, 0.14f, 0.80f, 0.40f, 0.06f);
     amp (s, 0.002f, 2.20f, 0.10f, 1.60f, 0.32f);
     shape (s, 0.36f, 0.82f, 0.20f, 0.74f, 0.66f, 0.10f);
-    material (s, MaterialType::Crystal, MaterialType::Metal, 0.22f);
-    topology (s, 5 /* STAR */, 0.26f, 0.62f, 4051);
+    material (s, MaterialType::Crystal, MaterialType::Wood, 0.26f);
+    topology (s, 3 /* LATTICE */, 0.30f, 0.62f, 4051);
     matter (s, 0.96f, 0.62f, 0.66f, 0.70f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.34f, 0.46f, 0.06f, 0.0f, 0.14f, 0.16f);
     set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
@@ -365,9 +365,10 @@ manager.addFactory ({ "Paper Lantern", "CINEMATIC", { "wooden", "soft", "struck"
     // where something has to tick along under two people not talking.
     impact (s, 1 /* CLICK */, 0.38f, 0.34f, 0.10f, 0.56f, 0.55f, 0.12f);
     amp (s, 0.002f, 1.40f, 0.08f, 0.90f, 0.30f);
-    shape (s, 0.42f, 0.30f, 0.36f, 0.44f, 0.44f, 0.28f);
+    shape (s, 0.42f, 0.30f, 0.30f, 0.44f, 0.52f, 0.28f);
     material (s, MaterialType::Wood, MaterialType::Organic, 0.36f);
     topology (s, 2 /* CLUSTERS */, 0.34f, 0.44f, 4057);
+    set (s, Param::shapePitch, 12.0f);   // a small light object rings above the note you play
     matter (s, 0.94f, 0.56f, 0.44f, 0.48f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.50f, 0.08f, 0.0f, 0.12f, 0.18f);
     space (s, SpacePresets::Chamber, 0.26f, 0.34f, 0.52f, 0.22f);

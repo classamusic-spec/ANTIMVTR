@@ -142,7 +142,7 @@ manager.addFactory ({ "Steel Reed", "LEAD", { "metallic", "bowed", "bright", "mi
      .bi  (ModSource::LFO2,      Param::gesturePosition,  0.110f)
      .uni (ModSource::Env1,      Param::gesturePressure,  0.280f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.240f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,      0.300f)
+     .uni (ModSource::Velocity,  Param::shapeSurface,     0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeSurface,    -0.140f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,        0.600f)
      .uni (ModSource::Macro1,    Param::gestureMotion,    0.400f)
@@ -300,7 +300,7 @@ manager.addFactory ({ "Bowed Girder", "LEAD", { "dark", "low", "bowed", "metalli
      .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.340f)
      .uni (ModSource::Macro2,    Param::shapeSurface,     0.180f)
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
-     .uni (ModSource::Macro4,    Param::shapeCoupling,    0.300f);
+     .uni (ModSource::Macro4,    Param::shapeBlend,       0.340f);
     sharedMacros (r, Param::spaceSize, Param::gestureRoughness);
     r.commit (s);
 }});
@@ -336,7 +336,7 @@ manager.addFactory ({ "Rolling Iron", "LEAD", { "metallic", "struck", "rhythmic"
      .uni (ModSource::ModWheel,   Param::impactRate,       0.400f)
      .uni (ModSource::Macro1,     Param::fractureSequence, 0.380f)
      .uni (ModSource::Macro2,     Param::impactBrightness, 0.320f)
-     .uni (ModSource::Macro2,     Param::shapeExcite,      0.200f)
+     .uni (ModSource::Macro2,     Param::fractureTone,     0.240f)
      .uni (ModSource::Macro3,     Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,     Param::fractureAmount,   0.340f);
     sharedMacros (r, Param::fractureDecay, Param::impactRandom);
@@ -448,7 +448,7 @@ manager.addFactory ({ "Amber Horn", "LEAD", { "warm", "wooden", "soft", "mid", "
      .bi  (ModSource::LFO2,      Param::waveMorph,    0.110f)
      .uni (ModSource::Env2,      Param::wavePosition, 0.240f)
      .uni (ModSource::Env2,      Param::shapeTension, 0.150f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,  0.320f)
+     .uni (ModSource::Velocity,  Param::shapeSurface, 0.300f)
      .bi  (ModSource::KeyTrack,  Param::shapeDecay,  -0.180f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,    0.520f)
      .uni (ModSource::Macro1,    Param::lfo2Depth,    0.450f)
@@ -483,7 +483,7 @@ manager.addFactory ({ "Glacier Bow", "LEAD", { "cold", "glassy", "bowed", "wide"
     r.bi  (ModSource::LFO1,      Param::shapePitch,       0.005f)
      .bi  (ModSource::LFO2,      Param::gestureSpeed,     0.140f)
      .uni (ModSource::Env2,      Param::evolveMagnet,     0.260f)
-     .uni (ModSource::Env2,      Param::shapeCoupling,    0.180f)
+     .uni (ModSource::Env2,      Param::shapeBlend,       0.200f)
      .uni (ModSource::Velocity,  Param::gesturePressure,  0.260f)
      .bi  (ModSource::NoteRandom, Param::gesturePosition, 0.120f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,        0.500f)
@@ -498,18 +498,17 @@ manager.addFactory ({ "Glacier Bow", "LEAD", { "cold", "glassy", "bowed", "wide"
 
 manager.addFactory ({ "Locust Voice", "LEAD", { "harsh", "noisy", "rhythmic", "mid", "melodic" }, [] (PatchState& s)
 {
-    gesture (s, 4 /* FRICTION */, 0.70f, 0.70f, 0.58f, 0.36f, 0.28f, 0.34f);
+    gesture (s, 4 /* FRICTION */, 0.62f, 0.70f, 0.58f, 0.36f, 0.28f, 0.34f);
     amp (s, 0.010f, 0.35f, 0.86f, 0.26f, 0.4f);
     shape (s, 0.56f, 0.58f, 0.32f, 0.70f, 0.48f, 0.46f);
     material (s, MaterialType::Custom, MaterialType::Metal, 0.40f);
     topology (s, 3 /* LATTICE */, 0.58f, 0.40f, 1789);
-    matter (s, 0.94f, 0.76f, 0.44f, 0.36f);
-    set (s, Param::masterGain, 1.5f);
+    matter (s, 0.90f, 0.68f, 0.36f, 0.36f);
     evolve (s, 0.0f, 0.0f, 0.16f, 0.36f, 0.46f, 0.20f, 0.0f, 0.60f, 0.26f);
     set (s, Param::evolveMagnetTarget, 4 /* CHROMATIC */);
     set (s, Param::masterMode, 1 /* MONO */);
     set (s, Param::masterGlide, 0.03f);
-    fracture (s, 1 /* RHYTHMIC */, 0.40f, 0.34f, 0.36f, 0.62f, 0.20f, 0.18f, 0.38f, 0.60f, 0.25f,
+    fracture (s, 1 /* RHYTHMIC */, 0.34f, 0.30f, 0.36f, 0.62f, 0.16f, 0.18f, 0.38f, 0.60f, 0.25f,
               1 /* 16 */, 5 /* 1/32 */, 8, 0.0f, 2 /* PINGPONG */, 0.80f, 0.30f, 1231,
               FractureShape { 16, 0.02f, 0.18f, 0.08f, 0.30f, 0.30f, 0.52f, 0.25f, 0.80f,
                               1.0f, 0.85f, 0.60f, 0.85f, nullptr, "XoXoXoXo", nullptr });
@@ -723,7 +722,7 @@ manager.addFactory ({ "Ice Pick", "LEAD", { "cold", "harsh", "glassy", "air", "m
      .uni (ModSource::LFO1,      Param::shapeExcite,    0.160f)
      .uni (ModSource::Env1,      Param::waveSync,       0.280f)
      .uni (ModSource::Velocity,  Param::waveSync,       0.220f)
-     .uni (ModSource::Velocity,  Param::shapeStrike,    0.280f)
+     .uni (ModSource::Velocity,  Param::shapeSurface,   0.240f)
      .bi  (ModSource::KeyTrack,  Param::shapeSurface,  -0.180f)
      .uni (ModSource::ModWheel,  Param::lfo1Depth,      0.500f)
      .uni (ModSource::Macro1,    Param::lfo1Depth,      0.400f)

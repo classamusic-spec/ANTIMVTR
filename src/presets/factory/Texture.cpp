@@ -370,15 +370,15 @@ manager.addFactory ({ "Vinyl Weather", "TEXTURE", { "dirty", "noisy", "breathing
 
 manager.addFactory ({ "Breath Cathedral", "TEXTURE", { "hollow", "huge", "breathing", "air", "granular" }, [] (PatchState& s)
 {
-    sample (s, BuiltInSamples::Kind::Breath, 3 /* GRANULAR */, 0.05f, 0.95f, 0.54f, 0.82f, 60);
-    amp (s, 0.85f, 2.40f, 0.86f, 3.20f, 0.6f);
+    sample (s, BuiltInSamples::Kind::Breath, 3 /* GRANULAR */, 0.12f, 0.88f, 0.68f, 0.58f, 60);
+    amp (s, 0.45f, 1.90f, 0.84f, 2.60f, 0.55f);
     shape (s, 0.50f, 0.34f, 0.52f, 0.46f, 0.70f, 0.22f);
-    material (s, MaterialType::Void, MaterialType::Membrane, 0.36f);
-    topology (s, 2 /* CLUSTERS */, 0.44f, 0.56f, 7549);
+    material (s, MaterialType::Liquid, MaterialType::Void, 0.42f);
+    topology (s, 1 /* RING */, 0.58f, 0.48f, 7549);
     matter (s, 0.90f, 0.62f, 0.18f, 0.84f, 0.80f);
     evolve (s, 0.0f, 0.16f, 0.0f, 0.0f, 0.56f, 0.24f, 0.0f, 0.20f, 0.42f);
     set (s, Param::evolveScatterSeed, 7549);
-    space (s, SpacePresets::Void, 0.54f, 0.86f, 0.44f, 0.44f);
+    space (s, SpacePresets::Nebula, 0.50f, 0.80f, 0.52f, 0.40f);
 
     lfo (s, 1, 0.31f, 5 /* SMOOTH RANDOM */, 1.0f, false);
     lfo (s, 2, 0.12f, 0 /* SINE */, 1.0f, false);

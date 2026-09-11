@@ -104,6 +104,11 @@ public:
         // the spread `prepare` gives them.
         for (int i = 0; i < kLines; ++i)
             modLfo[i].reset (0.137f * (float) i);
+        // ... and so are the smoothed controls. `mix` is the one that hurts: the reverb's output
+        // is near zero while its lines refill, so a `mix` left on the old patch scales the DRY
+        // signal through the module and the error is at full level from the first sample.
+        mix.reset(); predelaySamples.reset(); shimmerGain.reset();
+        for (int i = 0; i < kLines; ++i) { lineDelay[i].reset(); lineGain[i].reset(); }
     }
 
     /**

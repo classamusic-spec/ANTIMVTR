@@ -47,6 +47,7 @@ public:
         rng.reseed (0x6D4145u);
         feedbackL = feedbackR = 0.0f;
         clamped = false;
+        mix.reset(); regen.reset();
     }
 
     void setParams (float size01, float density01, float pitchSemis, float mix01,

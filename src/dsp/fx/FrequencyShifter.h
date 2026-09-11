@@ -45,6 +45,7 @@ public:
         for (auto& c : chains) c.reset();
         phase = 0.0;
         for (auto& d : delayed) d = 0.0f;
+        shift.reset(); mix.reset();
     }
 
     void setParams (float amount, float mix01) noexcept

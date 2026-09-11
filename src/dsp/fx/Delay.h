@@ -91,6 +91,7 @@ public:
         for (auto& line : lines) line.clear();
         for (int c = 0; c < 2; ++c) { loopLow[c].reset(); loopHigh[c].reset(); }
         clamped = false;
+        timeL.reset(); timeR.reset(); feedback.reset(); mix.reset();
     }
 
     void setParams (float time01, bool sync, double bpm, float feedback01, float tone01,

@@ -777,7 +777,7 @@ manager.addFactory ({ "Bone Splinter", "FX", { "wooden", "dry", "close", "struck
     shape (s, 0.30f, 0.44f, 0.28f, 0.62f, 0.24f, 0.38f);
     material (s, MaterialType::Wood, MaterialType::Void, 0.45f);
     topology (s, 4 /* RANDOM */, 0.34f, 0.58f, 3159);
-    matter (s, 1.0f, 0.60f, 0.80f, 0.45f, 0.55f /* barely tracks: a crack is a crack wherever you play it */);
+    matter (s, 1.0f, 0.60f, 0.80f, 0.45f, 0.80f /* only loosely tracks: a crack is a crack wherever you play it */);
     evolve (s, 0.0f, 0.0f, 0.32f, 0.0f, 0.48f, 0.28f, 0.0f, 0.50f, 0.25f);
     set (s, Param::evolveScatterSeed, 3163);
     set (s, Param::shapePitch, 5.0f);

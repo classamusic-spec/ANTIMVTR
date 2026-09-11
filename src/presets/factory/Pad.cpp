@@ -190,7 +190,7 @@ manager.addFactory ({ "Rod Choir", "PAD", { "metallic", "struck", "resonant", "r
     r.bi  (ModSource::LFO1,       Param::shapeCoupling,   0.070f)
      .uni (ModSource::Env2,       Param::fractureMix,     0.200f)
      .bi  (ModSource::Chaos1,     Param::impactHardness,  0.120f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,     0.260f)
+     .uni (ModSource::Velocity,   Param::impactVelocity,  0.280f)
      .uni (ModSource::NoteRandom, Param::impactRandom,    0.220f)
      .bi  (ModSource::KeyTrack,   Param::impactBrightness, 0.180f)
      .uni (ModSource::Macro1,     Param::impactRate,      0.220f)
@@ -245,8 +245,8 @@ manager.addFactory ({ "Slow Chamber", "PAD", { "hollow", "breathing", "huge", "m
 
 //--------------------------------------------------------------------------
 // Cedar slats woven into a loom and set humming. A chain topology passes the
-// energy down the run of wood, and a slow LFO on the coupling makes the weave
-// tighten and loosen so the chord never settles into one colour.
+// energy down the run of wood, and a slow LFO on the tension expands and
+// compresses the intervals so the chord never settles into one colour.
 manager.addFactory ({ "Cedar Loom", "PAD", { "wooden", "warm", "soft", "roomy", "chords" }, [] (PatchState& s)
 {
     wave (s, 1 /* HARMONIC */, 0.28f, 0.22f, 0.08f, 4, 0.18f, 0.72f, 0, 0.90f);
@@ -266,7 +266,7 @@ manager.addFactory ({ "Cedar Loom", "PAD", { "wooden", "warm", "soft", "roomy", 
     macros (s, 0.30f, 0.40f, 0.35f, 0.40f);
 
     Routings r;
-    r.bi  (ModSource::LFO1,     Param::shapeCoupling,  0.110f)
+    r.bi  (ModSource::LFO1,     Param::shapeTension,   0.070f)
      .bi  (ModSource::LFO2,     Param::waveMorph,      0.090f)
      .uni (ModSource::Env2,     Param::shapeTension,   0.140f)
      .bi  (ModSource::KeyTrack, Param::shapeDecay,    -0.160f)
@@ -276,7 +276,7 @@ manager.addFactory ({ "Cedar Loom", "PAD", { "wooden", "warm", "soft", "roomy", 
      .uni (ModSource::Macro2,   Param::wavePosition,   0.300f)
      .uni (ModSource::Macro2,   Param::shapeExcite,    0.240f)
      .uni (ModSource::Macro3,   Param::spaceMix,       0.280f)
-     .uni (ModSource::Macro4,   Param::shapeCoupling,  0.280f)
+     .uni (ModSource::Macro4,   Param::shapeDistribution, 0.300f)
      .uni (ModSource::Macro4,   Param::waveDetune,     0.220f);
     sharedMacros (r, Param::spaceReverbDecay, Param::evolveBend);
     r.commit (s);
@@ -692,15 +692,15 @@ manager.addFactory ({ "Spectral Shroud", "PAD", { "dark", "cold", "evolving", "h
 manager.addFactory ({ "Paper Bells", "PAD", { "glassy", "soft", "plucked", "wide", "air" }, [] (PatchState& s)
 {
     impact (s, 2 /* PLUCK */, 0.22f, 0.52f, 0.30f, 0.72f, 0.60f, 0.30f, 0.20f);
-    amp (s, 0.20f, 1.60f, 0.82f, 2.60f, 0.45f);
-    set (s, Param::masterGain, 0.5f);
-    shape (s, 0.44f, 0.72f, 0.28f, 0.70f, 0.80f, 0.10f);
+    amp (s, 0.20f, 1.60f, 0.90f, 2.60f, 0.45f);
+    set (s, Param::masterGain, -1.5f);
+    shape (s, 0.44f, 0.72f, 0.28f, 0.70f, 0.88f, 0.10f);
     material (s, MaterialType::Crystal, MaterialType::Wood, 0.30f);
-    topology (s, 5 /* STAR */, 0.34f, 0.66f, 293);
+    topology (s, 5 /* STAR */, 0.24f, 0.66f, 293);
     matter (s, 0.92f, 0.84f, 0.48f, 0.90f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.34f, 0.26f, 0.0f, 0.22f, 0.40f);
     set (s, Param::evolveScatterSeed, 787);
-    space (s, SpacePresets::Shimmer, 0.46f, 0.60f, 0.66f, 0.30f);
+    space (s, SpacePresets::Shimmer, 0.46f, 0.60f, 0.66f, 0.18f);
 
     FractureShape f;
     f.fragments = 16;
@@ -713,7 +713,7 @@ manager.addFactory ({ "Paper Bells", "PAD", { "glassy", "soft", "plucked", "wide
     f.probability = 0.55f;
     f.pitchCycle = kFifthTerrace;
     f.pattern = "X.oH.LoX";
-    fracture (s, 2 /* TRANSIENT */, 0.60f, 0.42f, 0.85f, 0.55f, 0.14f, 0.36f, 0.44f, 0.66f, 0.20f,
+    fracture (s, 2 /* TRANSIENT */, 0.60f, 0.42f, 0.85f, 0.55f, 0.06f, 0.36f, 0.44f, 0.66f, 0.20f,
               1 /* 16 */, 6 /* 1/4T */, 8, 0.0f, 3 /* RANDOM */, 0.55f, 0.40f, 953, f);
 
     lfo (s, 1, 0.17f, 5 /* SMOOTH RANDOM */, 1.0f, false, 1.0f);
@@ -724,7 +724,7 @@ manager.addFactory ({ "Paper Bells", "PAD", { "glassy", "soft", "plucked", "wide
     r.bi  (ModSource::LFO1,       Param::fractureSpread,  0.160f)
      .uni (ModSource::Env2,       Param::fractureProbability, 0.220f)
      .uni (ModSource::Velocity,   Param::impactHardness,  0.280f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,     0.200f)
+     .uni (ModSource::Velocity,   Param::impactLength,    0.220f)
      .uni (ModSource::NoteRandom, Param::fractureDelay,   0.180f)
      .bi  (ModSource::KeyTrack,   Param::impactLength,   -0.220f)
      .uni (ModSource::Macro1,     Param::impactRate,      0.240f)
@@ -858,7 +858,7 @@ manager.addFactory ({ "Amber Vault", "PAD", { "glassy", "static", "struck", "hug
     Routings r;
     r.bi  (ModSource::LFO1,       Param::spaceTone,      0.120f)
      .uni (ModSource::Env2,       Param::shapeStereo,    0.180f)
-     .uni (ModSource::Velocity,   Param::shapeStrike,    0.300f)
+     .uni (ModSource::Velocity,   Param::impactVelocity, 0.300f)
      .uni (ModSource::Velocity,   Param::impactBrightness, 0.220f)
      .uni (ModSource::NoteRandom, Param::impactHardness, 0.180f)
      .bi  (ModSource::KeyTrack,   Param::impactLength,  -0.200f)
@@ -1015,7 +1015,7 @@ manager.addFactory ({ "Kelp Column", "PAD", { "organic", "soft", "morphing", "wi
 //--------------------------------------------------------------------------
 // A slab of basalt laid under everything else. Heavy MASS, a wooden chain and
 // an octave-down wave give it a floor a mix can stand on; the movement is one
-// very slow breath across the coupling, nothing that draws attention.
+// very slow breath across the mass, nothing that draws attention.
 manager.addFactory ({ "Basalt Bed", "PAD", { "dark", "warm", "hollow", "low", "layer" }, [] (PatchState& s)
 {
     wave (s, 1 /* HARMONIC */, 0.18f, 0.16f, 0.04f, 3, 0.12f, 0.55f, -1, 0.92f);
@@ -1035,7 +1035,7 @@ manager.addFactory ({ "Basalt Bed", "PAD", { "dark", "warm", "hollow", "low", "l
     macros (s, 0.25f, 0.30f, 0.25f, 0.45f);
 
     Routings r;
-    r.bi  (ModSource::LFO1,     Param::shapeCoupling, 0.080f)
+    r.bi  (ModSource::LFO1,     Param::shapeMass,     0.055f)
      .uni (ModSource::Env2,     Param::shapeDensity,  0.160f)
      .uni (ModSource::Velocity, Param::shapeExcite,   0.220f)
      .bi  (ModSource::KeyTrack, Param::shapeMass,    -0.220f)

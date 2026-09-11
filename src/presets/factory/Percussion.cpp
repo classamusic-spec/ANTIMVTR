@@ -160,7 +160,8 @@ manager.addFactory ({ "Clay Tabla", "PERCUSSION", { "struck", "organic", "warm",
      .uni (ModSource::Macro4,    Param::evolveBend,       0.300f)
      .uni (ModSource::Macro4,    Param::shapeTension,     0.220f)
      .uni (ModSource::Macro1,    Param::evolveMelt,            0.300f)
-     .uni (ModSource::Macro3,    Param::spaceTone,             0.300f);
+     .uni (ModSource::Macro3,    Param::spaceTone,             0.300f)
+     .uni (ModSource::Macro4,    Param::shapeDecay,            0.300f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -238,7 +239,12 @@ manager.addFactory ({ "Water Timpani", "PERCUSSION", { "struck", "dark", "sub", 
      .uni (ModSource::Macro4,    Param::evolveMelt,       0.320f)
      .uni (ModSource::Macro4,    Param::shapeMass,        0.220f)
      .uni (ModSource::Macro1,    Param::evolveMelt,            0.300f)
-     .uni (ModSource::Macro4,    Param::impactHardness,        0.300f);
+     .uni (ModSource::Macro4,    Param::impactHardness,        0.300f)
+     .uni (ModSource::Macro1,    Param::evolveTear,            0.300f)
+     .uni (ModSource::Macro6,    Param::evolveTear,            0.300f)
+     .uni (ModSource::Macro1,    Param::evolveCrush,           0.300f)
+     .uni (ModSource::Macro6,    Param::shapeDistribution,     0.300f)
+     .uni (ModSource::Macro6,    Param::shapeSurface,          0.300f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -349,7 +355,10 @@ manager.addFactory ({ "Ivory Ladder", "PERCUSSION", { "struck", "bright", "woode
      .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
      .uni (ModSource::Macro4,    Param::shapeBlend,       0.320f)
      .uni (ModSource::Macro4,    Param::shapeTension,     0.200f)
-     .uni (ModSource::Macro2,    Param::shapeSurface,          0.300f);
+     .uni (ModSource::Macro2,    Param::shapeSurface,          0.300f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,           0.300f)
+     .uni (ModSource::Macro1,    Param::impactRate,            0.300f)
+     .uni (ModSource::Macro1,    Param::evolveCrush,           0.300f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -544,7 +553,8 @@ manager.addFactory ({ "Anvil Tooth", "PERCUSSION", { "struck", "harsh", "metalli
      .uni (ModSource::Macro1,    Param::evolveMelt,            0.300f)
      .uni (ModSource::Macro2,    Param::shapeSurface,          0.300f)
      .uni (ModSource::Macro3,    Param::spaceTone,             0.300f)
-     .uni (ModSource::Macro6,    Param::evolveTear,            0.300f);
+     .uni (ModSource::Macro6,    Param::evolveTear,            0.300f)
+     .uni (ModSource::Macro2,    Param::spaceTone,             0.300f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});
@@ -958,7 +968,8 @@ manager.addFactory ({ "Stone Circle", "PERCUSSION", { "struck", "dark", "hollow"
      .uni (ModSource::Macro4,    Param::shapeMass,        0.300f)
      .uni (ModSource::Macro4,    Param::sampleLevel,      0.260f)
      .uni (ModSource::Macro1,    Param::evolveMelt,            0.300f)
-     .uni (ModSource::Macro3,    Param::spaceTone,             0.300f);
+     .uni (ModSource::Macro3,    Param::spaceTone,             0.300f)
+     .uni (ModSource::Macro6,    Param::evolveTear,            0.300f);
     sharedMacros (r, Param::ampDecay, Param::impactRandom);
     r.commit (s);
 }});

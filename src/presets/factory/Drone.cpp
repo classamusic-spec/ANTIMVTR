@@ -801,6 +801,273 @@ manager.addFactory ({ "Harbour Buoy", "DRONE", { "metallic", "cold", "distant", 
     sharedMacros (r, Param::fractureDecay, Param::impactRandom);
     r.commit (s);
 }});
+
+//------------------------------------------------- filaments, water and dust
+
+manager.addFactory ({ "Tungsten Thread", "DRONE", { "metallic", "bright", "morphing", "air", "wide" }, [] (PatchState& s)
+{
+    // A filament glowing at the top of the register. CRUSH is the event: a
+    // looped envelope quantises the node frequencies onto a coarse grid and
+    // then releases them, so the thread steps between a handful of pitches and
+    // a continuous line and back, four or five times a minute.
+    wave (s, 4 /* METALLIC */, 0.52f, 0.30f, 0.0f, 3, 0.06f, 0.80f, 1, 0.82f);
+    amp (s, 1.30f, 3.0f, 0.90f, 3.5f, 0.58f);
+    shape (s, 0.46f, 0.68f, 0.18f, 0.72f, 0.80f, 0.22f);
+    material (s, MaterialType::Metal, MaterialType::Crystal, 0.52f);
+    topology (s, 5 /* STAR */, 0.30f, 0.32f, 1103);
+    matter (s, 0.94f, 0.56f, 0.16f, 0.82f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.0f, 0.44f, 0.20f, 0.30f, 0.12f, 0.40f);
+    fracture (s, 0 /* SPECTRAL */, 0.34f, 0.30f, 0.72f, 0.30f, 0.44f, 0.58f, 0.76f, 0.66f, 0.35f,
+              2 /* 32 */, 1 /* 1/2 */, 8, 0.0f, 2 /* PINGPONG */, 0.80f, 0.30f, 1109,
+              FractureShape { 32, 0.14f, 0.66f, 0.30f, 0.60f, 0.55f, 0.82f, 0.40f, 0.98f,
+                              1.0f, 0.9f, 0.80f, 0.9f, kOctaveTerrace, "XHXLXHXX", nullptr });
+    space (s, SpacePresets::Shimmer, 0.42f, 0.66f, 0.72f, 0.38f);
+
+    env (s, 2, 11.0f, 14.0f, 0.40f, 6.0f, 0.55f, true);
+    lfo (s, 1, 0.034f, 1 /* TRIANGLE */, 1.0f, false, 4.0f);
+    lfo (s, 2, 0.12f, 5 /* SMOOTH RANDOM */, 1.0f, false, 2.0f);
+    macros (s, 0.45f, 0.48f, 0.48f, 0.55f);
+
+    Routings r;
+    r.bi  (ModSource::Env2,      Param::evolveCrush,      0.360f)
+     .bi  (ModSource::Env2,      Param::wavePosition,     0.200f)
+     .bi  (ModSource::LFO1,      Param::shapeTension,     0.160f)
+     .bi  (ModSource::LFO2,      Param::shapeBlend,       0.200f)
+     .uni (ModSource::Velocity,  Param::shapeExcite,      0.220f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.200f)
+     .bi  (ModSource::NoteRandom, Param::waveDetune,      0.100f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.400f)
+     .uni (ModSource::Macro2,    Param::waveMorph,        0.300f)
+     .uni (ModSource::Macro2,    Param::fractureTone,     0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::evolveCrush,      0.320f)
+     .uni (ModSource::Macro4,    Param::shapeTension,     0.240f);
+    sharedMacros (r, Param::fractureDecay, Param::evolveSpeed);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Drowned Nave", "DRONE", { "organic", "soft", "wide", "breathing", "distant" }, [] (PatchState& s)
+{
+    // A flooded church. A hand rubbing a wet stone edge, layered with pink
+    // noise for the water in the air, resonating in a random graph that is
+    // more liquid than solid. The whole thing sits far back and the room
+    // breathes around it.
+    dust (s, 1 /* PINK */, 0.44f, 0.42f, 0.36f, 0.40f, 0.68f, 0.80f, 1117, 0.34f);
+    gesture (s, 2 /* RUB */, 0.52f, 0.26f, 0.40f, 0.36f, 0.42f, 0.36f, 0.80f);
+    layerSources (s, 1 /* DUST */, 4 /* GESTURE */);
+    amp (s, 1.90f, 3.5f, 0.92f, 4.5f, 0.62f);
+    shape (s, 0.56f, 0.38f, 0.60f, 0.44f, 0.78f, 0.42f);
+    material (s, MaterialType::Liquid, MaterialType::Void, 0.46f);
+    topology (s, 4 /* RANDOM */, 0.56f, 0.52f, 1123);
+    matter (s, 0.96f, 0.50f, 0.16f, 0.88f);
+    evolve (s, 0.0f, 0.28f, 0.0f, 0.22f, 0.56f, 0.24f, 0.0f, 0.07f, 0.42f);
+    set (s, Param::evolveMagnetTarget, 3 /* MINOR */);
+    space (s, SpacePresets::Dream, 0.52f, 0.82f, 0.50f, 0.46f);
+
+    env (s, 2, 15.0f, 19.0f, 0.45f, 8.0f, 0.60f, true);
+    lfo (s, 1, 0.030f, 0 /* SINE */, 1.0f, false, 5.0f);
+    lfo (s, 2, 0.083f, 5 /* SMOOTH RANDOM */, 1.0f, false, 3.0f);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.055f, 0.50f, 0.86f, 0.5f, 1129);
+    macros (s, 0.45f, 0.34f, 0.58f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::Env2,      Param::shapeCoupling,    0.320f)
+     .uni (ModSource::Env2,      Param::evolveMagnet,     0.260f)
+     .bi  (ModSource::LFO1,      Param::spaceSize,        0.260f)
+     .bi  (ModSource::LFO2,      Param::gesturePosition,  0.200f)
+     .bi  (ModSource::Chaos1,    Param::shapeBlend,       0.300f)
+     .uni (ModSource::Velocity,  Param::gesturePressure,  0.240f)
+     .bi  (ModSource::KeyTrack,  Param::dustColor,        0.220f)
+     .bi  (ModSource::NoteRandom, Param::gestureRoughness, 0.120f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.400f)
+     .uni (ModSource::Macro1,    Param::gestureMotion,    0.300f)
+     .uni (ModSource::Macro2,    Param::gestureBandwidth, 0.300f)
+     .uni (ModSource::Macro2,    Param::dustColor,        0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
+     .uni (ModSource::Macro4,    Param::evolveMelt,       0.300f)
+     .uni (ModSource::Macro4,    Param::dustLevel,        0.240f);
+    sharedMacros (r, Param::spaceSize, Param::chaos1Depth);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Moth Static", "DRONE", { "granular", "cold", "unstable", "high", "close" }, [] (PatchState& s)
+{
+    // Small dry wings against a lamp. CRACKLE fires irregular grains into a
+    // random graph of dry organic matter and crystal, and a SPECTRAL Fracture
+    // with long feedback keeps catching them and letting them go, so the
+    // flutter is never the same twice and never quite stops.
+    dust (s, 5 /* CRACKLE */, 0.40f, 0.66f, 0.30f, 0.62f, 0.66f, 0.75f, 1151, 0.92f);
+    amp (s, 0.60f, 2.0f, 0.88f, 2.4f, 0.52f);
+    shape (s, 0.58f, 0.56f, 0.22f, 0.68f, 0.66f, 0.50f);
+    material (s, MaterialType::Organic, MaterialType::Crystal, 0.52f);
+    topology (s, 4 /* RANDOM */, 0.42f, 0.60f, 1153);
+    matter (s, 0.96f, 0.64f, 0.20f, 0.78f);
+    evolve (s, 0.0f, 0.0f, 0.18f, 0.0f, 0.40f, 0.42f, 0.0f, 0.34f, 0.52f);
+    set (s, Param::evolveScatterSeed, 1163);
+    fracture (s, 0 /* SPECTRAL */, 0.42f, 0.38f, 0.78f, 0.34f, 0.52f, 0.35f, 0.66f, 0.72f, 0.30f,
+              2 /* 32 */, 3 /* 1/8 */, 8, 0.0f, 3 /* RANDOM */, 0.70f, 0.45f, 1171,
+              FractureShape { 32, 0.03f, 0.30f, 0.25f, 0.60f, 0.45f, 0.72f, 0.45f, 1.0f,
+                              1.0f, 1.0f, 0.85f, 0.85f, kMinorTerrace, "XHXoXHoX", nullptr });
+    space (s, SpacePresets::Dust, 0.38f, 0.44f, 0.66f, 0.36f);
+
+    env (s, 2, 8.0f, 11.0f, 0.40f, 5.0f, 0.50f, true);
+    lfo (s, 1, 0.17f, 5 /* SMOOTH RANDOM */, 1.0f, false, 1.5f);
+    chaos (s, 1, 2 /* LOGISTIC */, 0.42f, 0.55f, 0.58f, 0.5f, 1181);
+    chaos (s, 2, 1 /* BROWNIAN */, 0.06f, 0.50f, 0.85f, 0.5f, 1187);
+    macros (s, 0.55f, 0.50f, 0.36f, 0.55f);
+
+    Routings r;
+    r.bi  (ModSource::Chaos1,    Param::dustDensity,      0.320f)
+     .bi  (ModSource::Chaos1,    Param::dustJitter,       0.220f)
+     .bi  (ModSource::Chaos2,    Param::shapeBlend,       0.320f)
+     .bi  (ModSource::Env2,      Param::shapeDistribution, 0.280f)
+     .bi  (ModSource::LFO1,      Param::dustColor,        0.200f)
+     .uni (ModSource::Velocity,  Param::dustDensity,      0.240f)
+     .bi  (ModSource::KeyTrack,  Param::dustGrain,       -0.200f)
+     .bi  (ModSource::NoteRandom, Param::dustSpread,      0.140f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.420f)
+     .uni (ModSource::Macro2,    Param::dustColor,        0.320f)
+     .uni (ModSource::Macro2,    Param::fractureTone,     0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::evolveTear,       0.300f)
+     .uni (ModSource::Macro4,    Param::fractureFeedback, 0.240f);
+    sharedMacros (r, Param::fractureDecay, Param::chaos1Rate);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Bellows Vault", "DRONE", { "warm", "hollow", "pulsing", "sub", "huge" }, [] (PatchState& s)
+{
+    // A church organ two octaves below where anyone sings, with the bellows
+    // still working: a harmonic rank layered with brown noise for the wind
+    // leaking round the pallets, and a slow pump on the excitation so the
+    // whole vault fills and empties instead of just sitting there.
+    wave (s, 1 /* HARMONIC */, 0.22f, 0.14f, 0.0f, 4, 0.06f, 0.55f, -2, 0.86f);
+    dust (s, 2 /* BROWN */, 0.40f, 0.24f, 0.26f, 0.30f, 0.50f, 0.55f, 1193, 0.26f);
+    layerSources (s, 0 /* WAVE */, 1 /* DUST */);
+    amp (s, 2.00f, 4.0f, 0.94f, 5.0f, 0.64f);
+    set (s, Param::masterGain, -2.5f);
+    shape (s, 0.34f, 0.24f, 0.84f, 0.34f, 0.80f, 0.22f);
+    material (s, MaterialType::Membrane, MaterialType::Void, 0.48f);
+    topology (s, 2 /* CLUSTERS */, 0.44f, 0.34f, 1201);
+    matter (s, 0.94f, 0.46f, 0.14f, 0.72f);
+    evolve (s, 0.0f, 0.12f, 0.0f, 0.32f, 0.58f, 0.12f, 0.0f, 0.06f, 0.30f);
+    set (s, Param::evolveMagnetTarget, 0 /* OCTAVE */);
+    space (s, SpacePresets::Void, 0.46f, 0.88f, 0.34f, 0.44f);
+
+    env (s, 2, 7.0f, 9.0f, 0.45f, 5.0f, 0.60f, true);
+    env (s, 3, 19.0f, 23.0f, 0.50f, 8.0f, 0.55f, true);
+    lfo (s, 1, 0.026f, 0 /* SINE */, 1.0f, false, 5.0f);
+    macros (s, 0.38f, 0.30f, 0.52f, 0.48f);
+
+    Routings r;
+    r.bi  (ModSource::Env2,      Param::shapeExcite,      0.280f)
+     .bi  (ModSource::Env2,      Param::dustDensity,      0.240f)
+     .bi  (ModSource::Env3,      Param::shapeMass,        0.240f)
+     .uni (ModSource::Env3,      Param::evolveMagnet,     0.240f)
+     .bi  (ModSource::LFO1,      Param::shapeCoupling,    0.200f)
+     .uni (ModSource::Velocity,  Param::shapeExcite,      0.220f)
+     .bi  (ModSource::KeyTrack,  Param::shapeMass,       -0.260f)
+     .bi  (ModSource::NoteRandom, Param::waveDetune,      0.100f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.360f)
+     .uni (ModSource::Macro2,    Param::wavePosition,     0.300f)
+     .uni (ModSource::Macro2,    Param::spaceTone,        0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.320f)
+     .uni (ModSource::Macro4,    Param::dustLevel,        0.300f)
+     .uni (ModSource::Macro4,    Param::shapeMass,        0.240f);
+    sharedMacros (r, Param::spaceSize, Param::dustJitter);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Sympathy Wires", "DRONE", { "resonant", "wooden", "drift", "roomy", "mid" }, [] (PatchState& s)
+{
+    // A bank of sympathetic strings behind a soundboard. A quiet bowed tone
+    // keeps them all alive while a mallet touches one every few seconds; the
+    // COUPLING between the wires drifts on a long loop, so which wires are
+    // answering each other keeps changing and the chord reshuffles itself.
+    wave (s, 0 /* BASIC */, 0.28f, 0.16f, 0.0f, 3, 0.04f, 0.45f, 0, 0.70f);
+    impact (s, 2 /* PLUCK */, 0.40f, 0.52f, 0.10f, 0.70f, 0.35f, 0.60f, 0.10f, 0.55f);
+    layerSources (s, 0 /* WAVE */, 2 /* IMPACT */);
+    amp (s, 1.20f, 3.0f, 0.90f, 3.5f, 0.58f);
+    shape (s, 0.40f, 0.12f, 0.36f, 0.66f, 0.84f, 0.20f);
+    material (s, MaterialType::String, MaterialType::Wood, 0.42f);
+    topology (s, 0 /* CHAIN */, 0.34f, 0.44f, 1213);
+    matter (s, 0.96f, 0.54f, 0.34f, 0.62f);
+    evolve (s, 0.0f, 0.0f, 0.0f, 0.28f, 0.50f, 0.18f, 0.0f, 0.09f, 0.34f);
+    set (s, Param::evolveMagnetTarget, 5 /* SCALE */);
+    fracture (s, 1 /* RHYTHMIC */, 0.30f, 0.26f, 0.60f, 0.55f, 0.34f, 0.40f, 0.72f, 0.52f, 0.28f,
+              1 /* 16 */, 2 /* 1/4 */, 8, 0.12f, 2 /* PINGPONG */, 0.55f, 0.35f, 1217,
+              FractureShape { 16, 0.10f, 0.50f, 0.22f, 0.50f, 0.48f, 0.74f, 0.30f, 0.90f,
+                              1.0f, 0.9f, 0.60f, 0.75f, kFifthTerrace, "X.XLX.XH", nullptr });
+    space (s, SpacePresets::Chamber, 0.40f, 0.62f, 0.56f, 0.36f);
+
+    env (s, 2, 17.0f, 21.0f, 0.45f, 8.0f, 0.55f, true);
+    lfo (s, 1, 0.032f, 1 /* TRIANGLE */, 1.0f, false, 4.0f);
+    chaos (s, 1, 0 /* WALK */, 0.07f, 0.48f, 0.80f, 0.5f, 1223);
+    macros (s, 0.42f, 0.42f, 0.46f, 0.50f);
+
+    Routings r;
+    r.bi  (ModSource::Env2,      Param::shapeCoupling,    0.400f)
+     .bi  (ModSource::Env2,      Param::shapeDistribution, 0.220f)
+     .bi  (ModSource::LFO1,      Param::shapeTension,     0.120f)
+     .bi  (ModSource::Chaos1,    Param::impactRate,       0.220f)
+     .bi  (ModSource::Chaos1,    Param::impactBrightness, 0.200f)
+     .uni (ModSource::Velocity,  Param::impactLevel,      0.300f)
+     .bi  (ModSource::KeyTrack,  Param::shapeDecay,      -0.220f)
+     .bi  (ModSource::NoteRandom, Param::impactRandom,    0.140f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.380f)
+     .uni (ModSource::Macro1,    Param::impactRate,       0.240f)
+     .uni (ModSource::Macro2,    Param::impactBrightness, 0.300f)
+     .uni (ModSource::Macro2,    Param::wavePosition,     0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::shapeCoupling,    0.320f)
+     .uni (ModSource::Macro4,    Param::evolveMagnet,     0.260f);
+    sharedMacros (r, Param::fractureDecay, Param::impactRandom);
+    r.commit (s);
+}});
+
+manager.addFactory ({ "Ember Bed", "DRONE", { "warm", "dirty", "granular", "chaotic", "low" }, [] (PatchState& s)
+{
+    // A bed of coals still working. The NoiseBurst built-in read granularly
+    // gives the settling, DUST in CRACKLE mode gives the spitting, and the
+    // material underneath is CUSTOM — a plain harmonic body whose FORM is the
+    // only thing deciding its structure, so the chaos generator walking FORM
+    // rebuilds what the fire is burning in every twenty seconds or so.
+    dust (s, 5 /* CRACKLE */, 0.46f, 0.34f, 0.44f, 0.66f, 0.60f, 0.70f, 1229, 0.42f);
+    sample (s, BuiltInSamples::Kind::NoiseBurst, 3 /* GRANULAR */, 0.05f, 0.80f, 0.52f, 0.60f, 45, 0.80f);
+    layerSources (s, 1 /* DUST */, 3 /* SAMPLE */);
+    amp (s, 1.40f, 3.0f, 0.90f, 3.5f, 0.58f);
+    shape (s, 0.50f, 0.30f, 0.66f, 0.42f, 0.74f, 0.48f);
+    material (s, MaterialType::Custom, MaterialType::Organic, 0.44f);
+    topology (s, 3 /* LATTICE */, 0.48f, 0.48f, 1231);
+    matter (s, 0.96f, 0.58f, 0.18f, 0.76f);
+    evolve (s, 0.0f, 0.24f, 0.0f, 0.0f, 0.54f, 0.32f, 0.0f, 0.13f, 0.46f);
+    set (s, Param::evolveScatterSeed, 1237);
+    space (s, SpacePresets::Nebula, 0.40f, 0.58f, 0.44f, 0.40f);
+
+    env (s, 2, 12.0f, 15.0f, 0.45f, 7.0f, 0.55f, true);
+    lfo (s, 1, 0.061f, 5 /* SMOOTH RANDOM */, 1.0f, false, 3.0f);
+    chaos (s, 1, 1 /* BROWNIAN */, 0.05f, 0.60f, 0.88f, 0.5f, 1249);
+    chaos (s, 2, 2 /* LOGISTIC */, 0.24f, 0.45f, 0.62f, 0.5f, 1259);
+    macros (s, 0.50f, 0.36f, 0.42f, 0.55f);
+
+    Routings r;
+    r.bi  (ModSource::Chaos1,    Param::shapeForm,        0.420f)
+     .bi  (ModSource::Chaos2,    Param::dustDensity,      0.280f)
+     .bi  (ModSource::Env2,      Param::sampleGrain,      0.280f)
+     .uni (ModSource::Env2,      Param::evolveMelt,       0.240f)
+     .bi  (ModSource::LFO1,      Param::sampleStart,      0.220f)
+     .uni (ModSource::Velocity,  Param::dustDensity,      0.240f)
+     .bi  (ModSource::KeyTrack,  Param::dustColor,        0.220f)
+     .bi  (ModSource::NoteRandom, Param::sampleSpread,    0.140f)
+     .uni (ModSource::Macro1,    Param::evolveMotion,     0.400f)
+     .uni (ModSource::Macro2,    Param::dustColor,        0.320f)
+     .uni (ModSource::Macro2,    Param::shapeExcite,      0.240f)
+     .uni (ModSource::Macro3,    Param::spaceMix,         0.300f)
+     .uni (ModSource::Macro4,    Param::sampleGrain,      0.320f)
+     .uni (ModSource::Macro4,    Param::shapeSurface,     0.260f);
+    sharedMacros (r, Param::spaceSize, Param::chaos1Depth);
+    r.commit (s);
+}});
 }
 
 } // namespace am::FactoryContent

@@ -21,7 +21,7 @@ namespace
     /** The radius of the dark mass, object units: MASS opens it, MELT collapses it. */
     inline float coreRadiusOf (float mass, float melt, float level) noexcept
     {
-        return juce::jlimit (0.11f, 0.55f, 0.19f + 0.30f * mass - 0.06f * melt + 0.02f * level);
+        return juce::jlimit (0.09f, 0.50f, 0.145f + 0.27f * mass - 0.05f * melt + 0.02f * level);
     }
 
     /** Per-quality-level caps. Level 0 = full, 1 = reduced, 2 = minimal. */
@@ -60,6 +60,9 @@ AntiMatterVisualizer::AntiMatterVisualizer (Diagnostics& d)
     if (const char* pin = std::getenv ("ANTIMATR_VIS_QUALITY"))
         quality = pinnedQuality = juce::jlimit (0, 2, std::atoi (pin));
 
+    // Preallocated once: paint() must never allocate.
+    sprites.reserve ((size_t) NodeField::kMaxPoints * 2);
+    sortedSprites.resize ((size_t) NodeField::kMaxPoints * 2);
     corePath.preallocateSpace (kCoreSegs * 3 + 16);
     glassPath.preallocateSpace (32);
     gradient.clearColours();
@@ -86,8 +89,15 @@ void AntiMatterVisualizer::buildShadeTable()
         for (int h = 0; h < kHueBins; ++h)
         {
             RGB c = liquid::ramp ((float) h / (float) kHueBins);
-            if (depth < 0.0f) c = liquid::deepen (c, -depth * 0.68f);
-            else              c = liquid::whiten (c, depth * 0.10f);
+            // Additive light desaturates wherever it piles up, so the ramp is pushed
+            // away from grey before it goes into the accumulator — otherwise the
+            // brightest and most interesting parts of the mass are the ones that
+            // lose their colour.
+            const float grey = 0.30f * c.r + 0.59f * c.g + 0.11f * c.b;
+            c = { grey + (c.r - grey) * 1.34f, grey + (c.g - grey) * 1.34f, grey + (c.b - grey) * 1.34f };
+            c = { liquid::clampf (c.r, 0.0f, 1.0f), liquid::clampf (c.g, 0.0f, 1.0f), liquid::clampf (c.b, 0.0f, 1.0f) };
+            if (depth < 0.0f) c = liquid::deepen (c, -depth * 0.86f);
+            else              c = liquid::whiten (c, depth * 0.08f);
             const size_t i = (size_t) (d * kHueBins + h) * 3;
             shade[i] = c.r; shade[i + 1] = c.g; shade[i + 2] = c.b;
         }
@@ -257,8 +267,8 @@ void AntiMatterVisualizer::updateQuality()
     if (profileToStderr && frameCounter % 60 == 0)
     {
         static const char* names[kLayers] = { "well", "core", "splat", "resolve", "blit", "glass", "bezel", "captions" };
-        std::fprintf (stderr, "[antimatter] paint %.2f ms avg, quality %d, %dx%d, points %d, buffer %.2f\n",
-                      (double) paintMsAverage, quality, getWidth(), getHeight(), livePoints, (double) capBuffer);
+        std::fprintf (stderr, "[antimatter] paint %.2f ms avg, quality %d, %dx%d, points %d, texels %lld\n",
+                      (double) paintMsAverage, quality, getWidth(), getHeight(), livePoints, renderer.texels());
         std::fprintf (stderr, "[antimatter] texels=%lld\n", renderer.texels());
         std::fprintf (stderr, "[antimatter] layers:");
         for (int i = 0; i < kLayers; ++i) std::fprintf (stderr, " %s=%.2f", names[i], layerMsAverage[(size_t) i]);
@@ -373,8 +383,8 @@ void AntiMatterVisualizer::renderWell (juce::Graphics& g, const Frame& f)
     gradient.isRadial = true;
     gradient.point1 = c;
     gradient.point2 = { c.x + hr, c.y };
-    gradient.addColour (0.0, alpha (glow, 0.085f));
-    gradient.addColour (0.45, alpha (glow, 0.042f));
+    gradient.addColour (0.0, alpha (glow, 0.055f));
+    gradient.addColour (0.45, alpha (glow, 0.026f));
     gradient.addColour (1.0, alpha (glow, 0.0f));
     g.setGradientFill (gradient);
     g.fillEllipse (c.x - hr, c.y - hr, hr * 2.0f, hr * 2.0f);
@@ -421,6 +431,9 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f)
     const float cr = f.coreR * f.R * f.breathe;
     if (cr < 1.0f) return;
 
+    // With nothing playing the cloud is the subject and the mass recedes: a dark
+    // hole in an empty volume is the one way this object can look switched off.
+    const float present = 0.46f + 0.54f * f.life;
     const auto deep  = Theme::panelEdge;
     const auto shell = Theme::panelInset.interpolatedWith (Theme::violet, 0.13f);
 
@@ -430,8 +443,8 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f)
     gradient.isRadial = true;
     gradient.point1 = c;
     gradient.point2 = { c.x + hr, c.y };
-    gradient.addColour (0.0, alpha (deep, 0.62f));
-    gradient.addColour (0.60, alpha (deep, 0.32f));
+    gradient.addColour (0.0, alpha (deep, 0.62f * present));
+    gradient.addColour (0.60, alpha (deep, 0.32f * present));
     gradient.addColour (1.0, alpha (deep, 0.0f));
     g.setGradientFill (gradient);
     g.fillEllipse (c.x - hr, c.y - hr, hr * 2.0f, hr * 2.0f);
@@ -450,10 +463,10 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f)
     gradient.isRadial = true;
     gradient.point1 = { c.x - cr * 0.35f, c.y - cr * 0.40f };
     gradient.point2 = { c.x - cr * 0.35f + cr * 1.7f, c.y - cr * 0.40f };
-    gradient.addColour (0.0, shell.brighter (0.30f));
-    gradient.addColour (0.42, shell);
-    gradient.addColour (0.78, deep.brighter (0.10f));
-    gradient.addColour (1.0, deep);
+    gradient.addColour (0.0, alpha (shell.brighter (0.30f), present));
+    gradient.addColour (0.42, alpha (shell, present));
+    gradient.addColour (0.78, alpha (deep.brighter (0.10f), present));
+    gradient.addColour (1.0, alpha (deep, present));
     g.setGradientFill (gradient);
     g.fillPath (corePath);
 
@@ -489,6 +502,39 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f)
     }
 }
 
+/**
+    Draws the collected sprites in top-to-bottom band order.
+
+    A counting sort into 32 horizontal bands costs two streaming passes over a
+    quarter of a megabyte and buys back far more than that: within a band every
+    splat writes into the same few hundred kilobytes of the accumulator, which
+    stays in cache, instead of walking a megabytes-wide buffer at random.
+*/
+void AntiMatterVisualizer::flushSprites (float invBandHeight)
+{
+    const int n = (int) sprites.size();
+    if (n <= 0) return;
+
+    bandStart.fill (0);
+    auto bandOf = [invBandHeight] (float y)
+    {
+        const int b = (int) (y * invBandHeight);
+        return b < 0 ? 0 : (b >= kBands ? kBands - 1 : b);
+    };
+    for (int i = 0; i < n; ++i) ++bandStart[(size_t) bandOf (sprites[(size_t) i].y)];
+    int total = 0;
+    for (int b = 0; b < kBands; ++b) { const int c = bandStart[(size_t) b]; bandStart[(size_t) b] = total; total += c; }
+    bandStart[(size_t) kBands] = total;
+    for (int i = 0; i < n; ++i)
+        sortedSprites[(size_t) bandStart[(size_t) bandOf (sprites[(size_t) i].y)]++] = sprites[(size_t) i];
+
+    for (int i = 0; i < n; ++i)
+    {
+        const auto& s = sortedSprites[(size_t) i];
+        renderer.splat (s.x, s.y, s.rad, s.r, s.g, s.b, s.lut);
+    }
+}
+
 //==============================================================================
 /**
     THE FIELD. Every point of the volume is projected, shaded by its depth and
@@ -507,7 +553,7 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
     // ball rather than to the whole porthole — which is a fifth of the resolve, the
     // clear and the blit saved as well as a better read.
     const float Rg = f.port.glassR;
-    const float fieldR = Rg * 0.885f;
+    const float fieldR = Rg * 0.900f;
     const float originX = std::floor (f.centre.x - fieldR);
     const float originY = std::floor (f.centre.y - fieldR);
     const float bufScale = f.bufferScale;
@@ -527,11 +573,17 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
     const float* const kSoftK = renderer.softKernel();
     const float* const kBodyK = f.crush > 0.35f ? renderer.hardKernel() : kCoreK;
 
-    const float fadeIn = Rg * 0.700f, fadeOut = Rg * 0.870f;
+    const float fadeIn = Rg * 0.760f, fadeOut = Rg * 0.885f;
     const float unitPx = Rg * (1.0f / 267.0f);            // one reference pixel of glass
     const float glowFloor = juce::jmax (3.5f, 8.0f * unitPx);
     const float trailGate = f.trails ? 0.0068f : 1.0e9f;   // object units moved per frame
     const int   count = field.count();
+
+    sprites.clear();
+    auto add = [this] (float x, float y, float rad, float r, float gg, float b, const float* lut)
+    {
+        if (sprites.size() < sprites.capacity()) sprites.push_back ({ x, y, rad, r, gg, b, lut });
+    };
 
     for (int i = 0; i < count; ++i)
     {
@@ -576,16 +628,16 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
         const float* const col = shade.data() + (size_t) (db * kHueBins + hb) * 3;
 
         // A point at the back gives up most of its light to the volume in front of it.
-        const float depthGain = 0.30f + 0.70f * depth01 * depth01 * (0.55f + 0.45f * depth01);
-        const float I = q.bright * 2.85f * gain * depthGain;
+        const float depthGain = 0.145f + 0.855f * depth01 * depth01 * (0.34f + 0.66f * depth01);
+        const float I = q.bright * 3.55f * gain * depthGain;
         const float w = q.white;
         const float cr = (col[0] + (1.0f - col[0]) * w) * I;
         const float cg = (col[1] + (1.0f - col[1]) * w) * I;
         const float cb = (col[2] + (1.0f - col[2]) * w) * I;
 
         // ---- size: near points are large and sharp, far ones small and soft
-        const float px = f.R * q.size * persp * (0.52f + 0.88f * depth01) * (1.0f + 0.42f * q.bright);
-        const float rad = juce::jlimit (0.45f, 5.5f * unitPx, px * bufScale);
+        const float px = f.R * q.size * persp * (0.30f + 1.25f * depth01) * (1.0f + 0.42f * q.bright);
+        const float rad = juce::jlimit (0.72f * unitPx, 3.4f * unitPx, px * bufScale);
         const float bx = (sx - originX) * bufScale;
         const float by = (sy - originY) * bufScale;
 
@@ -595,9 +647,10 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
         // difference in *focus*, more than the difference in brightness, is what
         // gives the mass a front and a back.
         if (depth01 < 0.48f)
-            renderer.splat (bx, by, rad * 2.6f, cr * 0.78f, cg * 0.78f, cb * 0.78f, kSoftK);
+            add (bx, by, juce::jmin (rad * 3.0f, 6.5f * unitPx),
+                 cr * 0.60f, cg * 0.60f, cb * 0.60f, kSoftK);
         else
-            renderer.splat (bx, by, rad, cr, cg, cb, kBodyK);
+            add (bx, by, rad, cr, cg, cb, kBodyK);
 
         // The light between the points. Every point also spills a wide, weak wash
         // into the glow plane, and it is those washes overlapping — not the points
@@ -606,7 +659,7 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
         if (f.wideHalo)
         {
             const float gwv = I * (0.150f - 0.070f * depth01);
-            renderer.splatGlow (bx, by, juce::jmax (glowFloor, rad * 5.0f + 2.6f * I * unitPx),
+            renderer.splatGlow (bx, by, juce::jlimit (glowFloor, 20.0f * unitPx, rad * 4.0f + 2.2f * I * unitPx),
                                 cr * gwv, cg * gwv, cb * gwv);
         }
 
@@ -614,7 +667,7 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
         //      This is what makes a shock front or a Fracture burst read as speed —
         //      far better than blurring the whole frame would.
         const float v2 = q.vel.x * q.vel.x + q.vel.y * q.vel.y + q.vel.z * q.vel.z;
-        if (v2 > trailGate * trailGate && renderer.hasBudget())
+        if (v2 > trailGate * trailGate)
         {
             const float ax = q.p.x - q.vel.x, ay = q.p.y - q.vel.y, az = q.p.z - q.vel.z;
             const float px1 =  ax * f.cosYaw + az * f.sinYaw;
@@ -630,12 +683,13 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
                 {
                     const float t = (float) k * (1.0f / 3.0f);
                     const float a = (1.0f - t) * 0.55f;
-                    renderer.splat (bx - tx * t, by - ty * t, rad * (1.0f - 0.18f * (float) k),
-                                    cr * a, cg * a, cb * a, kCoreK);
+                    add (bx - tx * t, by - ty * t, rad * (1.0f - 0.18f * (float) k),
+                         cr * a, cg * a, cb * a, kCoreK);
                 }
             }
         }
     }
+    flushSprites ((float) kBands / (float) juce::jmax (1, bw));
     mark (2);
 
     renderer.resolve (cxB, cyB, maskR);

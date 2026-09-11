@@ -178,6 +178,20 @@ private:
     std::array<float, (size_t) kCoreSegs> coreOutline {};
     float coreOutlineMax = 0.0f;
 
+    /** One disc of light waiting to be drawn. The field is collected into these and
+        sorted into horizontal bands before anything is splatted: the accumulator is
+        megabytes wide, and touching it in scattered order costs more in cache misses
+        than the arithmetic costs in the first place. */
+    struct Sprite
+    {
+        float x = 0.0f, y = 0.0f, rad = 0.0f, r = 0.0f, g = 0.0f, b = 0.0f;
+        const float* lut = nullptr;
+    };
+    static constexpr int kBands = 32;
+    std::vector<Sprite> sprites, sortedSprites;
+    std::array<int, (size_t) kBands + 1> bandStart {};
+    void flushSprites (float invBandHeight);
+
     juce::Path corePath, glassPath;
     juce::ColourGradient gradient;      // reused so a per-segment fill never allocates
 

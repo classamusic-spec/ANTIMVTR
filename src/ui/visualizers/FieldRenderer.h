@@ -47,7 +47,7 @@ public:
             // Reinhard, then a gentle lift so the faint far dust is not crushed away.
             const float v = (float) i * (1.0f / 256.0f);
             const float t = v / (1.0f + v);
-            tone[(size_t) i] = (uint8_t) juce::jlimit (0, 255, (int) (255.0f * std::pow (t, 0.80f) + 0.5f));
+            tone[(size_t) i] = (uint8_t) juce::jlimit (0, 255, (int) (255.0f * std::pow (t, 0.88f) + 0.5f));
         }
     }
 

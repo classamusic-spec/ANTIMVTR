@@ -158,7 +158,9 @@ public:
             // thickness rather than a crust at its outside.
             q.radial   = std::cbrt (rng.nextFloat()) * (rng.chance (0.5f) ? 1.0f : -1.0f);
             q.spin     = 0.55f + 0.9f * rng.nextFloat();
-            q.sizeMul  = 0.42f + 1.05f * rng.nextFloat() * rng.nextFloat();
+            // A heavy tail: most points are fine motes and a few are big soft lamps.
+            // A field of identically sized dots reads as printed texture, never as depth.
+            { const float u = rng.nextFloat(); q.sizeMul = 0.34f + 1.60f * u * u * u; }
             q.seed     = rng.nextFloat() * 120.0f;
             q.twinkle  = 0.6f + 3.4f * rng.nextFloat();
             q.hash     = rng.nextFloat();
@@ -245,7 +247,7 @@ public:
         const float crush   = liquid::clean (raw.crush,   0.0f, 1.0f, 0.0f);
 
         const float coreR = liquid::clean (a.coreR, 0.05f, 0.70f, 0.30f);
-        const float shell = 1.06f - 0.10f * tension;
+        const float shell = 1.00f - 0.08f * tension;
 
         //---- events -----------------------------------------------------------
         advanceEvents (raw, a, decay);
@@ -256,7 +258,7 @@ public:
         // Cluster count decides how tightly a swarm gathers onto its lobe: one
         // cluster is a shell, six are arms.
         const int clusters = clampi (raw.clusterCount > 0 ? raw.clusterCount : 1, 1, kLobes);
-        const float gather = 0.20f + 0.34f * ((float) (clusters - 1) / (float) (kLobes - 1)) + 0.18f * tension;
+        const float gather = 0.26f + 0.22f * ((float) (clusters - 1) / (float) (kLobes - 1)) + 0.34f * tension;
 
         // The loudest resonator of the moment sets the scale. Absolute modal energy is
         // a small, level-dependent number; what carries the structure is which nodes
@@ -305,19 +307,19 @@ public:
 
             sl.radius = coreR + (shell - coreR) * sl.t;
             // Low nodes turn slowly and deep, high ones ride the shell and turn fast.
-            sl.spin   = (0.10f + 0.85f * sl.t) * (0.55f + 0.60f * a.life);
+            sl.spin   = (0.14f + 1.30f * sl.t) * (0.55f + 0.60f * a.life);
             // Deep = warm (pink into magenta), shell = cold (blue into cyan).
             sl.hue    = 0.82f - 0.80f * sl.t + 0.035f * (float) sl.lobeIx;
 
             // The swarm's own axis: its cluster's lobe, tilted by a fixed amount of
             // its own so nodes of one cluster form a neighbourhood rather than a spike,
             // then leaned toward the side its resonator is panned to.
-            Vec3 w = lobe[(size_t) sl.lobeIx] + slotTilt[(size_t) k] * 0.62f;
+            Vec3 w = lobe[(size_t) sl.lobeIx] + slotTilt[(size_t) k] * 0.95f;
             w.x += sl.pan * 0.55f;
             sl.w = normalised (w, lobe[(size_t) sl.lobeIx]);
             sl.u = normalised (cross (lobeSide[(size_t) sl.lobeIx], sl.w), lobeSide[(size_t) sl.lobeIx]);
             sl.v = normalised (cross (sl.w, sl.u), lobeSide[(size_t) sl.lobeIx]);
-            sl.band = 1.0f - gather * 0.82f;
+            sl.band = liquid::clampf (1.0f - gather, 0.13f, 1.0f);
         }
 
         //---- per-cell: one for every sounding voice ----------------------------
@@ -341,7 +343,10 @@ public:
         S.sincos (bendAngle, bs, bc);
         const float magnetGrid = 5.0f + 4.0f * liquid::hash01 (0x51EDu);
 
-        const float dust = 0.035f + 0.05f * (1.0f - a.life);
+        // The vacuum is never black. Even with nothing playing, every point keeps a
+        // low luminosity that shimmers on its own clock, so the volume still has a
+        // shape, still breathes, and never looks switched off.
+        const float dust = 0.145f + 0.130f * (1.0f - a.life);
 
         for (int i = 0; i < count; ++i)
         {
@@ -364,12 +369,12 @@ public:
             const float theta = q.azimuth + a.flowTime * sl.spin * q.spin;
             float st = 0.0f, ct = 1.0f;
             S.sincos (theta, st, ct);
-            // Gather the swarm into a cap around its cluster axis — and into the
-            // opposite cap as well, so a resonator reads as a two-lobed mode shape
-            // rather than a knot stuck on one side. That is what keeps the mass
-            // balanced around its core while still having visible structure.
-            const float cap = 1.0f - (1.0f - std::abs (q.height)) * sl.band;
-            const float h = q.hash < 0.5f ? cap : -cap;
+            // Every resonator's swarm rides a band about its own axis — an orbit,
+            // not a cloud. Thirty-two of them, at thirty-two radii, on axes set by
+            // their clusters, make an armillary of light instead of a fog: you can
+            // see the shells, and you can see one of them hold while its neighbours
+            // die. Tension narrows the bands until the whole object is one surface.
+            const float h = q.height * sl.band;
             const float ring = std::sqrt (liquid::clampf (1.0f - h * h, 0.0f, 1.0f));
             Vec3 p { sl.w.x * h + sl.u.x * ring * ct + sl.v.x * ring * st,
                      sl.w.y * h + sl.u.y * ring * ct + sl.v.y * ring * st,
@@ -460,7 +465,7 @@ public:
             //-- emission: the node's energy IS the brightness of its swarm
             const float tw = 0.55f + 0.45f * S.sin (a.time * q.twinkle + q.seed);
             const float nodeLight = sl.energy * cellEnergy[(size_t) cell];
-            float bright = dust * (0.45f + 0.55f * tw)
+            float bright = dust * (0.32f + 0.68f * tw)
                            + nodeLight * (0.55f + 0.45f * tw) * (0.30f + 0.70f * a.life)
                            + flash * (0.9f + 0.6f * (float) sl.active);
             bright *= 1.0f + 0.55f * a.level * (0.3f + 0.7f * (float) sl.active);
@@ -468,8 +473,11 @@ public:
 
             q.out.p      = q.live;
             q.out.bright = liquid::clampf (bright, 0.0f, 3.0f);
-            q.out.size   = q.sizeMul * (0.0052f + 0.0052f * nodeLight + 0.0038f * flash
-                                        + 0.0024f * a.level) * (1.0f - 0.24f * tension);
+            // Idle points are larger and softer — cold vapour rather than sparks —
+            // so the volume still has body with nothing playing.
+            q.out.size   = q.sizeMul * (0.0082f + 0.0030f * (1.0f - a.life)
+                                        + 0.0058f * nodeLight + 0.0040f * flash
+                                        + 0.0026f * a.level) * (1.0f - 0.24f * tension);
             q.out.hue    = sl.hue + a.hueDrift + 0.06f * q.hash * (1.0f - tension);
             q.out.white  = liquid::clampf (0.14f * nodeLight + 0.55f * flash + 0.35f * shatter
                                            + 0.20f * a.level * nodeLight, 0.0f, 0.92f);

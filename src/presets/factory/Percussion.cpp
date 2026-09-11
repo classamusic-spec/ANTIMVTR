@@ -696,7 +696,7 @@ manager.addFactory ({ "Wire Hammer", "PERCUSSION", { "struck", "bright", "rhythm
               1 /* 16 */, 4 /* 1/16 */, 8, 0.22f, 2 /* PINGPONG */, 0.85f, 0.30f, 653,
               FractureShape { 16, 0.02f, 0.24f, 0.10f, 0.38f, 0.35f, 0.62f, 0.35f, 0.90f,
                               1.0f, 1.0f, 0.70f, 0.9f, kFifthTerrace, "XoXHXoXL", nullptr });
-    space (s, SpacePresets::Chamber, 0.28f, 0.36f, 0.60f, 0.24f);
+    space (s, SpacePresets::Orbit, 0.26f, 0.34f, 0.62f, 0.22f);
 
     env (s, 1, 0.001f, 0.24f, 0.0f, 0.20f, 0.25f);
     macros (s, 0.35f, 0.48f, 0.30f, 0.50f);

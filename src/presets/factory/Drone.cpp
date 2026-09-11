@@ -760,15 +760,16 @@ manager.addFactory ({ "Amber Orchard", "DRONE", { "wooden", "glassy", "static", 
 manager.addFactory ({ "Harbour Buoy", "DRONE", { "metallic", "cold", "distant", "huge", "pulsing" }, [] (PatchState& s)
 {
     // A bell buoy on a long swell: a strike about every second and a half, the
-    // interval jittered so it never becomes a tempo, into a plate with a tail
-    // longer than the gap between strikes. The drone is the overlap of tolls
-    // that have not finished yet.
+    // interval jittered so it never becomes a tempo, into a bell hung off a
+    // single STAR hub whose tail is longer than the gap between strikes. The
+    // drone is the overlap of tolls that have not finished yet, heard from far
+    // enough away that the water has softened them.
     impact (s, 4 /* METAL STRIKE */, 0.50f, 0.34f, 0.62f, 0.75f, 0.55f, 0.55f, 0.06f, 0.62f);
     amp (s, 0.60f, 2.5f, 0.90f, 3.0f, 0.55f);
     set (s, Param::masterGain, -2.0f);
-    shape (s, 0.48f, 0.60f, 0.62f, 0.52f, 0.86f, 0.26f);
+    shape (s, 0.42f, 0.60f, 0.62f, 0.56f, 0.86f, 0.26f);
     material (s, MaterialType::Metal, MaterialType::Void, 0.40f);
-    topology (s, 2 /* CLUSTERS */, 0.48f, 0.42f, 1091);
+    topology (s, 5 /* STAR */, 0.36f, 0.30f, 1091);
     matter (s, 0.96f, 0.50f, 0.44f, 0.80f);
     evolve (s, 0.0f, 0.0f, 0.0f, 0.34f, 0.52f, 0.22f, 0.0f, 0.07f, 0.34f);
     set (s, Param::evolveMagnetTarget, 1 /* FIFTH */);
@@ -776,7 +777,7 @@ manager.addFactory ({ "Harbour Buoy", "DRONE", { "metallic", "cold", "distant", 
               2 /* 32 */, 0 /* 1/1 */, 8, 0.0f, 3 /* RANDOM */, 0.70f, 0.35f, 1093,
               FractureShape { 32, 0.20f, 0.80f, 0.30f, 0.60f, 0.58f, 0.86f, 0.35f, 0.95f,
                               1.0f, 0.85f, 0.75f, 0.85f, kOctaveTerrace, "XLXHXLXH", nullptr });
-    space (s, SpacePresets::Void, 0.50f, 0.92f, 0.36f, 0.46f);
+    space (s, SpacePresets::Dream, 0.50f, 0.86f, 0.48f, 0.46f);
 
     env (s, 2, 16.0f, 20.0f, 0.45f, 9.0f, 0.60f, true);
     lfo (s, 1, 0.026f, 0 /* SINE */, 1.0f, false, 5.0f);

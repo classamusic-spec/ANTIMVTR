@@ -91,10 +91,17 @@ public:
     /** Clears the accumulator and resets the per-frame texel budget. */
     void begin (int texelBudget) noexcept
     {
-        if (! accum.empty()) std::memset (accum.data(), 0, accum.size() * sizeof (float));
+        // Only what the last frame dirtied needs clearing: the object is a ball in
+        // the middle of a square buffer and the corners never see a splat.
+        if (! accum.empty() && dy1 > dy0)
+        {
+            const size_t row = (size_t) bw * 3;
+            std::memset (accum.data() + (size_t) dy0 * row, 0, (size_t) (dy1 - dy0) * row * sizeof (float));
+        }
         if (! glow.empty()) std::memset (glow.data(), 0, glow.size() * sizeof (float));
         budget = texelBudget;
         touched = 0;
+        dx0 = bw; dx1 = 0; dy0 = bh; dy1 = 0;
     }
 
     /** True while there is still room in this frame's splat budget. */
@@ -117,6 +124,7 @@ public:
         fine plane's; the quarter-resolution mapping is handled here. */
     void splatGlow (float fx, float fy, float rad, float r, float g, float b) noexcept
     {
+        dirty (fx, fy, rad);
         splatInto (glow.data(), gw, gh,
                    fx * (1.0f / (float) kGlowStep) + (float) kGlowPad,
                    fy * (1.0f / (float) kGlowStep) + (float) kGlowPad,
@@ -137,6 +145,11 @@ public:
         for (int y = 0; y < bh; ++y)
         {
             auto* out = (juce::PixelARGB*) data.getLinePointer (y);
+            if (y < dy0 || y >= dy1)
+            {
+                for (int xx = 0; xx < bw; ++xx) out[xx].setARGB (0, 0, 0, 0);
+                continue;
+            }
             const float dy = (float) y + 0.5f - cy;
             const float half = r2 - dy * dy;
 
@@ -144,8 +157,8 @@ public:
             if (half > 0.0f)
             {
                 const float hx = std::sqrt (half);
-                x0 = juce::jlimit (0, bw, (int) (cx - hx));
-                x1 = juce::jlimit (0, bw, (int) (cx + hx) + 1);
+                x0 = juce::jlimit (dx0, dx1, (int) (cx - hx));
+                x1 = juce::jlimit (dx0, dx1, (int) (cx + hx) + 1);
             }
 
             // The two glow rows this line of pixels sits between.
@@ -204,6 +217,20 @@ private:
     static constexpr int kGlowStep = 4;   ///< glow plane resolution divisor
     static constexpr int kGlowPad  = 1;   ///< texels of margin so bilinear never runs off
 
+    const float* accumBase() const noexcept { return accum.data(); }
+
+    /** Widens the region the resolve has to look at. Everything outside it is
+        cleared with one store per pixel instead of tone mapped. */
+    void dirty (float fx, float fy, float rad) noexcept
+    {
+        const int x0 = (int) (fx - rad) - 1, x1 = (int) (fx + rad) + 2;
+        const int y0 = (int) (fy - rad) - 1, y1 = (int) (fy + rad) + 2;
+        if (x0 < dx0) dx0 = x0 < 0 ? 0 : x0;
+        if (x1 > dx1) dx1 = x1 > bw ? bw : x1;
+        if (y0 < dy0) dy0 = y0 < 0 ? 0 : y0;
+        if (y1 > dy1) dy1 = y1 > bh ? bh : y1;
+    }
+
     void splatInto (float* base, int w, int h, float fx, float fy, float rad,
                     float r, float g, float b, const float* lut, float minRad) noexcept
     {
@@ -219,6 +246,7 @@ private:
 
         budget -= (x1 - x0) * (y1 - y0);
         touched += (long long) (x1 - x0) * (long long) (y1 - y0);
+        if (base == accumBase()) dirty (fx, fy, rad);
         const float inv = 1.0f / (rad * rad);
 
         for (int y = y0; y < y1; ++y)
@@ -249,6 +277,7 @@ private:
     juce::Image img;
     int bw = 0, bh = 0;
     int budget = 0;
+    int dx0 = 0, dx1 = 0, dy0 = 0, dy1 = 0;   ///< what this frame actually touched
     long long touched = 0;
     std::array<float, (size_t) kLut> core {}, soft {}, hard {};
     std::array<uint8_t, (size_t) kTone> tone {};

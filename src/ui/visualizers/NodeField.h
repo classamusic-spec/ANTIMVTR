@@ -476,7 +476,7 @@ public:
                 flash += w;
             }
             if (flash > 0.0f && r0 > 1.0e-4f)
-                p *= 1.0f + flash * 0.30f;
+                p *= 1.0f + flash * 0.22f;
 
             //-- the shatter impulse from a Fracture step scrambles the points briefly
             if (shatter > 0.004f)

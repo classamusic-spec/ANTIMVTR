@@ -34,7 +34,7 @@ namespace
         bool  trails, wideHalo, smudges;
     };
     constexpr QualityCaps kCaps[3] = {
-        { 2600, 1.00f, true,  true,  true  },
+        { 2400, 1.00f, true,  true,  true  },
         { 2100, 1.00f, true,  false, false },
         {  900, 1.00f, false, false, false },
     };
@@ -560,7 +560,7 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
     // ball rather than to the whole porthole — which is a fifth of the resolve, the
     // clear and the blit saved as well as a better read.
     const float Rg = f.port.glassR;
-    const float fieldR = Rg * 0.900f;
+    const float fieldR = Rg * 0.845f;
     const float originX = std::floor (f.centre.x - fieldR);
     const float originY = std::floor (f.centre.y - fieldR);
     const float bufScale = f.bufferScale;
@@ -580,7 +580,7 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
     const float* const kSoftK = renderer.softKernel();
     const float* const kBodyK = f.crush > 0.35f ? renderer.hardKernel() : kCoreK;
 
-    const float fadeIn = Rg * 0.760f, fadeOut = Rg * 0.885f;
+    const float fadeIn = Rg * 0.700f, fadeOut = Rg * 0.828f;
     const float unitPx = Rg * (1.0f / 267.0f);            // one reference pixel of glass
     const float glowFloor = juce::jmax (3.5f, 8.0f * unitPx);
     const float trailGate = f.trails ? 0.0068f : 1.0e9f;   // object units moved per frame

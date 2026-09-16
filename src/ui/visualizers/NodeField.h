@@ -254,7 +254,11 @@ public:
 
         //---- per-slot: the resonator each swarm belongs to ---------------------
         const int nodes = clampi (raw.numVisualNodes, 0, kSlots);
-        const float fundamental = raw.pitchHz > 20.0f ? raw.pitchHz : 220.0f;
+        // The fundamental is used as a divisor and as a fallback, so it has to be
+        // finite before anything else touches it: an infinity arriving here would
+        // come back out of the octave ratio as a NaN and poison the whole volume.
+        float fundamental = liquid::clean (raw.pitchHz, 0.0f, 40000.0f, 0.0f);
+        if (! (fundamental > 20.0f)) fundamental = 220.0f;
         // Cluster count decides how tightly a swarm gathers onto its lobe: one
         // cluster is a shell, six are arms.
         const int clusters = clampi (raw.clusterCount > 0 ? raw.clusterCount : 1, 1, kLobes);
@@ -489,10 +493,12 @@ public:
             if (len < inner && len > 1.0e-4f)
                 p *= inner / len;
 
+            // clean() rather than clamp(): a clamp lets a NaN straight through, and
+            // one NaN position would be a point drawn nowhere for the rest of the run.
             q.prev = q.live;
-            q.live = { liquid::clampf (p.x, -3.0f, 3.0f),
-                       liquid::clampf (p.y, -3.0f, 3.0f),
-                       liquid::clampf (p.z, -3.0f, 3.0f) };
+            q.live = { liquid::clean (p.x, -3.0f, 3.0f, 0.0f),
+                       liquid::clean (p.y, -3.0f, 3.0f, 0.0f),
+                       liquid::clean (p.z, -3.0f, 3.0f, 0.0f) };
             if (! primed) q.prev = q.live;   // no comet tail out of the origin on frame one
 
             //-- emission: the node's energy IS the brightness of its swarm
@@ -506,18 +512,20 @@ public:
             bright += strike * 0.16f * q.hash;
 
             q.out.p      = q.live;
-            q.out.bright = liquid::clampf (bright, 0.0f, 3.0f);
+            q.out.bright = liquid::clean (bright, 0.0f, 3.0f, 0.0f);
             // Idle points are larger and softer — cold vapour rather than sparks —
             // so the volume still has body with nothing playing.
-            q.out.size   = q.sizeMul * (0.0082f + 0.0030f * (1.0f - a.life)
-                                        + 0.0058f * nodeLight + 0.0040f * flash
-                                        + 0.0026f * a.level) * (1.0f - 0.24f * tension);
+            q.out.size   = liquid::clean (q.sizeMul * (0.0082f + 0.0030f * (1.0f - a.life)
+                                                      + 0.0058f * nodeLight + 0.0030f * liquid::clampf (flash, 0.0f, 3.0f)
+                                                      + 0.0026f * a.level) * (1.0f - 0.24f * tension),
+                                          0.0f, 0.09f, 0.004f);
             // FREEZE crystallises the volume: the light goes cold and hard, so the
             // seizure reads in a still frame and not only in the stopped motion.
-            q.out.hue    = sl.hue + a.hueDrift + 0.06f * q.hash * (1.0f - tension)
-                           + a.freezeMix * (0.02f - (sl.hue + a.hueDrift));
-            q.out.white  = liquid::clampf (0.14f * nodeLight + 0.55f * flash + 0.35f * shatter
-                                           + 0.20f * a.level * nodeLight + 0.30f * a.freezeMix, 0.0f, 0.92f);
+            q.out.hue    = liquid::clean (sl.hue + a.hueDrift + 0.06f * q.hash * (1.0f - tension)
+                                          + a.freezeMix * (0.02f - (sl.hue + a.hueDrift)),
+                                          -1.0e5f, 1.0e5f, 0.0f);
+            q.out.white  = liquid::clean (0.14f * nodeLight + 0.55f * flash + 0.35f * shatter
+                                          + 0.20f * a.level * nodeLight + 0.30f * a.freezeMix, 0.0f, 0.92f, 0.0f);
             q.out.vel    = q.live - q.prev;
         }
         primed = true;
@@ -646,7 +654,8 @@ private:
     {
         const int n = clampi (s.numVisualVoices, 0, kCells);
         liveCells = n;
-        const float focus = s.pitchHz > 20.0f ? s.pitchHz : 220.0f;
+        float focus = liquid::clean (s.pitchHz, 0.0f, 40000.0f, 0.0f);
+        if (! (focus > 20.0f)) focus = 220.0f;
         const float ease = 1.0f - std::exp (-a.dt * 4.5f);
 
         float targetScale[kCells], targetEnergy[kCells], targetOffset[kCells];

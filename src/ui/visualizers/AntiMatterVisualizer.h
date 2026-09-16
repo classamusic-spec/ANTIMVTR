@@ -3,8 +3,7 @@
 #include "ui/components/AMDrawing.h"
 #include "dev/diagnostics/Diagnostics.h"
 #include "ValueNoise.h"
-#include "Iridescence.h"
-#include "LiquidOrganism.h"
+#include "FieldMaths.h"
 #include "NodeField.h"
 #include "FieldRenderer.h"
 #include "Porthole.h"
@@ -163,7 +162,6 @@ private:
 
     // Procedural sources
     ValueNoise     noise;
-    Iridescence    iridescence;
     NodeField      field;
     FieldRenderer  renderer;
 

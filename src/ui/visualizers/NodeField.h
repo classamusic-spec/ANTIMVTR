@@ -5,7 +5,7 @@
 #include <cstdint>
 #include "core/Random.h"
 #include "dev/diagnostics/DiagnosticSnapshot.h"
-#include "LiquidOrganism.h"
+#include "FieldMaths.h"
 #include "ValueNoise.h"
 
 namespace am::ui

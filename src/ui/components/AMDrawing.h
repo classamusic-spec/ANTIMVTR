@@ -542,7 +542,7 @@ inline void chassisBackground (juce::Graphics& g, juce::Rectangle<float> bounds)
     softLight (g, { bounds.getX() + bounds.getWidth() * 0.24f, bounds.getY() - bounds.getHeight() * 0.18f },
                juce::jmax (bounds.getWidth(), bounds.getHeight()) * 0.95f, juce::Colours::white, 0.20f);
 
-    grain (g, bounds, 0.7f);
+    grain (g, bounds, 0.9f);
 }
 
 /**

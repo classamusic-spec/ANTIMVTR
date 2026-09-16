@@ -30,8 +30,8 @@ struct Theme
     // shadow a panel casts and from a hairline of white along its top edge. So
     // `panelTop` sits *above* white and `panel` just below it, the difference is
     // small, and the shadow does the work.
-    static inline const juce::Colour background    { 0xffd3d5da };   // chassis, cool pearl
-    static inline const juce::Colour backgroundTop { 0xffe6e8ec };   // lighter toward the top
+    static inline const juce::Colour background    { 0xffcccfd6 };   // chassis, cool pearl
+    static inline const juce::Colour backgroundTop { 0xffe8eaee };   // lighter toward the top
     static inline const juce::Colour panel         { 0xffeef0f3 };   // bottom of a frosted slab
     static inline const juce::Colour panelTop      { 0xfffcfdfe };   // top of a frosted slab (lit)
     static inline const juce::Colour panelInset    { 0xffd6d9e0 };   // a light capsule cut into a panel

@@ -24,12 +24,20 @@ namespace
         return { c.x + std::cos (angle) * r, c.y + std::sin (angle) * r };
     }
 
-    /** Gunmetal: the stock the bezel is cut from. */
-    const juce::Colour kMetalLight { 0xff585d69 };
-    const juce::Colour kMetalMid   { 0xff2c303a };
-    const juce::Colour kMetalDark  { 0xff15171e };
-    const juce::Colour kMetalDeep  { 0xff0a0b10 };
-    const juce::Colour kChrome     { 0xffb9c2d2 };
+    /**
+        Brushed silver: the stock the bezel is cut from (VISUAL_SPEC §4).
+
+        It is deliberately the same metal as the turned caps on the knobs —
+        `Theme::metal` and its two neighbours — so the bezel and the controls read
+        as parts of one instrument. The bezel was gunmetal when the chassis was
+        charcoal; against pearl a dark ring is a hole cut in the page.
+    */
+    const juce::Colour kMetalHi    { 0xfffbfcfd };
+    const juce::Colour kMetalLight = Theme::metalLight;    // the lit face
+    const juce::Colour kMetalMid   = Theme::metal;         // the body of the ring
+    const juce::Colour kMetalDark  = Theme::metalDark;     // turning away from the light
+    const juce::Colour kMetalDeep  { 0xff4f5560 };         // the shadowed underside
+    const juce::Colour kChrome     { 0xfff8fafc };
     const juce::Colour kLamp       { 0xfffff0d2 };
 
     /** A ring: the outer circle with the inner one punched out (even-odd winding). */
@@ -41,31 +49,49 @@ namespace
         p.addEllipse (c.x - inner, c.y - inner, inner * 2.0f, inner * 2.0f);
     }
 
-    /** A screw / bolt head in the panel style: dark socket, bright crescent top-left, cut slot. */
+    /**
+        A bolt head seated in the silver: a shallow steel dish, shadowed under its
+        upper lip and catching the light along its lower one, with a slot cut across.
+
+        On a bright ring a bolt is a *dimple*, not a dark stud — the same reading as
+        the screws on the panels, which is why it is built the same way round.
+    */
     void drawBolt (juce::Graphics& g, juce::Point<float> c, float r, float lightAngle)
     {
         if (r < 1.0f) return;
-        juce::ColourGradient body (kMetalLight.darker (0.15f), c.x - r * 0.45f, c.y - r * 0.5f,
-                                   juce::Colour (0xff090a0e), c.x + r * 0.6f, c.y + r * 0.7f, true);
+        const float lx = std::cos (lightAngle), ly = std::sin (lightAngle);
+
+        // The counterbore the head is sunk into: one fine ring, shadowed where the
+        // metal steps down on the lit side and lit where it comes back up opposite.
+        // A soft filled disc behind the head instead reads as a smudge on bright metal.
+        {
+            juce::ColourGradient bore (juce::Colours::black.withAlpha (0.30f), c.x + lx * r, c.y + ly * r,
+                                       juce::Colours::white.withAlpha (0.45f), c.x - lx * r, c.y - ly * r, false);
+            g.setGradientFill (bore);
+            g.drawEllipse (c.x - r * 1.14f, c.y - r * 1.14f, r * 2.28f, r * 2.28f, juce::jmax (0.6f, r * 0.20f));
+        }
+
+        juce::ColourGradient body (kMetalDark, c.x + lx * r * 0.7f, c.y + ly * r * 0.7f,
+                                   kMetalLight, c.x - lx * r * 1.1f, c.y - ly * r * 1.1f, false);
+        body.addColour (0.5, kMetalMid);
         g.setGradientFill (body);
         g.fillEllipse (c.x - r, c.y - r, r * 2.0f, r * 2.0f);
 
-        // socket shadow around the head
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.drawEllipse (c.x - r, c.y - r, r * 2.0f, r * 2.0f, juce::jmax (0.6f, r * 0.16f));
-
-        // bright crescent on the lit side
+        // A bright crescent where the light catches the far lip of the dish.
         juce::Path crescent;
-        crescent.addCentredArc (c.x, c.y, r * 0.78f, r * 0.78f, 0.0f, lightAngle - 1.15f, lightAngle + 1.15f, true);
-        g.setColour (juce::Colours::white.withAlpha (0.38f));
-        g.strokePath (crescent, juce::PathStrokeType (juce::jmax (0.6f, r * 0.24f)));
+        crescent.addCentredArc (c.x, c.y, r * 0.80f, r * 0.80f, 0.0f, lightAngle + kPi - 1.1f, lightAngle + kPi + 1.1f, true);
+        g.setColour (juce::Colours::white.withAlpha (0.75f));
+        g.strokePath (crescent, juce::PathStrokeType (juce::jmax (0.6f, r * 0.22f)));
 
-        // the slot
+        // the slot: cut in, so it is dark with a lit lower lip
         const float s = r * 0.62f;
-        g.setColour (juce::Colours::black.withAlpha (0.65f));
+        g.setColour (juce::Colours::black.withAlpha (0.42f));
         g.drawLine (c.x - s, c.y - s * 0.18f, c.x + s, c.y + s * 0.18f, juce::jmax (0.7f, r * 0.20f));
-        g.setColour (juce::Colours::white.withAlpha (0.12f));
+        g.setColour (juce::Colours::white.withAlpha (0.45f));
         g.drawLine (c.x - s, c.y - s * 0.18f + r * 0.22f, c.x + s, c.y + s * 0.18f + r * 0.22f, juce::jmax (0.5f, r * 0.12f));
+
+        g.setColour (juce::Colours::black.withAlpha (0.18f));
+        g.drawEllipse (c.x - r, c.y - r, r * 2.0f, r * 2.0f, juce::jmax (0.5f, r * 0.10f));
     }
 }
 
@@ -138,37 +164,31 @@ void AntiMatterVisualizer::renderBezel (juce::Graphics& g, const Frame& f)
     const float band = L.bezelWidth;
     const float u = L.unit;
 
-    // ---- Outer shadow onto the panel behind the bezel.
-    {
-        const float sr = outer * 1.20f;
-        gradient.clearColours();
-        gradient.isRadial = true;
-        gradient.point1 = { c.x, c.y + u * 2.0f };
-        gradient.point2 = { c.x + sr, c.y + u * 2.0f };
-        gradient.addColour (0.0, juce::Colours::transparentBlack);
-        gradient.addColour (0.76, juce::Colours::transparentBlack);
-        gradient.addColour (0.845, juce::Colours::black.withAlpha (0.62f));
-        gradient.addColour (1.0, juce::Colours::transparentBlack);
-        g.setGradientFill (gradient);
-        g.fillEllipse (c.x - sr, c.y - sr + u * 2.0f, sr * 2.0f, sr * 2.0f);
-    }
+    // ---- The shadow the ring casts onto the pearl chassis: soft, below and slightly
+    //      right, exactly the shadow the panels sit on. A dark halo all the way round
+    //      was right against charcoal; on a pale ground it reads as a burn mark.
+    draw::contactShadowEllipse (g, { c.x - outer, c.y - outer, outer * 2.0f, outer * 2.0f }, outer * 0.13f, 1.35f);
 
     juce::Path ring;
     makeRing (ring, c, outer, inner);
 
-    // ---- Brushed gunmetal: light at the top, dark at the bottom, with a lift where
-    //      the panel bounces light back into the underside.
+    // ---- Brushed silver: the crest catches the light along the top, the body turns
+    //      away toward the bottom, and the pale chassis bounces a little back into the
+    //      underside so the ring closes rather than going flat dark.
     {
         gradient.clearColours();
         gradient.isRadial = false;
-        gradient.point1 = { c.x, c.y - outer };
-        gradient.point2 = { c.x, c.y + outer };
-        gradient.addColour (0.0, kMetalLight.brighter (0.12f));
-        gradient.addColour (0.14, kMetalLight);
-        gradient.addColour (0.44, kMetalMid);
-        gradient.addColour (0.70, kMetalDark.brighter (0.22f));
-        gradient.addColour (0.88, kMetalDark);
-        gradient.addColour (1.0, kMetalMid.brighter (0.08f));
+        gradient.point1 = { c.x - outer * 0.35f, c.y - outer };
+        gradient.point2 = { c.x + outer * 0.35f, c.y + outer };
+        // The crest sits just below the top edge, not on it: the very top of a domed
+        // ring is already turning away from a light that is above and to the left.
+        gradient.addColour (0.0, kMetalMid.brighter (0.30f));
+        gradient.addColour (0.11, kMetalHi);
+        gradient.addColour (0.30, kMetalLight);
+        gradient.addColour (0.52, kMetalMid);
+        gradient.addColour (0.72, kMetalDark);
+        gradient.addColour (0.89, kMetalDeep);
+        gradient.addColour (1.0, kMetalDark.brighter (0.35f));
         g.setGradientFill (gradient);
         g.fillPath (ring);
     }
@@ -182,25 +202,28 @@ void AntiMatterVisualizer::renderBezel (juce::Graphics& g, const Frame& f)
         gradient.isRadial = false;
         gradient.point1 = { c.x - outer, c.y };
         gradient.point2 = { c.x + outer, c.y };
-        gradient.addColour (0.0, juce::Colours::white.withAlpha (0.02f));
-        gradient.addColour (0.38, juce::Colours::white.withAlpha (0.34f));
+        gradient.addColour (0.0, juce::Colours::white.withAlpha (0.05f));
+        gradient.addColour (0.34, juce::Colours::white.withAlpha (0.50f));
         gradient.addColour (0.62, juce::Colours::white.withAlpha (0.30f));
-        gradient.addColour (1.0, juce::Colours::white.withAlpha (0.02f));
+        gradient.addColour (1.0, juce::Colours::white.withAlpha (0.03f));
         g.setGradientFill (gradient);
-        g.strokePath (arc, juce::PathStrokeType (band * 0.20f));
+        g.strokePath (arc, juce::PathStrokeType (band * 0.18f));
     }
 
-    // ---- Fine brushed streaks running around the ring.
+    // ---- The brushing: fine turned rings round the band, alternating light and shade,
+    //      which is what a machined ring looks like close up.
     {
         juce::Graphics::ScopedSaveState clip (g);
         g.reduceClipRegion (ring);
-        const int streaks = juce::jlimit (6, 22, (int) (band / juce::jmax (1.0f, u * 1.6f)));
+        const int streaks = juce::jlimit (8, 28, (int) (band / juce::jmax (1.0f, u * 1.2f)));
         for (int i = 0; i < streaks; ++i)
         {
             const float t = ((float) i + 0.5f) / (float) streaks;
             const float r = inner + band * t;
             const float n = noise.noise ((float) i * 3.7f, 1.4f);
-            g.setColour (juce::Colours::white.withAlpha (0.012f + 0.020f * (0.5f + 0.5f * n)));
+            const bool light = n > 0.0f;
+            g.setColour ((light ? juce::Colours::white : juce::Colours::black)
+                             .withAlpha ((light ? 0.050f : 0.026f) * (0.4f + 0.6f * std::abs (n))));
             g.drawEllipse (c.x - r, c.y - r, r * 2.0f, r * 2.0f, juce::jmax (0.5f, u * 0.55f));
         }
     }
@@ -214,18 +237,18 @@ void AntiMatterVisualizer::renderBezel (juce::Graphics& g, const Frame& f)
         const auto p0 = polar (c, a, inner - u * 0.5f);
         const auto p1 = polar (c, a, outer + u * 0.5f);
         // the cut
-        g.setColour (juce::Colours::black.withAlpha (0.72f));
-        g.drawLine (p0.x, p0.y, p1.x, p1.y, juce::jmax (0.8f, u * 1.35f));
+        g.setColour (juce::Colours::black.withAlpha (0.34f));
+        g.drawLine (p0.x, p0.y, p1.x, p1.y, juce::jmax (0.8f, u * 1.20f));
         // the bevel catching light on one side of the cut
         const auto q0 = polar (c, a + u * 0.010f, inner);
         const auto q1 = polar (c, a + u * 0.010f, outer);
-        g.setColour (juce::Colours::white.withAlpha (0.10f));
+        g.setColour (juce::Colours::white.withAlpha (0.42f));
         g.drawLine (q0.x, q0.y, q1.x, q1.y, juce::jmax (0.5f, u * 0.55f));
     }
 
     // ---- A bolt head at every seam, in the same style as the panel screws.
     {
-        const float br = juce::jmax (1.4f, band * 0.27f);
+        const float br = juce::jmax (1.4f, band * 0.20f);
         const float boltR = (inner + outer) * 0.5f;
         for (int i = 0; i < plates; ++i)
         {
@@ -243,11 +266,27 @@ void AntiMatterVisualizer::renderBezel (juce::Graphics& g, const Frame& f)
         gradient.isRadial = false;
         gradient.point1 = { c.x - outer, c.y };
         gradient.point2 = { c.x + outer, c.y };
-        gradient.addColour (0.0, kChrome.withAlpha (0.03f));
-        gradient.addColour (0.5, kChrome.withAlpha (0.20f));
-        gradient.addColour (1.0, kChrome.withAlpha (0.03f));
+        gradient.addColour (0.0, kChrome.withAlpha (0.05f));
+        gradient.addColour (0.5, kChrome.withAlpha (0.34f));
+        gradient.addColour (1.0, kChrome.withAlpha (0.05f));
         g.setGradientFill (gradient);
         g.strokePath (under, juce::PathStrokeType (band * 0.16f));
+    }
+
+    // ---- The outer edge of the ring, where the silver turns over: bright along the
+    //      top where it faces the light, dark underneath where it faces the desk.
+    {
+        juce::Path edge;
+        edge.addEllipse (c.x - outer, c.y - outer, outer * 2.0f, outer * 2.0f);
+        gradient.clearColours();
+        gradient.isRadial = false;
+        gradient.point1 = { c.x - outer * 0.5f, c.y - outer };
+        gradient.point2 = { c.x + outer * 0.5f, c.y + outer };
+        gradient.addColour (0.0, juce::Colours::white.withAlpha (0.85f));
+        gradient.addColour (0.45, juce::Colours::white.withAlpha (0.12f));
+        gradient.addColour (1.0, juce::Colours::black.withAlpha (0.34f));
+        g.setGradientFill (gradient);
+        g.strokePath (edge, juce::PathStrokeType (juce::jmax (1.0f, u * 1.4f)));
     }
 
     // ---- Machined inner edge: bright where the light hits the top, dark underneath.
@@ -258,9 +297,9 @@ void AntiMatterVisualizer::renderBezel (juce::Graphics& g, const Frame& f)
         gradient.isRadial = false;
         gradient.point1 = { c.x - inner * 0.5f, c.y - inner };
         gradient.point2 = { c.x + inner * 0.5f, c.y + inner };
-        gradient.addColour (0.0, kChrome.withAlpha (0.72f));
-        gradient.addColour (0.42, kChrome.withAlpha (0.16f));
-        gradient.addColour (1.0, juce::Colours::black.withAlpha (0.60f));
+        gradient.addColour (0.0, kChrome.withAlpha (0.90f));
+        gradient.addColour (0.42, kChrome.withAlpha (0.30f));
+        gradient.addColour (1.0, juce::Colours::black.withAlpha (0.55f));
         g.setGradientFill (gradient);
         g.strokePath (lip, juce::PathStrokeType (juce::jmax (1.0f, u * 1.5f)));
     }
@@ -428,21 +467,26 @@ void AntiMatterVisualizer::drawLamps (juce::Graphics& g, const Frame& f)
         const auto p = polar (c, a, mid);
         const float h = band * 1.55f, w = band * 0.30f;
 
-        // Bloom spilling onto the metal around the lamp.
-        const float br = band * (1.9f + 0.7f * lit);
+        // Bloom spilling onto the metal around the lamp. Kept close to the lamp: a
+        // bloom wide enough to clear the bezel lands on the pale chassis, where it is
+        // not a glow but a stain — bloom is a dark-scene effect and this scene is not.
+        const float br = band * (1.05f + 0.45f * lit);
         gradient.clearColours();
         gradient.isRadial = true;
         gradient.point1 = p;
         gradient.point2 = { p.x + br, p.y };
-        gradient.addColour (0.0, alpha (Theme::amber, 0.30f * lit));
-        gradient.addColour (0.35, alpha (Theme::amber, 0.14f * lit));
+        gradient.addColour (0.0, alpha (Theme::amber, 0.34f * lit));
+        gradient.addColour (0.35, alpha (Theme::amber, 0.15f * lit));
         gradient.addColour (1.0, alpha (Theme::amber, 0.0f));
         g.setGradientFill (gradient);
         g.fillEllipse (p.x - br, p.y - br, br * 2.0f, br * 2.0f);
 
-        // The recessed slot the bar sits in.
+        // The recessed slot the bar sits in: a groove milled into the silver, with a
+        // lit lip along its lower edge.
         const auto slot = juce::Rectangle<float> (p.x - w * 0.95f, p.y - h * 0.60f, w * 1.90f, h * 1.20f);
-        g.setColour (juce::Colours::black.withAlpha (0.75f));
+        g.setColour (juce::Colours::white.withAlpha (0.55f));
+        g.fillRoundedRectangle (slot.translated (0.0f, w * 0.30f), w * 0.9f);
+        g.setColour (juce::Colours::black.withAlpha (0.62f));
         g.fillRoundedRectangle (slot, w * 0.9f);
 
         // The bar itself.

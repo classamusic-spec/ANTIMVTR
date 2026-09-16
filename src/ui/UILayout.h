@@ -287,6 +287,18 @@ inline GridRows gridRows (int areaHeight, int rows, int cellWidth, int gapY) noe
     const int natural = juce::jmax (1, juce::roundToInt ((float) juce::jmax (0, cellWidth) * 1.22f) + 12);
     g.cellHeight = juce::jmin (spread, natural);
     g.top = juce::jmax (0, (areaHeight - (g.cellHeight * rows + gapY * (rows - 1))) / 2);
+
+    // Capping the cell stops the controls stretching, but in a panel much taller than
+    // its contents the slack all collects at the two ends and the panel reads as a
+    // band of knobs with a dead margin above and below it. At most a quarter of a
+    // cell is kept as that margin; the rest is handed back to the rows, which move
+    // apart instead. The controls themselves do not grow — only the air between them.
+    const int border = juce::jmin (g.top, g.cellHeight / 4);
+    if (g.top > border)
+    {
+        g.cellHeight = juce::jmax (g.cellHeight, (areaHeight - border * 2 - gapY * (rows - 1)) / rows);
+        g.top = juce::jmax (0, (areaHeight - (g.cellHeight * rows + gapY * (rows - 1))) / 2);
+    }
     return g;
 }
 

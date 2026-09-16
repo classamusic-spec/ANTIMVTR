@@ -3,12 +3,13 @@
 namespace am::ui
 {
 
+
 AMKnob::AMKnob (const juce::String& labelText, juce::Colour accentColour)
     : label (labelText), labelUpper (labelText.toUpperCase()), accent (accentColour)
 {
     setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
-    setRotaryParameters (juce::MathConstants<float>::pi * 1.25f, juce::MathConstants<float>::pi * 2.75f, true);
+    setRotaryParameters (knobart::kStartAngle, knobart::kEndAngle, true);
     setMouseDragSensitivity (240);
     setVelocityBasedMode (false);
     setDoubleClickReturnValue (true, 0.0);
@@ -18,6 +19,7 @@ AMKnob::AMKnob (const juce::String& labelText, juce::Colour accentColour)
     ring.setAngles (getRotaryParameters().startAngleRadians, getRotaryParameters().endAngleRadians);
     ring.setAccent (Theme::amber);
     addAndMakeVisible (ring);
+    sheen.snap (proportion());
 }
 
 AMKnob::~AMKnob()
@@ -43,20 +45,58 @@ bool AMKnob::refreshModRing (const ModulationSnapshot& snapshot)
 {
     if (! modTarget.has_value()) return false;
     const int index = paramIndex (*modTarget);
-    if (index < 0 || index >= kNumParams || snapshot.targeted[index] == 0) { ring.clear(); return false; }
+    if (index < 0 || index >= kNumParams || snapshot.targeted[index] == 0)
+    {
+        ring.clear();
+        modHasRange = false;
+        return false;
+    }
 
     const auto& d = ParameterRegistry::get (*modTarget);
     const float base = d.clampValue ((float) getValue());
+    const float lo = d.toNormalised (d.clampValue (base + snapshot.modMin[index]));
+    const float hi = d.toNormalised (d.clampValue (base + snapshot.modMax[index]));
     ring.setBase (d.toNormalised (base));
     ring.setCurrent (d.toNormalised (d.clampValue (base + snapshot.modulation[index])));
-    ring.setRange (d.toNormalised (d.clampValue (base + snapshot.modMin[index])),
-                   d.toNormalised (d.clampValue (base + snapshot.modMax[index])));
+    ring.setRange (lo, hi);
     ring.setSourceCount ((int) snapshot.targeted[index]);
+
+    // AMModRing keeps the range to itself, so the knob holds on to it for the orbit.
+    modLo = juce::jmin (lo, hi);
+    modHi = juce::jmax (lo, hi);
+    modHasRange = (modHi - modLo) > 0.002f;
     return true;
 }
 
 void AMKnob::setLabel (const juce::String& text) { label = text; labelUpper = text.toUpperCase(); repaint(); }
 void AMKnob::setAccent (juce::Colour c) { accent = c; repaint(); }
+
+void AMKnob::setStyle (Style s)
+{
+    if (s == style) return;
+    style = s;
+    flareDot = -1;
+    repaint();
+}
+
+void AMKnob::setHero (bool h)
+{
+    if (h == hero) return;
+    hero = h;
+    flareDot = -1;
+    resized();
+    repaint();
+}
+
+AMKnob::Style AMKnob::effectiveStyle() const noexcept
+{
+    if (style != Style::Auto) return style;
+    // Too small to hold a readable ring of dots and a turned cap: go quiet.
+    if (knobBounds().getWidth() < knobart::kCappedMinDiameter) return Style::Plain;
+    // The subject of its panel gets the lit ring; the cluster around it keeps the
+    // same hardware with the ring dark, so a page has one thing to look at.
+    return hero ? Style::CappedLit : Style::CappedDark;
+}
 
 float AMKnob::proportion() const
 {
@@ -64,9 +104,44 @@ float AMKnob::proportion() const
     return range.getLength() > 0.0 ? (float) ((getValue() - range.getStart()) / range.getLength()) : 0.0f;
 }
 
+void AMKnob::litRun (const knobart::Geometry& geo, float p, int& head, int& lo, int& hi) const
+{
+    head = geo.dotIndexFor (p);
+    if (bipolar)
+    {
+        const int mid = (geo.dots - 1) / 2;
+        lo = juce::jmin (mid, head);
+        hi = juce::jmax (mid, head);
+    }
+    else
+    {
+        lo = 0;
+        hi = head;
+    }
+}
+
 void AMKnob::valueChanged()
 {
-    ring.setBase (proportion());
+    const float p = proportion();
+    ring.setBase (p);
+
+    // The cap's sheen eases behind the value instead of tracking it exactly, so the
+    // metal swings into its new light rather than being repainted there.
+    anim.animate (sheen, p);
+
+    const auto geo = geometry();
+    if (geo.dots > 1)
+    {
+        int head = 0, lo = 0, hi = 0;
+        litRun (geo, p, head, lo, hi);
+        if (head != flareDot)
+        {
+            // A dot has just changed state: flare it and let it settle.
+            if (flareDot >= 0) { flare.value = 1.0f; flare.target = 0.0f; anim.kick(); }
+            flareDot = head;
+        }
+    }
+    repaint();
 }
 
 float AMKnob::labelHeight() const
@@ -81,132 +156,146 @@ juce::Rectangle<float> AMKnob::knobBounds() const
     return { b.getCentreX() - f.diameter * 0.5f, b.getY() + f.top, f.diameter, f.diameter };
 }
 
+knobart::Geometry AMKnob::geometry() const
+{
+    return knobart::geometry (knobBounds(), effectiveStyle(),
+                              getRotaryParameters().startAngleRadians, getRotaryParameters().endAngleRadians);
+}
+
+knobart::ModView AMKnob::modView() const
+{
+    knobart::ModView m;
+    m.active = ring.isActive();
+    m.base = ring.getBase();
+    m.current = ring.getCurrent();
+    m.sources = ring.getSourceCount();
+    m.hasRange = modHasRange;
+    m.lo = modLo;
+    m.hi = modHi;
+    return m;
+}
+
 void AMKnob::resized()
 {
-    // The ring paints the outermost orbit of the knob's own footprint, so a modulated
-    // knob never grows and never overlaps its value arc.
-    ring.setBounds (knobBounds().toNearestInt());
+    // The orbit shares the knob's own coordinates, so the two never disagree about
+    // where the outermost ring sits by half a pixel.
+    ring.setBounds (getLocalBounds());
     juce::Slider::resized();
 }
 
+//==============================================================================
+void AMKnob::ModOrbit::paint (juce::Graphics& g)
+{
+    const auto m = knob.modView();
+    if (! m.active) return;
+    const auto geo = knob.geometry();
+    if (geo.diameter < 8.0f) return;
+    // Amber whatever the knob's section colour is: a modulated control is
+    // unmistakable because the warm ring only ever means modulation (SPEC section 8).
+    knobart::modulationOrbit (g, geo, m, Theme::amber, knob.getActivity());
+    knobart::sourceBadge (g, geo, m.sources, Theme::amber);
+}
+
+//==============================================================================
 void AMKnob::paint (juce::Graphics& g)
 {
     const auto kb = knobBounds();
     const float d = kb.getWidth();
     if (d < 4.0f) return;
 
-    const auto geo = rings();
+    const auto dress = effectiveStyle();
+    const auto geo = geometry();
     const float p = proportion();
-    const float startAngle = getRotaryParameters().startAngleRadians;
-    const float endAngle   = getRotaryParameters().endAngleRadians;
-    const float angle = startAngle + p * (endAngle - startAngle);
+    const float angle = geo.angleAt (p);
 
-    const float trackW = geo.trackWidth;
-    const auto arcBounds = geo.arc;
-    const auto body = geo.body;
-    // Hover is taken from where the pointer actually is, not from the eased value
-    // alone: a knob that loses its mouse-exit (a page hidden under the pointer, a
-    // panel that rebuilt its controls) would otherwise keep showing its value for
-    // ever, and the label would never come back.
+    // Hover is checked against where the pointer actually is, not against the eased
+    // value alone: a knob that loses its mouse-exit (a page hidden under the pointer,
+    // a panel that rebuilt its controls) would otherwise keep showing its value for
+    // ever, and the label would never come back. Correcting it retargets the ease
+    // rather than clearing it, so even the repair is a fade and not a jump.
     const bool pointerOn = dragging || (isShowing() && isMouseOverOrDragging (true));
     if (! pointerOn && hover.target != 0.0f) anim.animate (hover, 0.0f);
-    const float reach = pointerOn ? hover.value : 0.0f;
+    const float reach = hover.value;
+    const float held = press.value;
+    const float lit = juce::jlimit (0.0f, 1.0f, juce::jmax (reach, held));
+    const float textLit = lit;
+    const float flareAmount = flare.value * flare.value;   // squared: a flare leaves quickly
 
-    // Hover lifts the sheen and the ring glow; dragging lifts them a little further.
-    const float lit = juce::jmax (reach * 0.72f, dragging ? 1.0f : 0.0f);
-    // The label and the value swap places, so their cross-fade has to reach the ends:
-    // a partial fade leaves both of them printed on top of each other.
-    const float textLit = juce::jmax (reach, dragging ? 1.0f : 0.0f);
-    const float glowAmount = juce::jlimit (0.0f, 1.0f, 0.20f + 0.30f * activity + 0.40f * lit);
-    const float valueWeight = bipolar ? std::abs (p - 0.5f) * 2.0f : p;
-    const auto pair = Theme::accentPair (accent);
-
-    // 1. Outer arc ring — a soft outer glow that grows with the value, then the
-    //    dark unfilled track it runs in, then the lit part in the accent pair.
-    draw::glowEllipse (g, arcBounds, pair.second, d * 0.14f, glowAmount * (0.18f + 0.82f * valueWeight));
-
+    // 1. The LED ring. A dot is a hole in the panel whether or not it is lit, so
+    //    every bore is drawn first and the lamp is raised into it.
+    if (geo.dots > 0)
     {
-        auto track = draw::arc (arcBounds, startAngle, endAngle);
-        g.setColour (juce::Colours::black.withAlpha (0.75f));
-        g.strokePath (track, juce::PathStrokeType (trackW * 1.9f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.setColour (Theme::knobTrack.brighter (0.16f));
-        g.strokePath (track, juce::PathStrokeType (trackW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-    }
+        int head = 0, lo = 0, hi = 0;
+        litRun (geo, p, head, lo, hi);
 
-    // 2. A dark moat between ring and body, so the ring reads as separate hardware.
-    {
-        const float moat = (arcBounds.getWidth() - body.getWidth()) * 0.5f;
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.fillEllipse (body.expanded (juce::jmax (0.0f, moat - trackW * 1.15f)));
-    }
+        // A dark ring is not a dead ring: it warms when the control is touched, or
+        // when something is actually moving it.
+        const float ringFade = dress == Style::CappedLit
+                                 ? 1.0f
+                                 : juce::jlimit (0.0f, 1.0f, 0.70f * lit + 0.55f * activity);
+        const float bloom = juce::jlimit (0.0f, 1.0f, 0.30f + 0.45f * lit + 0.40f * activity);
+        const float span = (float) juce::jmax (1, geo.dots / 3);
 
-    // 3-6. The moulded body: dome, machined rim, specular bloom, contact shadow.
-    draw::domeBody (g, body, Theme::knobBase, lit * 0.7f);
-
-    // The lit part of the value arc, over the moat so its glow spills on the metal.
-    {
-        float from = startAngle, to = angle;
-        if (bipolar)
+        for (int i = 0; i < geo.dots; ++i)
         {
-            const float mid = (startAngle + endAngle) * 0.5f;
-            from = juce::jmin (mid, angle);
-            to   = juce::jmax (mid, angle);
+            const auto c = geo.dotCentre (i);
+            knobart::unlitDot (g, c, geo.dotRadius);
+            if (i < lo || i > hi || ringFade <= 0.01f) continue;
 
-            // centre tick, cut into the track
-            g.setColour (Theme::textDim.withAlpha (0.85f));
-            g.fillEllipse (arcBounds.getCentreX() - trackW * 0.55f, arcBounds.getY() - trackW * 0.55f, trackW * 1.1f, trackW * 1.1f);
+            // The run burns hottest at its head, so the eye lands on the value; and the
+            // dot that has just lit surges — brighter, fractionally larger, spilling
+            // further — then settles back into the run.
+            const float toHead = 1.0f - juce::jmin (1.0f, (float) std::abs (i - head) / span);
+            const float surge = (i == flareDot) ? flareAmount : 0.0f;
+            const float heat = 0.78f + 0.30f * toHead * toHead + 0.24f * lit + 0.18f * activity + 0.85f * surge;
+            knobart::litDot (g, c, geo.dotRadius * (1.0f + 0.20f * surge), Theme::amber,
+                             heat, bloom + 0.80f * surge, ringFade);
         }
-
-        if (to > from + 0.004f)
-        {
-            const auto valueArc = draw::arc (arcBounds, from, to);
-            // halo first, then the crisp two-stop gradient core
-            g.setColour (pair.second.withAlpha (0.10f + 0.16f * glowAmount));
-            g.strokePath (valueArc, juce::PathStrokeType (trackW * 3.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-            g.setColour (pair.first.withAlpha (0.16f + 0.20f * glowAmount));
-            g.strokePath (valueArc, juce::PathStrokeType (trackW * 2.1f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-            draw::gradientArc (g, arcBounds, from, to, pair.first, pair.second, trackW, 0.92f + 0.08f * lit);
-        }
-
-        // bright tip at the live end of the arc
-        const float r = arcBounds.getWidth() * 0.5f;
-        const juce::Point<float> tip (arcBounds.getCentreX() + std::sin (angle) * r, arcBounds.getCentreY() - std::cos (angle) * r);
-        if (valueWeight > 0.002f || lit > 0.01f)
-            draw::glowDot (g, tip, trackW * 0.5f, pair.second.brighter (0.35f), 0.35f + 0.65f * lit);
     }
 
-    // 5. The indicator: the brightest thing on the knob, cut across the dome.
+    // 2. Focus: while the knob is held, a thin ring of its section colour sits just
+    //    outside the body. It is the one place a section accent touches a knob.
+    if (held > 0.01f)
     {
-        const float r = body.getWidth() * 0.5f;
-        const auto c = body.getCentre();
-        const juce::Point<float> inner (c.x + std::sin (angle) * r * 0.50f, c.y - std::cos (angle) * r * 0.50f);
-        const juce::Point<float> outer (c.x + std::sin (angle) * r * 0.90f, c.y - std::cos (angle) * r * 0.90f);
-        const float w = juce::jmax (1.4f, d * 0.030f);
-
-        // the groove it sits in
-        g.setColour (juce::Colours::black.withAlpha (0.6f));
-        g.drawLine (inner.x, inner.y + w * 0.6f, outer.x, outer.y + w * 0.6f, w * 1.3f);
-
-        // faint halo, then the crisp near-white core: the brightest thing on the knob
-        g.setColour (juce::Colour (0xffe8ecff).withAlpha (0.16f + 0.12f * lit));
-        g.drawLine (inner.x, inner.y, outer.x, outer.y, w * 3.0f);
-        g.setColour (juce::Colour (0xfff2f4ff).withAlpha (0.30f + 0.16f * lit));
-        g.drawLine (inner.x, inner.y, outer.x, outer.y, w * 1.8f);
-        g.setColour (juce::Colours::white.withAlpha (0.96f));
-        g.drawLine (inner.x, inner.y, outer.x, outer.y, w);
+        const float fr = geo.bodyRadius() + juce::jmax (1.4f, d * 0.018f);
+        knobart::softLight (g, geo.centre, fr * 1.16f, accent, 0.10f * held);
+        g.setColour (accent.withAlpha (0.36f * held));
+        g.drawEllipse (geo.centre.x - fr, geo.centre.y - fr, fr * 2.0f, fr * 2.0f, juce::jmax (1.0f, d * 0.011f));
     }
 
-    // Assign mode: every modulatable knob offers itself as a destination.
+    // 3. The body, and the cap inset into it.
+    if (dress == Style::Plain)
+    {
+        knobart::plainDome (g, geo.body, lit, held);
+        knobart::notch (g, geo, angle, lit);
+    }
+    else
+    {
+        knobart::mouldedBody (g, geo.body, lit, held);
+
+        // The brush is machined into the cap, so it turns with the knob exactly; the
+        // sheen it throws eases behind, which is what makes the metal look as though
+        // it were catching the light rather than being repainted.
+        const float turn = angle - geo.angleAt (0.5f);
+        const float sheenTurn = geo.angleAt (sheen.value) - geo.angleAt (0.5f);
+        knobart::turnedCap (g, geo.cap, turn, knobart::kLightAngle + sheenTurn, lit);
+
+        // 4. The indicator: one cut from the top of the cap out across the body.
+        knobart::indicatorCut (g, geo.centre, angle, geo.capRadius() * 0.58f, geo.bodyRadius() * 0.94f,
+                               juce::jmax (1.0f, d * 0.021f), lit);
+    }
+
+    // 5. Assign mode: every modulatable knob offers itself as a destination.
     if (isAssignTarget())
     {
-        const auto halo = geo.orbit;
-        g.setColour (Theme::amber.withAlpha (0.16f + 0.14f * lit));
-        g.fillEllipse (halo);
-        g.setColour (Theme::amber.withAlpha (0.55f + 0.45f * lit));
-        g.drawEllipse (halo, juce::jmax (1.0f, geo.ringStroke * 1.1f));
+        const float hr = geo.modRadius;
+        const auto halo = juce::Rectangle<float> (geo.centre.x - hr, geo.centre.y - hr, hr * 2.0f, hr * 2.0f);
+        knobart::softLight (g, geo.centre, hr * 1.25f, Theme::amber, 0.20f + 0.14f * lit);
+        g.setColour (Theme::amber.withAlpha (0.60f + 0.40f * lit));
+        g.drawEllipse (halo, juce::jmax (1.0f, geo.modStroke * 1.3f));
     }
 
-    // Label / value (cross-fades with hover)
+    // 6. Label / value (cross-fades with hover).
     if (labelUpper.isNotEmpty())
     {
         const auto full = getLocalBounds().toFloat();
@@ -214,7 +303,7 @@ void AMKnob::paint (juce::Graphics& g)
         const float h = juce::jlimit (8.5f, hero ? 15.0f : 13.0f, labelArea.getHeight() * 0.7f);
         if (textLit > 0.02f)
             draw::trackedText (g, getTextFromValue (getValue()), labelArea, juce::Justification::centred, Theme::valueFont (h + 1.0f),
-                               pair.second.brighter (0.25f).withAlpha (textLit));
+                               accent.darker (0.25f).withAlpha (textLit));
         if (textLit < 0.98f)
             draw::trackedText (g, labelUpper, labelArea, juce::Justification::centred,
                                draw::fitFont (Theme::labelFont (h), labelUpper, labelArea.getWidth() - 2.0f), Theme::textSecondary.withAlpha (1.0f - textLit));
@@ -224,7 +313,7 @@ void AMKnob::paint (juce::Graphics& g)
 void AMKnob::visibilityChanged()
 {
     // A knob hidden under the pointer never gets its mouse exit, so it clears here.
-    if (! isShowing()) { hover.snap (0.0f); dragging = false; }
+    if (! isShowing()) { hover.snap (0.0f); press.snap (0.0f); flare.snap (0.0f); dragging = false; }
 }
 
 void AMKnob::mouseEnter (const juce::MouseEvent& e) { anim.animate (hover, 1.0f); juce::Slider::mouseEnter (e); }
@@ -242,6 +331,7 @@ void AMKnob::mouseDown (const juce::MouseEvent& e)
         return;
     setMouseDragSensitivity (e.mods.isShiftDown() ? 1400 : 240);
     dragging = true;
+    anim.animate (press, 1.0f);
     juce::Slider::mouseDown (e);
     repaint();
 }
@@ -255,6 +345,7 @@ void AMKnob::mouseDrag (const juce::MouseEvent& e)
 void AMKnob::mouseUp (const juce::MouseEvent& e)
 {
     dragging = false;
+    anim.animate (press, 0.0f);
     juce::Slider::mouseUp (e);
     repaint();
 }

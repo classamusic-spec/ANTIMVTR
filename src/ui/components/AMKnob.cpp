@@ -91,10 +91,19 @@ void AMKnob::setHero (bool h)
 AMKnob::Style AMKnob::effectiveStyle() const noexcept
 {
     if (style != Style::Auto) return style;
-    // Too small to hold a readable ring of dots and a turned cap: go quiet.
-    if (knobBounds().getWidth() < knobart::kCappedMinDiameter) return Style::Plain;
-    // The subject of its panel gets the lit ring; the cluster around it keeps the
-    // same hardware with the ring dark, so a page has one thing to look at.
+
+    // A control nothing can modulate is a setting, not something played — a seed, a
+    // transpose, a unison count. It gets the plain dome, which is the whole point of
+    // that body: to say nothing. Below the size where a ring reads, though, the
+    // metal cap is the only thing keeping a knob legible against a pale panel, so
+    // even a setting keeps it.
+    const float d = knobBounds().getWidth();
+    if (! modTarget.has_value() && d >= knobart::kRingMinDiameter) return Style::Plain;
+
+    // Otherwise the subject of its panel gets the lit ring and the cluster around it
+    // keeps the same hardware with the ring dark, so a page has one thing to look at.
+    // Size never chooses a different body: a knob too small for a ring sheds the ring
+    // and keeps the body and cap it already had (see knobart::kRingMinDiameter).
     return hero ? Style::CappedLit : Style::CappedDark;
 }
 

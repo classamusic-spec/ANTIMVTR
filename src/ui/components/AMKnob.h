@@ -24,9 +24,12 @@ namespace am::ui
       Style::Plain       a quiet matte dome with a concentric groove and a notch,
                          for small and secondary controls.
 
-    Style::Auto (the default) picks from the knob's role and the size it was
-    given: hero controls are lit, ordinary ones are dark, and anything too small
-    to hold readable dots and a cap goes plain.
+    Style::Auto (the default) picks from the knob's role: the subject of a panel
+    is lit, the cluster around it is dark, and a control nothing can modulate — a
+    seed, a transpose, a unison count — is plain, because it is a setting rather
+    than something played. Size never changes the body: a knob too small to carry
+    a readable ring of dots sheds the ring and spends the room on the body, so the
+    cap and the indicator survive down to the smallest control in the instrument.
 
     What moves, and why it moves:
       - the cap's sunburst sheen eases behind the value, so turning the knob

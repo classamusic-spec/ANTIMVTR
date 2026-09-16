@@ -299,7 +299,7 @@ public:
                 expect (r.bodyGap() > 0.5f, "only " + juce::String (r.bodyGap(), 2) + "px between the dots and the body" + at);
 
                 // Dots have to stay dots: they never merge into a band.
-                expect ((r.dots % 2) == 1, "an even dot count has no centre" + at);
+                expect (r.dots > 1 && (r.dots % 2) == 1, "an even dot count has no centre" + at);
                 const float spacing = r.ledRadius * sweep / (float) (r.dots - 1);
                 expect (spacing > r.dotRadius * 2.2f,
                         "dots " + juce::String (spacing, 2) + "px apart are " + juce::String (r.dotRadius * 2.0f, 2) + "px wide" + at);
@@ -331,18 +331,36 @@ public:
             expect (large.dots >= small.dots, "a bigger knob lost dots");
         }
 
-        beginTest ("Dot counts are odd, bounded and grow with the knob");
+        beginTest ("The ring is one piece of hardware drawn at different sizes");
         {
-            int previous = 0;
-            for (float d : { 24.0f, 46.0f, 60.0f, 90.0f, 130.0f, 200.0f, 400.0f })
+            expect ((kDotCount % 2) == 1, "an even dot count has no centre");
+            for (float d : { kRingMinDiameter, 60.0f, 90.0f, 130.0f, 200.0f, 400.0f })
+                expectEquals (dotCount (d), kDotCount, "the dot count changed with the diameter");
+
+            // The gaps between dots therefore stay in the same proportion at every size.
+            auto ratio = [sweep] (float d)
             {
-                const int n = dotCount (d);
-                expect ((n % 2) == 1, "even dot count at d=" + juce::String (d));
-                expect (n >= 9 && n <= 29, "dot count out of bounds at d=" + juce::String (d));
-                expect (n >= previous, "dot count fell at d=" + juce::String (d));
-                previous = n;
-            }
+                const auto r = radii (d, Style::CappedLit);
+                return (r.ledRadius * sweep / (float) (r.dots - 1)) / (r.dotRadius * 2.0f);
+            };
+            expect (std::abs (ratio (60.0f) - ratio (200.0f)) < 0.15f,
+                    "the ring is denser at one size than another: " + juce::String (ratio (60.0f), 2)
+                    + " vs " + juce::String (ratio (200.0f), 2));
         }
+
+        beginTest ("A knob too small for a ring sheds it and keeps its cap");
+        for (float d : { 16.0f, 22.0f, 30.0f, 43.0f })
+        {
+            const auto small = radii (d, Style::CappedLit);
+            const juce::String at = " at d=" + juce::String (d);
+            expectEquals (small.dots, 0, "a ring of dots survived where it cannot read" + at);
+            expect (small.capRadius > 0.0f, "the cap went with the ring" + at);
+            expect (small.capRadius < small.bodyRadius, "the cap is not inset in the body" + at);
+            expect (small.bodyRadius + 0.01f >= radii (d, Style::Plain).bodyRadius,
+                    "the body did not take the room the ring gave up" + at);
+            expect (small.bodyRadius <= small.modRadius + 0.01f, "the body reached the orbit" + at);
+        }
+        expect (radii (kRingMinDiameter, Style::CappedDark).dots > 1, "the ring never appears");
 
         beginTest ("Tiny and zero knobs stay finite");
         for (auto style : { Style::CappedLit, Style::Plain })

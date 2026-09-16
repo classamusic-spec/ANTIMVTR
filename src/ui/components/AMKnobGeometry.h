@@ -32,25 +32,32 @@ inline constexpr float kStartAngle = juce::MathConstants<float>::pi * 1.25f;
 inline constexpr float kEndAngle   = juce::MathConstants<float>::pi * 2.75f;
 
 /**
-    The smallest a knob can be and still carry readable dots and a cap.
+    How many LEDs the ring carries.
 
-    Deliberately clear of the sizes the instrument actually lays out (the small
-    strips sit near 26 px, the ordinary clusters from the mid fifties up), so a
-    knob never flips between two bodies as a window is resized.
+    A fixed number, because the ring is one piece of hardware drawn larger or
+    smaller — not a ring that grows lamps as it grows. Everything else about a
+    knob scales with its diameter, so a constant count keeps the gaps between
+    dots in exactly the same proportion at every size. Odd, so one dot lands in
+    the middle of the sweep and a bipolar control has a true centre to light
+    out from.
 */
-inline constexpr float kCappedMinDiameter = 46.0f;
+inline constexpr int kDotCount = 25;
 
 /**
-    How many LEDs fit around a knob of this size.
+    Below this diameter the ring is dropped.
 
-    Always odd, so one dot lands exactly in the middle of the sweep and a
-    bipolar control has a true centre to light out from.
+    A dot cannot shrink past about a pixel and still be a dot, so under this size
+    the ring stops being a readout and becomes a smear around the knob. Rather
+    than draw it badly, the knob sheds it and spends the room on the body — the
+    cap and the indicator survive at every size, which is what keeps a 20 px knob
+    reading as a small knob instead of a broken one.
 */
+inline constexpr float kRingMinDiameter = 44.0f;
+
+/** How many LEDs a knob of this size carries; 0 when it is too small for a ring. */
 inline int dotCount (float diameter) noexcept
 {
-    int n = juce::jlimit (9, 29, (int) std::lround (diameter * 0.21f));
-    if ((n % 2) == 0) ++n;
-    return n;
+    return diameter >= kRingMinDiameter ? kDotCount : 0;
 }
 
 /**
@@ -87,23 +94,26 @@ inline Radii radii (float diameter, Style style) noexcept
     r.dotRadius = juce::jmax (1.1f, diameter * 0.0265f);
     r.ledRadius = juce::jmax (0.0f, r.modRadius - r.modStroke * 1.6f - r.dotRadius * 1.35f);
 
-    // Clamped rather than floored: a knob far too small to wear this dress collapses
-    // to nothing instead of growing a body larger than the ring around it.
+    // Two sizes for the body: the one that leaves a dark gap inside a ring of dots,
+    // and the one that takes the ring's room when there is no ring to leave it for.
+    // Clamped rather than floored, so a knob far too small for this dress collapses
+    // to nothing instead of growing a body larger than the orbit around it.
     const float gap = juce::jmax (1.8f, diameter * 0.042f);
-    const float capped = juce::jlimit (0.0f, r.ledRadius, r.ledRadius - r.dotRadius - gap);
+    const float ringed = juce::jlimit (0.0f, r.ledRadius, r.ledRadius - r.dotRadius - gap);
+    const float filled = juce::jmin (r.modRadius, r.ledRadius + r.dotRadius * 0.30f);
 
     if (style == Style::Plain)
     {
         // No ring to clear, so the dome takes the room the dots would have used.
         // The knob still fills the footprint it was given — it is the body that is
         // larger, which is exactly what makes the plain knob read as the quiet one.
-        r.bodyRadius = juce::jmin (r.modRadius, r.ledRadius + r.dotRadius * 0.30f);
+        r.bodyRadius = filled;
     }
     else
     {
-        r.bodyRadius = capped;
-        r.capRadius = capped * 0.72f;
         r.dots = dotCount (diameter);
+        r.bodyRadius = r.dots > 0 ? ringed : filled;
+        r.capRadius = r.bodyRadius * 0.72f;
     }
     return r;
 }

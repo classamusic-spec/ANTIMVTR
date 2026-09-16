@@ -286,7 +286,9 @@ public:
     ~SpacePanel() override { stopTimer(); }
     void resized() override;
 
-    /** "‹ NEBULA ›" picker beside a procedural environment thumbnail. Shared with the Space page. */
+    /** A clean vertical list of every space name beside a procedural environment thumbnail.
+        Replaces the old "‹ NEBULA ›" dropdown: every option is visible at once and one click
+        selects it, so the negative space reads as a menu rather than hiding one behind a chevron. */
     class SpacePicker : public juce::Component,
                         public juce::SettableTooltipClient
     {
@@ -295,19 +297,17 @@ public:
         void paint (juce::Graphics& g) override;
         void mouseDown (const juce::MouseEvent& e) override;
         void mouseMove (const juce::MouseEvent& e) override;
-        void mouseExit (const juce::MouseEvent&) override { hoverZone = 0; repaint(); }
-        std::function<void (int)> onArrow;
-        std::function<void (int)> onSelect;   ///< direct choice from the popup
-        /** Art on the right (default) or art filling the whole component with the name overlaid. */
-        void setArtOnly (bool b) { artOnly = b; repaint(); }
+        void mouseExit (const juce::MouseEvent&) override { if (hoverRow >= 0) { hoverRow = -1; repaint(); } }
+        std::function<void (int)> onArrow;    ///< kept for compatibility; the list no longer uses it
+        std::function<void (int)> onSelect;   ///< a name was clicked
         int type = 0;
         float phase = 0.0f;
         float activity = 0.0f;
     private:
-        int zoneAt (juce::Point<int> p) const;
-        juce::Rectangle<float> nameBounds() const;
-        int hoverZone = 0;
-        bool artOnly = false;
+        int rowAt (juce::Point<int> p) const;
+        juce::Rectangle<float> listBounds() const;
+        juce::Rectangle<float> artBounds() const;
+        int hoverRow = -1;
     };
 
 private:

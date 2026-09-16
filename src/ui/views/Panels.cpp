@@ -912,72 +912,73 @@ void FracturePanel::timerCallback()
 //==============================================================================
 SpacePanel::SpacePicker::SpacePicker() { setWantsKeyboardFocus (false); }
 
-juce::Rectangle<float> SpacePanel::SpacePicker::nameBounds() const
+juce::Rectangle<float> SpacePanel::SpacePicker::listBounds() const
+{
+    // The names take the negative space on the left; the thumbnail keeps the right.
+    const auto b = getLocalBounds().toFloat();
+    return b.withWidth (b.getWidth() * 0.56f).reduced (juce::jmin (10.0f, b.getWidth() * 0.03f),
+                                                       juce::jmin (8.0f, b.getHeight() * 0.05f));
+}
+
+juce::Rectangle<float> SpacePanel::SpacePicker::artBounds() const
 {
     const auto b = getLocalBounds().toFloat();
-    if (artOnly) return juce::Rectangle<float> (juce::jmin (b.getWidth() - 20.0f, 220.0f), 34.0f).withCentre ({ b.getCentreX(), b.getBottom() - 30.0f });
-    auto left = b.withWidth (b.getWidth() * 0.6f).reduced (10.0f, 0.0f);
-    return left.withSizeKeepingCentre (left.getWidth(), juce::jlimit (26.0f, 40.0f, b.getHeight() * 0.42f));
+    return b.withLeft (b.getWidth() * 0.6f).reduced (juce::jmin (6.0f, b.getWidth() * 0.02f),
+                                                     juce::jmin (8.0f, b.getHeight() * 0.05f));
 }
 
-int SpacePanel::SpacePicker::zoneAt (juce::Point<int> p) const
+int SpacePanel::SpacePicker::rowAt (juce::Point<int> p) const
 {
-    const auto n = nameBounds();
-    if (! n.contains (p.toFloat())) return 0;
-    const float zone = juce::jmin (n.getWidth() * 0.25f, 34.0f);
-    if (p.x < n.getX() + zone) return -1;
-    if (p.x > n.getRight() - zone) return 1;
-    return 2;
+    const auto l = listBounds();
+    if (! l.contains (p.toFloat())) return -1;
+    const int row = (int) ((p.toFloat().y - l.getY()) / (l.getHeight() / (float) SpaceArt::kNumTypes));
+    return juce::jlimit (0, SpaceArt::kNumTypes - 1, row);
 }
 
-void SpacePanel::SpacePicker::mouseMove (const juce::MouseEvent& e) { const int z = zoneAt (e.getPosition()); if (z != hoverZone) { hoverZone = z; repaint(); } }
+void SpacePanel::SpacePicker::mouseMove (const juce::MouseEvent& e) { const int r = rowAt (e.getPosition()); if (r != hoverRow) { hoverRow = r; repaint(); } }
 
 void SpacePanel::SpacePicker::mouseDown (const juce::MouseEvent& e)
 {
-    const int z = zoneAt (e.getPosition());
-    if (z == -1 || z == 1) { if (onArrow) onArrow (z); return; }
-    if (z == 2 && onSelect)
-    {
-        juce::PopupMenu m;
-        m.addSectionHeader ("SPACE");
-        for (int i = 0; i < SpaceArt::kNumTypes; ++i) m.addItem (i + 1, SpaceArt::name (i), true, i == type);
-        juce::Component::SafePointer<SpacePicker> safe (this);
-        m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this), [safe] (int r) { if (safe != nullptr && r > 0 && safe->onSelect) safe->onSelect (r - 1); });
-    }
+    const int r = rowAt (e.getPosition());
+    if (r >= 0 && onSelect) onSelect (r);
 }
 
 void SpacePanel::SpacePicker::paint (juce::Graphics& g)
 {
     const int t = juce::jlimit (0, SpaceArt::kNumTypes - 1, type);
-    const auto b = getLocalBounds().toFloat();
-    const float corner = juce::jmin (10.0f, b.getHeight() * 0.15f);
-    const auto tint = SpaceArt::tint (t);
 
-    if (artOnly)
-    {
-        SpaceArt::draw (g, b, t, phase, activity, corner);
-    }
-    else
-    {
-        draw::insetSurface (g, b, corner);
-        auto artArea = b.withLeft (b.getWidth() * 0.6f + 4.0f).reduced (4.0f);
-        SpaceArt::draw (g, artArea, t, phase, activity, corner - 2.0f);
-    }
+    // Thumbnail of the selected environment, recessed on the right.
+    const auto art = artBounds();
+    SpaceArt::draw (g, art, t, phase, activity, juce::jmin (8.0f, art.getHeight() * 0.12f));
 
-    // Name pill with chevrons
-    auto nameArea = nameBounds();
-    const float pillCorner = nameArea.getHeight() * 0.5f;
-    if (hoverZone != 0) draw::glowRoundedRect (g, nameArea, pillCorner, tint, 8.0f, 0.3f);
-    g.setColour (artOnly ? Theme::panel.withAlpha (0.85f) : Theme::panel);
-    g.fillRoundedRectangle (nameArea, pillCorner);
-    g.setColour (Theme::border.withMultipliedAlpha (hoverZone != 0 ? 1.8f : 1.0f));
-    g.drawRoundedRectangle (nameArea.reduced (0.5f), pillCorner, 1.0f);
-    const float zone = juce::jmin (nameArea.getWidth() * 0.25f, 34.0f);
-    draw::chevron (g, nameArea.withWidth (zone).reduced (zone * 0.3f, nameArea.getHeight() * 0.3f), -1, hoverZone == -1 ? tint : Theme::textSecondary);
-    draw::chevron (g, nameArea.withLeft (nameArea.getRight() - zone).reduced (zone * 0.3f, nameArea.getHeight() * 0.3f), 1, hoverZone == 1 ? tint : Theme::textSecondary);
-    const float h = juce::jlimit (9.0f, 13.0f, nameArea.getHeight() * 0.36f);
-    draw::trackedText (g, SpaceArt::name (t), nameArea.reduced (zone, 0.0f), juce::Justification::centred, Theme::labelFontStrong (h),
-                       hoverZone == 2 ? Theme::textPrimary.interpolatedWith (tint, 0.4f) : Theme::textPrimary);
+    // Every space name, laid out down the negative space. One click selects; no chevron to chase.
+    const auto l = listBounds();
+    const float rowH = l.getHeight() / (float) SpaceArt::kNumTypes;
+    const float fontH = juce::jlimit (9.0f, 13.0f, rowH * 0.52f);
+    for (int i = 0; i < SpaceArt::kNumTypes; ++i)
+    {
+        auto row = l.withHeight (rowH).translated (0.0f, rowH * (float) i);
+        const bool selected = (i == t);
+        const bool hovered  = (i == hoverRow);
+        const auto tint = SpaceArt::tint (i);
+
+        if (selected)
+        {
+            const float corner = juce::jmin (6.0f, row.getHeight() * 0.35f);
+            g.setColour (tint.withAlpha (0.12f));
+            g.fillRoundedRectangle (row.reduced (0.0f, row.getHeight() * 0.12f), corner);
+            // Accent bar down the left edge marks the live selection.
+            g.setColour (tint);
+            g.fillRoundedRectangle (row.withWidth (2.5f).reduced (0.0f, row.getHeight() * 0.22f), 1.25f);
+        }
+
+        const auto colour = selected ? Theme::textPrimary.interpolatedWith (tint, 0.35f)
+                          : hovered  ? Theme::textPrimary
+                                     : Theme::textSecondary;
+        draw::trackedText (g, SpaceArt::name (i), row.reduced (row.getHeight() * 0.55f, 0.0f),
+                           juce::Justification::centredLeft,
+                           selected ? Theme::labelFontStrong (fontH) : Theme::labelFont (fontH), colour);
+    }
 }
 
 SpacePanel::SpacePanel (AntiMatrProcessor& p)

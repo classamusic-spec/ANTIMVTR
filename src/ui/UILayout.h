@@ -82,6 +82,34 @@ inline ModRowColumns modRowColumns (int width, int height) noexcept
 
 //==============================================================================
 /**
+    The three columns every deep page is built from: a selector column on the
+    left, the large dark display in the middle and the control cluster on the
+    right.
+
+    Pure fractions of the page, with no pixel constants anywhere, so the same
+    composition holds at 1100 x 690 and at 1600 x 1000 — the display always keeps
+    the middle and the flanks always keep their share of the width.
+*/
+struct PageColumns
+{
+    Span sidebar, centre, controls;
+};
+
+inline PageColumns pageColumns (int width, int gap, float sidebarFraction = 0.165f, float controlsFraction = 0.295f) noexcept
+{
+    PageColumns c;
+    const int w = juce::jmax (0, width);
+    const int usable = juce::jmax (0, w - juce::jmax (0, gap) * 2);
+    const int side  = juce::roundToInt ((float) usable * juce::jlimit (0.0f, 0.5f, sidebarFraction));
+    const int right = juce::roundToInt ((float) usable * juce::jlimit (0.0f, 0.5f, controlsFraction));
+    c.sidebar  = { 0, side };
+    c.centre   = { side + gap, juce::jmax (0, usable - side - right) };
+    c.controls = { w - right, right };
+    return c;
+}
+
+//==============================================================================
+/**
     Number of columns for the source-scope grid: as square as the count allows,
     never so many that a card falls below a readable width, and preferring a
     full last row over a ragged one.

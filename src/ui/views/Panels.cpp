@@ -1,7 +1,640 @@
 #include "Panels.h"
+#include "ui/UILayout.h"
 
 namespace am::ui
 {
+
+namespace
+{
+    constexpr float kTwoPi = juce::MathConstants<float>::twoPi;
+
+    /** One sample of a wavetable frame: a harmonic stack whose weights depend on the table. */
+    float tableSample (int table, float frame, float p)
+    {
+        const float t = juce::jlimit (0.0f, 1.0f, frame);
+        const int harmonics = 2 + (int) (10.0f * t);
+        float y = 0.0f, norm = 0.0f;
+        for (int h = 1; h <= harmonics; ++h)
+        {
+            const float fh = (float) h;
+            float w = 0.0f;
+            switch (table % 8)
+            {
+                case 0: w = h == 1 ? 1.0f : 0.0f; break;                                   // BASIC
+                case 1: w = 1.0f / fh; break;                                              // HARMONIC
+                case 2: w = std::exp (-std::abs (fh - (1.0f + 5.0f * t)) * 0.7f); break;   // FORMANT
+                case 3: w = (h % 2 == 1 ? 1.0f : -0.35f) / fh; break;                      // FOLDED
+                case 4: w = (h % 3 == 0 ? 1.0f : 0.25f) / std::sqrt (fh); break;           // METALLIC
+                case 5: w = std::sin (fh * (1.0f + 3.0f * t)) / fh; break;                 // SPECTRAL
+                case 6: w = ((h * 2654435761u) % 97 > 40 ? 1.0f : -1.0f) / fh; break;      // FRACTURED
+                default: w = std::sin (fh * 12.9898f) / std::sqrt (fh); break;             // NOISE
+            }
+            y += w * std::sin (kTwoPi * p * fh + (float) (h * h) * 0.21f * t);
+            norm += std::abs (w);
+        }
+        return y / juce::jmax (0.35f, norm);
+    }
+
+    struct Point3 { float x = 0.0f, y = 0.0f, z = 0.0f; };
+
+    /** A point on the unit sphere for index i of n, spiralled so the nodes spread evenly. */
+    Point3 spherePoint (int i, int n)
+    {
+        const float y = 1.0f - 2.0f * ((float) i + 0.5f) / (float) juce::jmax (1, n);
+        const float r = std::sqrt (juce::jmax (0.0f, 1.0f - y * y));
+        const float theta = 2.39996323f * (float) i;                      // golden angle
+        return { r * std::cos (theta), y, r * std::sin (theta) };
+    }
+}
+
+//==============================================================================
+AMSidebar::AMSidebar (std::vector<Item> entries, juce::Colour accentColour)
+    : items (std::move (entries)), accent (accentColour)
+{
+    setWantsKeyboardFocus (false);
+}
+
+juce::Colour AMSidebar::accentFor (int index) const noexcept
+{
+    if (index < 0 || index >= (int) items.size()) return accent;
+    return items[(size_t) index].accent.isTransparent() ? accent : items[(size_t) index].accent;
+}
+
+float AMSidebar::rowHeight() const noexcept
+{
+    const int n = juce::jmax (1, (int) items.size());
+    const float natural = juce::jlimit (30.0f, 72.0f, (float) getWidth() * 0.30f);
+    return juce::jmin (natural, (float) getHeight() / (float) n);
+}
+
+int AMSidebar::preferredHeight (int width) const noexcept
+{
+    const int n = juce::jmax (1, (int) items.size());
+    return juce::roundToInt (juce::jlimit (30.0f, 72.0f, (float) width * 0.30f)) * n;
+}
+
+juce::Rectangle<float> AMSidebar::pillBounds (int index) const
+{
+    const float h = rowHeight();
+    const float total = h * (float) items.size();
+    const float top = juce::jmax (0.0f, ((float) getHeight() - total) * 0.5f);
+    const float pad = juce::jlimit (1.0f, 4.0f, h * 0.07f);
+    return { 0.0f, top + h * (float) index + pad, (float) getWidth(), h - pad * 2.0f };
+}
+
+int AMSidebar::rowAt (juce::Point<int> p) const
+{
+    for (int i = 0; i < (int) items.size(); ++i)
+        if (pillBounds (i).expanded (0.0f, 1.5f).contains (p.toFloat())) return i;
+    return -1;
+}
+
+void AMSidebar::setSelected (int index, juce::NotificationType notify)
+{
+    index = juce::jlimit (0, juce::jmax (0, (int) items.size() - 1), index);
+    if (index == selected) return;
+    selected = index;
+    repaint();
+    if (notify != juce::dontSendNotification && onChange) onChange (selected);
+}
+
+void AMSidebar::mouseDown (const juce::MouseEvent& e)
+{
+    const int r = rowAt (e.getPosition());
+    if (r >= 0 && r != selected) setSelected (r);
+}
+
+void AMSidebar::mouseMove (const juce::MouseEvent& e)
+{
+    const int r = rowAt (e.getPosition());
+    if (r != hovered) { hovered = r; repaint(); }
+}
+
+void AMSidebar::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
+{
+    if (std::abs (wheel.deltaY) < 0.01f) return;
+    setSelected (selected + (wheel.deltaY > 0.0f ? -1 : 1));
+}
+
+void AMSidebar::paint (juce::Graphics& g)
+{
+    if (items.empty() || getWidth() < 8) return;
+    for (int i = 0; i < (int) items.size(); ++i)
+    {
+        const auto pill = pillBounds (i);
+        if (pill.getHeight() < 6.0f) continue;
+        const bool sel = i == selected, hov = i == hovered;
+        const auto tint = accentFor (i);
+        const float radius = juce::jmin (pill.getHeight() * 0.34f, 12.0f);
+
+        if (sel)
+        {
+            draw::contactShadow (g, pill, radius, juce::jmax (4.0f, pill.getHeight() * 0.22f), 0.85f);
+            draw::SlabStyle style;
+            style.top = Theme::panelTop;
+            style.bottom = Theme::panel.brighter (0.25f);
+            style.shadow = 0.0f;
+            style.brush = 0.35f;
+            draw::raisedSlab (g, pill, radius, style);
+            // The accent runs down the left edge of the raised slab.
+            auto bar = pill.withWidth (juce::jmax (2.5f, pill.getHeight() * 0.075f));
+            draw::glowRoundedRect (g, bar, bar.getWidth() * 0.5f, tint, 8.0f, 0.55f);
+            g.setColour (tint);
+            g.fillRoundedRectangle (bar.reduced (0.0f, radius * 0.25f), bar.getWidth() * 0.5f);
+        }
+        else if (hov)
+        {
+            g.setColour (juce::Colours::white.withAlpha (0.55f));
+            g.fillRoundedRectangle (pill, radius);
+            g.setColour (tint.withAlpha (0.22f));
+            g.drawRoundedRectangle (pill.reduced (0.5f), radius, 1.0f);
+        }
+
+        // Glyph, then the label (and its caption when the row is tall enough for two lines).
+        auto row = pill.reduced (juce::jmax (6.0f, pill.getHeight() * 0.22f), 0.0f);
+        const float d = juce::jmin (row.getHeight() * 0.54f, row.getWidth() * 0.32f);
+        auto glyph = row.removeFromLeft (d * 1.35f).withSizeKeepingCentre (d, d);
+        row.removeFromLeft (juce::jmax (3.0f, d * 0.28f));
+        Icons::draw (g, items[(size_t) i].icon, glyph,
+                     sel ? tint : Theme::textDim.interpolatedWith (tint, hov ? 0.45f : 0.0f), sel ? 1.05f : 0.85f);
+
+        const bool twoLine = items[(size_t) i].caption.isNotEmpty() && pill.getHeight() > 30.0f && row.getWidth() > 54.0f;
+        const float labelH = juce::jlimit (9.0f, 13.0f, pill.getHeight() * (twoLine ? 0.26f : 0.30f));
+        auto text = twoLine ? row.removeFromTop (row.getHeight() * 0.56f) : row;
+        draw::trackedText (g, items[(size_t) i].label, text, juce::Justification::centredLeft,
+                           sel ? Theme::labelFontStrong (labelH) : Theme::labelFont (labelH),
+                           sel ? Theme::textPrimary : Theme::textSecondary);
+        if (twoLine)
+            draw::trackedText (g, items[(size_t) i].caption, row, juce::Justification::centredLeft,
+                               Theme::captionFont (juce::jlimit (7.5f, 10.0f, labelH * 0.78f)),
+                               sel ? tint.withAlpha (0.9f) : Theme::textDim.withAlpha (0.8f));
+    }
+}
+
+//==============================================================================
+float PageDisplay::corner() const noexcept
+{
+    const auto b = getLocalBounds().toFloat();
+    return juce::jlimit (5.0f, 16.0f, juce::jmin (b.getWidth(), b.getHeight()) * 0.035f);
+}
+
+void PageDisplay::paint (juce::Graphics& g)
+{
+    const auto b = getLocalBounds().toFloat();
+    if (b.getWidth() < 8.0f || b.getHeight() < 8.0f) return;
+    const float c = corner();
+
+    if (paintsOwnGround())
+    {
+        paintArt (g, b);
+    }
+    else
+    {
+        // The recess: near-black, cut into the pale chassis, lit from the top left.
+        draw::insetWell (g, b, c, juce::Colour (0xff07080d), 1.0f);
+        {
+            juce::Graphics::ScopedSaveState save (g);
+            juce::Path clip;
+            clip.addRoundedRectangle (b.reduced (1.2f), juce::jmax (0.0f, c - 1.2f));
+            g.reduceClipRegion (clip);
+            paintArt (g, b.reduced (1.2f));
+
+            // A vignette pulls the eye to the middle of the screen.
+            juce::ColourGradient vignette (juce::Colours::transparentBlack, b.getCentreX(), b.getCentreY(),
+                                           juce::Colours::black.withAlpha (0.40f), b.getX(), b.getY(), true);
+            g.setGradientFill (vignette);
+            g.fillRect (b);
+        }
+        draw::screenGlass (g, b, c, 1.0f);
+    }
+
+    // Lettering: the screen names itself top-left and captions itself bottom-left.
+    const float inset = juce::jmax (8.0f, juce::jmin (b.getWidth(), b.getHeight()) * 0.035f);
+    const float h = juce::jlimit (8.0f, 11.5f, b.getHeight() * 0.028f);
+    if (title.isNotEmpty())
+        draw::trackedText (g, title, b.reduced (inset, inset * 0.8f).removeFromTop (h * 1.6f),
+                           juce::Justification::topLeft, Theme::captionFont (h), accent.withAlpha (0.75f));
+    if (caption.isNotEmpty())
+        draw::trackedText (g, caption, b.reduced (inset, inset * 0.8f).removeFromBottom (h * 1.6f),
+                           juce::Justification::bottomLeft, Theme::captionFont (h), Theme::textDim.withAlpha (0.75f));
+}
+
+//==============================================================================
+void WaveMeshDisplay::setShape (int tableIndex, float pos, float scanAmount, float morphAmount)
+{
+    table = tableIndex;
+    position = juce::jlimit (0.0f, 1.0f, pos);
+    scan = juce::jlimit (0.0f, 1.0f, scanAmount);
+    morph = juce::jlimit (0.0f, 1.0f, morphAmount);
+}
+
+void WaveMeshDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
+{
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.45f), raw.second.brighter (0.30f) };
+    draw::softLight (g, { area.getCentreX(), area.getCentreY() + area.getHeight() * 0.10f },
+                     area.getWidth() * 0.60f, pair.second, 0.20f + 0.14f * energy);
+
+    const int rows = juce::jlimit (9, 22, (int) (area.getHeight() / 24.0f));
+    const int cols = juce::jlimit (28, 120, (int) (area.getWidth() / 9.0f));
+    const float frontY = area.getBottom() - area.getHeight() * 0.13f;
+    const float backY  = area.getY() + area.getHeight() * 0.15f;
+    const float travel = position + scan * 0.35f * std::sin (phase * 0.7f);
+
+    std::vector<juce::Path> traces ((size_t) rows);
+    std::vector<float> depths ((size_t) rows);
+
+    for (int r = 0; r < rows; ++r)
+    {
+        const float t = (float) r / (float) (rows - 1);          // 0 back, 1 front
+        const float persp = 0.52f + 0.48f * t;
+        const float y = backY + (frontY - backY) * (t * t * 0.55f + t * 0.45f);
+        const float w = area.getWidth() * 0.86f * persp;
+        const float x0 = area.getCentreX() - w * 0.5f;
+        const float amp = area.getHeight() * (0.075f + 0.105f * t) * (0.70f + 0.50f * energy);
+        const float frame = std::fmod (juce::jmax (0.0f, travel + (1.0f - t) * (0.25f + 0.55f * morph)), 1.0f);
+        depths[(size_t) r] = t;
+
+        auto& p = traces[(size_t) r];
+        for (int i = 0; i <= cols; ++i)
+        {
+            const float u = (float) i / (float) cols;
+            const float v = tableSample (table, frame, u + phase * 0.06f * (0.4f + t));
+            const float px = x0 + w * u;
+            const float py = y - v * amp;
+            if (i == 0) p.startNewSubPath (px, py); else p.lineTo (px, py);
+        }
+    }
+
+    // Ribs between the frames, so the stack reads as one surface and not as loose lines.
+    const int ribs = juce::jlimit (6, 18, cols / 7);
+    for (int k = 0; k <= ribs; ++k)
+    {
+        const float u = (float) k / (float) ribs;
+        juce::Path rib;
+        for (int r = 0; r < rows; ++r)
+        {
+            const float t = depths[(size_t) r];
+            const float persp = 0.52f + 0.48f * t;
+            const float y = backY + (frontY - backY) * (t * t * 0.55f + t * 0.45f);
+            const float w = area.getWidth() * 0.86f * persp;
+            const float amp = area.getHeight() * (0.075f + 0.105f * t) * (0.70f + 0.50f * energy);
+            const float frame = std::fmod (juce::jmax (0.0f, travel + (1.0f - t) * (0.25f + 0.55f * morph)), 1.0f);
+            const float v = tableSample (table, frame, u + phase * 0.06f * (0.4f + t));
+            const float px = area.getCentreX() - w * 0.5f + w * u;
+            const float py = y - v * amp;
+            if (r == 0) rib.startNewSubPath (px, py); else rib.lineTo (px, py);
+        }
+        g.setColour (pair.first.withAlpha (0.20f));
+        g.strokePath (rib, juce::PathStrokeType (0.8f));
+    }
+
+    for (int r = 0; r < rows; ++r)
+    {
+        const float t = depths[(size_t) r];
+        const auto col = pair.second.interpolatedWith (pair.first, t);
+        if (r == rows - 1)
+            draw::glowPath (g, traces[(size_t) r], col, 2.0f, 12.0f, 0.9f + 0.3f * energy);
+        else
+        {
+            g.setColour (col.withAlpha (0.30f + 0.55f * t));
+            g.strokePath (traces[(size_t) r], juce::PathStrokeType (0.7f + 1.2f * t));
+        }
+    }
+}
+
+//==============================================================================
+void LatticeDisplay::setMatter (float d, float f, float m, float t, float s, int topologyIndex, int seedValue)
+{
+    density = juce::jlimit (0.0f, 1.0f, d);
+    form = juce::jlimit (0.0f, 1.0f, f);
+    mass = juce::jlimit (0.0f, 1.0f, m);
+    tension = juce::jlimit (0.0f, 1.0f, t);
+    surface = juce::jlimit (0.0f, 1.0f, s);
+    topology = topologyIndex;
+    seed = seedValue;
+}
+
+void LatticeDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
+{
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.35f), raw.second.brighter (0.35f) };
+    const auto c = area.getCentre();
+    const float R = juce::jmin (area.getWidth() * 0.40f, area.getHeight() * 0.46f) * (0.92f + 0.18f * form);
+
+    draw::softLight (g, c, R * 1.8f, pair.first, 0.20f + 0.14f * energy);
+
+    const int n = juce::jlimit (10, 46, 12 + (int) (34.0f * density));
+    const float spin = phase * (0.14f + 0.24f * tension);
+    const float tilt = 0.42f + 0.22f * std::sin (phase * 0.23f);
+
+    struct Node { juce::Point<float> p; float depth, r; };
+    std::vector<Node> nodes ((size_t) n);
+    juce::Random rng (seed * 131 + topology * 17 + 5);
+    for (int i = 0; i < n; ++i)
+    {
+        auto v = spherePoint (i, n);
+        // Surface roughens the shell; topology squashes it into its own arrangement.
+        const float rough = 1.0f + surface * (rng.nextFloat() - 0.5f) * 0.55f;
+        const float squash = topology % 6 == 1 ? 0.35f : (topology % 6 == 3 ? 0.8f : 1.0f);
+        const float cs = std::cos (spin), sn = std::sin (spin);
+        const float x = v.x * cs - v.z * sn;
+        const float z = v.x * sn + v.z * cs;
+        const float y = v.y * squash;
+        const float depth = 0.5f + 0.5f * z;
+        nodes[(size_t) i] = { { c.x + x * R * rough, c.y + (y * std::cos (tilt) + z * std::sin (tilt) * 0.35f) * R * rough },
+                              depth, juce::jmax (1.0f, R * (0.020f + 0.030f * depth) * (0.7f + 0.8f * mass)) };
+    }
+
+    // Couplings: every pair close enough to be bound, drawn back to front.
+    const float link = R * (0.55f + 0.55f * form) * (0.65f + 0.6f * tension);
+    for (int i = 0; i < n; ++i)
+        for (int j = i + 1; j < n; ++j)
+        {
+            const float dist = nodes[(size_t) i].p.getDistanceFrom (nodes[(size_t) j].p);
+            if (dist > link) continue;
+            const float strength = 1.0f - dist / link;
+            const float depth = 0.5f * (nodes[(size_t) i].depth + nodes[(size_t) j].depth);
+            g.setColour (pair.first.interpolatedWith (pair.second, depth)
+                             .withAlpha (0.14f + 0.62f * strength * depth));
+            g.drawLine (nodes[(size_t) i].p.x, nodes[(size_t) i].p.y, nodes[(size_t) j].p.x, nodes[(size_t) j].p.y,
+                        0.7f + 1.6f * strength * depth);
+        }
+
+    // The dark core opens with Mass.
+    const float core = R * (0.62f - 0.34f * mass);
+    if (core > 2.0f)
+    {
+        juce::ColourGradient hole (juce::Colours::black.withAlpha (0.85f), c.x, c.y,
+                                   juce::Colours::transparentBlack, c.x + core, c.y, true);
+        g.setGradientFill (hole);
+        g.fillEllipse (juce::Rectangle<float> (core * 2.0f, core * 2.0f).withCentre (c));
+    }
+
+    for (const auto& node : nodes)
+    {
+        const auto col = pair.second.interpolatedWith (pair.first, node.depth);
+        draw::glowDot (g, node.p, node.r, col, 0.35f + 0.65f * node.depth * (0.6f + 0.6f * energy));
+    }
+}
+
+//==============================================================================
+void RibbonDisplay::setOperators (float b, float m, float t, float mag, float sp)
+{
+    bend = juce::jlimit (0.0f, 1.0f, b);
+    melt = juce::jlimit (0.0f, 1.0f, m);
+    tear = juce::jlimit (0.0f, 1.0f, t);
+    magnet = juce::jlimit (0.0f, 1.0f, mag);
+    speed = juce::jlimit (0.0f, 1.0f, sp);
+}
+
+void RibbonDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
+{
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.40f), raw.second.brighter (0.40f) };
+    draw::softLight (g, area.getCentre(), area.getWidth() * 0.5f, pair.first, 0.15f + 0.10f * energy);
+
+    const int lines = juce::jlimit (10, 26, (int) (area.getHeight() / 20.0f));
+    const int cols = juce::jlimit (36, 140, (int) (area.getWidth() / 7.0f));
+    const float clock = phase * (0.25f + 1.5f * speed);
+    const float midY = area.getCentreY();
+    const float band = area.getHeight() * 0.33f;
+
+    auto heightAt = [&] (float u, float v) -> float
+    {
+        // v: 0..1 across the ribbon's depth. Each operator deforms it its own way.
+        float y = std::sin (kTwoPi * (u * 1.3f + v * 0.35f) - clock) * 0.5f;
+        y += 0.32f * std::sin (kTwoPi * (u * 2.7f - v * 0.6f) + clock * 0.62f);
+        y *= 1.0f - 0.45f * melt;                                                  // MELT flattens and blurs
+        y += bend * 1.15f * (u - 0.5f) * (u - 0.5f) * 2.4f - bend * 0.35f;         // BEND folds it over
+        if (tear > 0.02f)                                                          // TEAR splits it in two
+        {
+            const float side = u < 0.5f ? -1.0f : 1.0f;
+            y += side * tear * 0.55f * (0.4f + 0.6f * std::abs (u - 0.5f) * 2.0f);
+        }
+        if (magnet > 0.02f)                                                        // MAGNET snaps it to steps
+        {
+            const float steps = 5.0f;
+            y = y * (1.0f - magnet) + magnet * std::round (y * steps) / steps;
+        }
+        return y;
+    };
+
+    std::vector<juce::Path> ribs ((size_t) lines);
+    for (int r = 0; r < lines; ++r)
+    {
+        const float v = (float) r / (float) (lines - 1);
+        const float persp = 0.55f + 0.45f * v;
+        const float w = area.getWidth() * 0.9f * persp;
+        const float x0 = area.getCentreX() - w * 0.5f;
+        const float baseY = midY + (v - 0.5f) * band * 1.5f;
+        auto& p = ribs[(size_t) r];
+        for (int i = 0; i <= cols; ++i)
+        {
+            const float u = (float) i / (float) cols;
+            const float px = x0 + w * u;
+            const float py = baseY - heightAt (u, v) * band * (0.55f + 0.45f * v) * (0.7f + 0.5f * energy);
+            if (i == 0) p.startNewSubPath (px, py); else p.lineTo (px, py);
+        }
+    }
+
+    // Fill between neighbours so the lines read as one surface, then stroke them.
+    for (int r = 0; r + 1 < lines; ++r)
+    {
+        juce::Path band2 (ribs[(size_t) r]);
+        juce::Path back (ribs[(size_t) r + 1]);
+        back.applyTransform (juce::AffineTransform::scale (-1.0f, 1.0f, area.getCentreX(), 0.0f));
+        band2.addPath (back);
+        band2.closeSubPath();
+        g.setColour (pair.first.withAlpha (0.05f));
+        g.fillPath (band2);
+    }
+    for (int r = 0; r < lines; ++r)
+    {
+        const float v = (float) r / (float) (lines - 1);
+        const auto col = pair.second.interpolatedWith (pair.first, v);
+        if (r == lines - 1 || r == 0)
+            draw::glowPath (g, ribs[(size_t) r], col, 1.4f, 8.0f, 0.45f + 0.35f * energy);
+        else
+        {
+            g.setColour (col.withAlpha (0.24f + 0.52f * v));
+            g.strokePath (ribs[(size_t) r], juce::PathStrokeType (0.7f + 1.0f * v));
+        }
+    }
+}
+
+//==============================================================================
+void ShardDisplay::setFracture (int frags, float amt, float spr, float rnd, bool isOn, int seedValue)
+{
+    fragments = juce::jlimit (2, 64, frags);
+    amount = juce::jlimit (0.0f, 1.0f, amt);
+    spread = juce::jlimit (0.0f, 1.0f, spr);
+    random = juce::jlimit (0.0f, 1.0f, rnd);
+    on = isOn;
+    seed = seedValue;
+}
+
+void ShardDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
+{
+    const auto raw = Theme::accentPair (accent);
+    const std::pair<juce::Colour, juce::Colour> pair { raw.first.brighter (0.40f), raw.second.brighter (0.40f) };
+    const auto c = area.getCentre();
+    const float R = juce::jmin (area.getWidth(), area.getHeight()) * 0.30f;
+    const float live = on ? 1.0f : 0.62f;
+
+    draw::softLight (g, c, R * 2.0f, pair.first, (0.14f + 0.14f * energy) * live);
+
+    const int n = juce::jlimit (6, 48, fragments);
+    juce::Random rng (seed * 977 + n);
+    const float burst = (0.10f + 0.85f * amount * (0.35f + 0.65f * spread)) * live;
+
+    // Every shard is its own broken plate: its own wedge of the object, thrown out
+    // along its own angle, turned a little, drifting on the Evolve clock.
+    for (int i = 0; i < n; ++i)
+    {
+        const float a0 = kTwoPi * ((float) i + 0.5f) / (float) n;
+        const float wedge = kTwoPi / (float) n;
+        const float jitter = (rng.nextFloat() - 0.5f) * random * wedge * 1.8f;
+        const float drift = 0.45f + 1.1f * rng.nextFloat();
+        const float push = burst * drift * (0.70f + 0.30f * std::sin (phase * (0.35f + drift * 0.7f) + (float) i * 1.7f));
+        const float spin = (rng.nextFloat() - 0.5f) * (0.25f + 0.55f * amount);
+        const float inner = R * (0.20f + 0.16f * rng.nextFloat());
+        const float outer = R * (0.38f + 0.52f * rng.nextFloat());
+        const float travel = inner * 0.6f + R * (0.16f + 0.34f * rng.nextFloat()) + R * push * 0.55f;
+        const juce::Point<float> seat { c.x + std::cos (a0 + jitter) * travel,
+                                        c.y + std::sin (a0 + jitter) * travel };
+
+        // A tip at the object's centre and three or four outer corners: a fragment,
+        // not a petal and not a splinter.
+        const int corners = 3 + rng.nextInt (2);
+        const float span = wedge * (0.80f + 0.45f * rng.nextFloat());
+        juce::Path shard;
+        shard.startNewSubPath (seat.x + std::cos (a0 + spin) * inner * 0.30f,
+                               seat.y + std::sin (a0 + spin) * inner * 0.30f);
+        for (int v = 0; v < corners; ++v)
+        {
+            const float f = ((float) v + 0.5f) / (float) corners;
+            const float a = a0 + spin + (f - 0.5f) * span;
+            const float r = outer * (0.80f + 0.20f * rng.nextFloat());
+            shard.lineTo (seat.x + std::cos (a) * r, seat.y + std::sin (a) * r);
+        }
+        shard.closeSubPath();
+
+        const float t = (float) i / (float) n;
+        const auto col = pair.first.interpolatedWith (pair.second, t);
+        g.setColour (col.withAlpha ((0.10f + 0.12f * energy) * live));
+        g.fillPath (shard);
+        g.setColour (col.withAlpha ((0.48f + 0.32f * (1.0f - juce::jmin (1.0f, push))) * live));
+        g.strokePath (shard, juce::PathStrokeType (juce::jmax (0.9f, R * 0.016f), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+        // The line back to where the piece came from.
+        if (push > 0.05f)
+        {
+            juce::Path trail;
+            trail.startNewSubPath (c.x + std::cos (a0) * inner * 0.5f, c.y + std::sin (a0) * inner * 0.5f);
+            trail.lineTo (seat.x, seat.y);
+            g.setColour (col.withAlpha (0.18f * live));
+            g.strokePath (trail, juce::PathStrokeType (0.8f));
+        }
+    }
+
+    // What is left of the object at the centre.
+    const float coreR = R * (0.26f - 0.16f * amount) + 2.0f;
+    draw::glowEllipse (g, juce::Rectangle<float> (coreR * 2.0f, coreR * 2.0f).withCentre (c),
+                       pair.second, coreR * 2.4f, (0.55f + 0.45f * energy) * live);
+    g.setColour (pair.second.withAlpha (0.75f * live));
+    g.drawEllipse (juce::Rectangle<float> (coreR * 2.0f, coreR * 2.0f).withCentre (c), juce::jmax (0.8f, R * 0.012f));
+}
+
+//==============================================================================
+void SpaceDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
+{
+    juce::Graphics::ScopedSaveState save (g);
+    juce::Path clip;
+    clip.addRoundedRectangle (area, corner());
+    g.reduceClipRegion (clip);
+    SpaceArt::draw (g, area.expanded (area.getWidth() * 0.15f, area.getHeight() * 0.15f), type, phase, energy, corner());
+}
+
+//==============================================================================
+AMModuleTile::AMModuleTile (const juce::String& text, Icon icon, juce::Colour accentColour)
+    : label (text.toUpperCase()), glyph (icon), accent (accentColour)
+{
+    setWantsKeyboardFocus (false);
+}
+
+juce::Rectangle<float> AMModuleTile::pipBounds() const
+{
+    const auto b = getLocalBounds().toFloat();
+    const float d = juce::jlimit (5.0f, 10.0f, juce::jmin (b.getWidth(), b.getHeight()) * 0.19f);
+    return juce::Rectangle<float> (d, d).withCentre ({ b.getRight() - d * 0.95f, b.getY() + d * 0.95f });
+}
+
+void AMModuleTile::mouseMove (const juce::MouseEvent& e)
+{
+    const bool pip = hasPower && pipBounds().expanded (3.0f).contains (e.position);
+    if (pip != hoverPip) { hoverPip = pip; repaint(); }
+}
+
+void AMModuleTile::mouseDown (const juce::MouseEvent& e)
+{
+    if (hasPower && pipBounds().expanded (3.0f).contains (e.position))
+    {
+        if (onPower) onPower (! powered);
+        return;
+    }
+    if (onSelect) onSelect();
+}
+
+void AMModuleTile::paint (juce::Graphics& g)
+{
+    auto b = getLocalBounds().toFloat().reduced (1.0f);
+    if (b.getWidth() < 8.0f || b.getHeight() < 8.0f) return;
+    const float radius = juce::jmin (b.getWidth(), b.getHeight()) * 0.22f;
+    const float labelH = juce::jlimit (7.0f, 10.0f, b.getHeight() * 0.22f);
+
+    draw::insetWell (g, b, radius, Theme::panelInset, 0.7f);
+    if (selected)
+    {
+        draw::contactShadow (g, b, radius, b.getHeight() * 0.16f, 0.7f);
+        draw::SlabStyle style;
+        style.top = Theme::panelTop;
+        style.bottom = Theme::panel.brighter (0.2f);
+        style.shadow = 0.0f;
+        draw::raisedSlab (g, b, radius, style);
+        g.setColour (accent.withAlpha (0.55f));
+        g.drawRoundedRectangle (b.reduced (0.6f), radius, 1.0f);
+    }
+    else if (hovered)
+    {
+        g.setColour (juce::Colours::white.withAlpha (0.35f));
+        g.fillRoundedRectangle (b, radius);
+    }
+
+    auto icon = b.withTrimmedBottom (labelH + 2.0f).reduced (b.getWidth() * 0.26f, b.getHeight() * 0.14f);
+    const float d = juce::jmin (icon.getWidth(), icon.getHeight());
+    icon = icon.withSizeKeepingCentre (d, d);
+    if (powered) draw::glowEllipse (g, icon, accent, d * 0.55f, 0.35f);
+    Icons::draw (g, glyph, icon, powered ? accent : Theme::textDim, powered ? 1.0f : 0.8f);
+
+    draw::trackedText (g, label, b.removeFromBottom (labelH + 1.0f), juce::Justification::centredTop,
+                       powered ? Theme::labelFontStrong (labelH * 0.84f) : Theme::labelFont (labelH * 0.84f),
+                       powered ? Theme::textPrimary : Theme::textDim);
+
+    if (hasPower)
+    {
+        const auto pip = pipBounds();
+        g.setColour (juce::Colours::black.withAlpha (0.35f));
+        g.fillEllipse (pip.expanded (1.0f));
+        if (powered) draw::glowDot (g, pip.getCentre(), pip.getWidth() * 0.5f, Theme::amber, 1.0f);
+        else
+        {
+            g.setColour (Theme::textDim.withAlpha (hoverPip ? 0.85f : 0.45f));
+            g.drawEllipse (pip.reduced (0.5f), 1.0f);
+        }
+    }
+}
+
 
 //==============================================================================
 SourcePanel::SourcePanel (AntiMatrProcessor& p)
@@ -121,6 +754,7 @@ ShapePanel::ShapePanel (AntiMatrProcessor& p)
         addChildComponent (advancedControls.back()->component());
     }
     addAndMakeVisible (mode);
+    addAndMakeVisible (lattice);
     mode.setTooltip ("SIMPLE: the six Matter macros. ADVANCED: materials, topology, coupling.");
     mode.onChange = [this] (int i) { setAdvanced (i == 1); };
     startTimerHz (20);
@@ -131,6 +765,7 @@ void ShapePanel::setAdvanced (bool a)
     advanced = a;
     for (auto& k : simpleKnobs) k->knob.setVisible (! advanced);
     for (auto& c : advancedControls) c->component().setVisible (advanced);
+    lattice.setVisible (! advanced);
     resized();
 }
 
@@ -142,6 +777,10 @@ void ShapePanel::resized()
     area.removeFromTop (juce::jmax (4, area.getHeight() / 26));
     if (! advanced)
     {
+        // The lattice is the dark element of this panel, the way the reference has it:
+        // a strip of screen over the six macros.
+        lattice.setBounds (area.removeFromTop (juce::roundToInt ((float) area.getHeight() * 0.30f)));
+        area.removeFromTop (juce::jmax (4, area.getHeight() / 26));
         std::vector<juce::Component*> c;
         for (auto& k : simpleKnobs) c.push_back (&k->knob);
         layoutGrid (area, c, 3);
@@ -166,6 +805,13 @@ void ShapePanel::timerCallback()
     // The ring shows the routed modulation; without any, it falls back to where the engine's
     // effective (smoothed) value sits relative to the knob.
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
+    {
+        const auto values = processor.currentParamValues();
+        lattice.setMatter (vs.density, vs.form, vs.mass, vs.tension, vs.surface,
+                           paramChoice (values, Param::shapeTopology), (int) paramValue (values, Param::shapeSeed));
+        lattice.setEnergy (juce::jlimit (0.0f, 1.0f, vs.matterRms * 3.0f));
+        lattice.advance (1.0f / 20.0f);
+    }
     const float values[] = { vs.density, vs.form, vs.mass, vs.tension, vs.decay, vs.surface };
     for (int i = 0; i < 6; ++i)
         if (! simpleKnobs[(size_t) i]->refreshModRing (mod))

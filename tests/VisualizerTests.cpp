@@ -3,93 +3,36 @@
 
     These run in the console test runner, which links no graphics module, so
     everything under test is deliberately free of juce::Colour / juce::Rectangle:
-    LiquidOrganism, ParticleSystem and PortholeLayout are plain floats and Vec3.
+    the field maths, the volumetric field and PortholeLayout are plain floats
+    and Vec3 throughout.
 
     What is covered:
-      * a seed reproduces the object exactly, frame after frame,
+      * the colour ramp travels cyan → blue → violet → magenta → pink and stays
+        in gamut however it is whitened or deepened,
+      * the porthole layout is proportional and stays inside its component,
+      * a seed reproduces the volumetric field exactly, frame after frame,
       * every output stays finite and bounded for every parameter extreme,
         including NaN and infinity arriving from a broken snapshot,
-      * each engine reaction actually changes the geometry it claims to,
-      * depth splitting and sorting really order the ribbons back to front,
-      * the colour ramp travels cyan → blue → violet → magenta → pink,
-      * the porthole layout is proportional and stays inside its component.
+      * each engine input really moves what it claims to move: a node's
+        frequency its radius, its energy its brightness, a note-on a front
+        through the shells, a fragment step a shatter, a chord a mass per voice.
 */
 
 #include <juce_core/juce_core.h>
 
-#include "ui/visualizers/LiquidOrganism.h"
-#include "ui/visualizers/ParticleSystem.h"
+#include "ui/visualizers/FieldMaths.h"
+#include "ui/visualizers/NodeField.h"
 #include "ui/visualizers/Porthole.h"
 
+using namespace am;
 using namespace am::ui;
 
 namespace
 {
-    constexpr int kBuffer = LiquidOrganism::kMaxSamples;
-
-    /** The parameter state the object shows with nothing touched. */
-    LiquidOrganism::Params defaultParams()
-    {
-        LiquidOrganism::Params p;
-        p.time = 12.5f;
-        p.flowTime = 7.25f;
-        p.rotation = 0.8f;
-        p.level = 0.4f;
-        p.energy = 0.5f;
-        p.life = 1.0f;
-        return p;
-    }
-
     bool finite (const Vec3& v) noexcept
     {
         return std::isfinite (v.x) && std::isfinite (v.y) && std::isfinite (v.z);
     }
-
-    /** Mean distance between two builds of the same ribbon — how far the geometry moved. */
-    float meanShift (const RibbonSample* a, const RibbonSample* b, int n) noexcept
-    {
-        if (n <= 0) return 0.0f;
-        float sum = 0.0f;
-        for (int i = 0; i < n; ++i) sum += (a[i].p - b[i].p).length();
-        return sum / (float) n;
-    }
-
-    float meanWidth (const RibbonSample* s, int n) noexcept
-    {
-        if (n <= 0) return 0.0f;
-        float sum = 0.0f;
-        for (int i = 0; i < n; ++i) sum += s[i].width;
-        return sum / (float) n;
-    }
-
-    /** Builds every ribbon of one frame; returns the mean shift against `other` if given. */
-    struct Frame
-    {
-        std::array<std::array<RibbonSample, kBuffer>, LiquidOrganism::kMaxRibbons> rows {};
-        std::array<int, LiquidOrganism::kMaxRibbons> lengths {};
-        int ribbons = 0;
-
-        void build (const LiquidOrganism& o, const LiquidOrganism::Params& p, const ValueNoise& n)
-        {
-            ribbons = LiquidOrganism::ribbonCount (p);
-            for (int r = 0; r < ribbons; ++r)
-                lengths[(size_t) r] = o.buildRibbon (r, p, n, rows[(size_t) r].data(), kBuffer);
-        }
-
-        float shiftFrom (const Frame& other) const
-        {
-            float worst = 0.0f;
-            const int common = juce::jmin (ribbons, other.ribbons);
-            for (int r = 0; r < common; ++r)
-            {
-                const int n = juce::jmin (lengths[(size_t) r], other.lengths[(size_t) r]);
-                worst = juce::jmax (worst, meanShift (rows[(size_t) r].data(), other.rows[(size_t) r].data(), n));
-            }
-            return worst;
-        }
-
-        float widthOf (int ribbon) const { return meanWidth (rows[(size_t) ribbon].data(), lengths[(size_t) ribbon]); }
-    };
 }
 
 //==============================================================================
@@ -165,504 +108,8 @@ public:
 
 static LiquidRampTests liquidRampTests;
 
-//==============================================================================
-class LiquidOrganismTests : public juce::UnitTest
-{
-public:
-    LiquidOrganismTests() : juce::UnitTest ("Liquid organism geometry", "visualizer") {}
 
-    void runTest() override
-    {
-        const ValueNoise noise (0x5EEDA11u);
 
-        beginTest ("A seed reproduces the object exactly");
-        {
-            LiquidOrganism a (0xC0FFEEu), b (0xC0FFEEu);
-            const auto p = defaultParams();
-            std::array<RibbonSample, kBuffer> ra {}, rb {};
-            for (int r = 0; r < LiquidOrganism::kMaxRibbons; ++r)
-            {
-                const int na = a.buildRibbon (r, p, noise, ra.data(), kBuffer);
-                const int nb = b.buildRibbon (r, p, noise, rb.data(), kBuffer);
-                expectEquals (na, nb);
-                for (int i = 0; i < na; ++i)
-                {
-                    expectWithinAbsoluteError (ra[(size_t) i].p.x, rb[(size_t) i].p.x, 0.0f);
-                    expectWithinAbsoluteError (ra[(size_t) i].p.y, rb[(size_t) i].p.y, 0.0f);
-                    expectWithinAbsoluteError (ra[(size_t) i].p.z, rb[(size_t) i].p.z, 0.0f);
-                    expectWithinAbsoluteError (ra[(size_t) i].width, rb[(size_t) i].width, 0.0f);
-                }
-            }
-
-            // A different seed must give a different organism, or the seed means nothing.
-            LiquidOrganism c (0xBEEF01u);
-            std::array<RibbonSample, kBuffer> rc {};
-            const int n = c.buildRibbon (0, p, noise, rc.data(), kBuffer);
-            expect (meanShift (ra.data(), rc.data(), n) > 0.05f, "two seeds produced the same ribbon");
-        }
-
-        beginTest ("Rebuilding the same frame is stable");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            const auto p = defaultParams();
-            Frame first, again;
-            first.build (o, p, noise);
-            again.build (o, p, noise);
-            expectWithinAbsoluteError (first.shiftFrom (again), 0.0f, 0.0f);
-        }
-
-        beginTest ("Output is bounded at every parameter extreme, NaN included");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            const float nan = std::numeric_limits<float>::quiet_NaN();
-            const float inf = std::numeric_limits<float>::infinity();
-            const float extremes[] = { 0.0f, 0.5f, 1.0f, -1.0f, 2.0f, 1.0e9f, -1.0e9f, nan, inf, -inf };
-
-            // Every parameter in turn takes every extreme while the rest sit at 1.0,
-            // which is the worst case for the deformations piling on top of each other.
-            for (int field = 0; field < 18; ++field)
-            {
-                for (float v : extremes)
-                {
-                    auto p = defaultParams();
-                    p.density = p.mass = p.tension = p.surface = 1.0f;
-                    p.bend = p.melt = p.tear = p.magnet = p.scatter = p.crush = 1.0f;
-                    p.fracture = 1.0f;
-                    switch (field)
-                    {
-                        case 0:  p.time = v; break;
-                        case 1:  p.flowTime = v; break;
-                        case 2:  p.rotation = v; break;
-                        case 3:  p.pitch = v; break;
-                        case 4:  p.density = v; break;
-                        case 5:  p.form = v; break;
-                        case 6:  p.mass = v; break;
-                        case 7:  p.tension = v; break;
-                        case 8:  p.surface = v; break;
-                        case 9:  p.bend = v; break;
-                        case 10: p.melt = v; break;
-                        case 11: p.tear = v; break;
-                        case 12: p.magnet = v; break;
-                        case 13: p.gravity = v; break;
-                        case 14: p.scatter = v; break;
-                        case 15: p.crush = v; break;
-                        case 16: p.breathe = v; break;
-                        default: p.level = p.energy = p.life = p.fracture = v; break;
-                    }
-
-                    const juce::String at = " (field " + juce::String (field) + ", value " + juce::String (v) + ")";
-                    const int ribbons = LiquidOrganism::ribbonCount (p);
-                    expect (ribbons >= 4 && ribbons <= LiquidOrganism::kMaxRibbons, "ribbon count out of range" + at);
-                    const int samples = LiquidOrganism::sampleCount (p);
-                    expect (samples >= 8 && samples <= LiquidOrganism::kMaxSamples, "sample count out of range" + at);
-                    const float core = LiquidOrganism::coreRadius (p);
-                    expect (std::isfinite (core) && core > 0.05f && core < 0.8f, "core radius out of range" + at);
-
-                    for (int r = 0; r < ribbons; ++r)
-                    {
-                        std::array<RibbonSample, kBuffer> row {};
-                        const int n = o.buildRibbon (r, p, noise, row.data(), kBuffer);
-                        expect (n >= 8 && n <= kBuffer, "sample count out of range" + at);
-                        for (int i = 0; i < n; ++i)
-                        {
-                            expect (finite (row[(size_t) i].p), "non-finite position" + at);
-                            expect (std::abs (row[(size_t) i].p.x) <= 4.0f
-                                    && std::abs (row[(size_t) i].p.y) <= 4.0f
-                                    && std::abs (row[(size_t) i].p.z) <= 4.0f, "position outside the bounding box" + at);
-                            expect (std::isfinite (row[(size_t) i].width)
-                                    && row[(size_t) i].width >= 0.0f && row[(size_t) i].width <= 0.7f, "width out of range" + at);
-                            expect (std::isfinite (row[(size_t) i].bright)
-                                    && row[(size_t) i].bright >= 0.0f && row[(size_t) i].bright <= 1.4f, "brightness out of range" + at);
-                            expect (row[(size_t) i].u >= 0.0f && row[(size_t) i].u <= 1.0f, "u out of range" + at);
-                        }
-                        // The ends taper to nothing: a ribbon must never read as a stroked polyline.
-                        expect (row[0].width <= 0.02f && row[(size_t) (n - 1)].width <= 0.02f, "the ribbon ends do not taper" + at);
-                    }
-                }
-            }
-        }
-
-        beginTest ("A tiny output buffer is respected");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            std::array<RibbonSample, kBuffer> row {};
-            const auto p = defaultParams();
-            expectEquals (o.buildRibbon (0, p, noise, row.data(), 0), 0);
-            expectEquals (o.buildRibbon (0, p, noise, row.data(), 1), 0);
-            expectEquals (o.buildRibbon (0, p, noise, nullptr, kBuffer), 0);
-            expect (o.buildRibbon (0, p, noise, row.data(), 12) == 12, "the buffer limit was ignored");
-            // Out-of-range ribbon indices wrap rather than reading past the array.
-            expect (o.buildRibbon (-7, p, noise, row.data(), kBuffer) > 0, "a negative ribbon index produced nothing");
-            expect (o.buildRibbon (9999, p, noise, row.data(), kBuffer) > 0, "a huge ribbon index produced nothing");
-        }
-
-        beginTest ("Density drives ribbon count and sample count");
-        {
-            auto low = defaultParams();  low.density = 0.0f;
-            auto high = defaultParams(); high.density = 1.0f;
-            expect (LiquidOrganism::ribbonCount (high) > LiquidOrganism::ribbonCount (low), "DENSITY does not add ribbons");
-            expect (LiquidOrganism::sampleCount (high) > LiquidOrganism::sampleCount (low), "DENSITY does not add detail");
-        }
-
-        beginTest ("Form flattens the ribbon's belly into a hard-shouldered band");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            auto organic = defaultParams();  organic.form = 0.0f;
-            auto crystal = defaultParams();  crystal.form = 1.0f;
-            std::array<RibbonSample, kBuffer> a {}, b {};
-            const int n = o.buildRibbon (0, organic, noise, a.data(), kBuffer);
-            o.buildRibbon (0, crystal, noise, b.data(), kBuffer);
-            const int quarter = n / 4;
-            // A crystalline ribbon is already near full width a quarter of the way in,
-            // where the organic one is still swelling toward its middle.
-            const float organicShoulder = a[(size_t) quarter].width / juce::jmax (1.0e-6f, a[(size_t) (n / 2)].width);
-            const float crystalShoulder = b[(size_t) quarter].width / juce::jmax (1.0e-6f, b[(size_t) (n / 2)].width);
-            expect (crystalShoulder > organicShoulder + 0.08f, "FORM did not flatten the ribbon profile");
-            // Both still taper to nothing at the ends.
-            expect (b[0].width <= 0.02f && b[(size_t) (n - 1)].width <= 0.02f, "a crystalline ribbon does not taper");
-        }
-
-        beginTest ("Mass opens the core");
-        {
-            auto shut = defaultParams(); shut.mass = 0.0f;
-            auto open = defaultParams(); open.mass = 1.0f;
-            expect (LiquidOrganism::coreRadius (open) > LiquidOrganism::coreRadius (shut) + 0.15f, "MASS does not open the core");
-        }
-
-        beginTest ("Tension tightens the orbits and thins the ribbons");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            auto loose = defaultParams(); loose.tension = 0.0f;
-            auto tight = defaultParams(); tight.tension = 1.0f;
-            Frame a, b;
-            a.build (o, loose, noise);
-            b.build (o, tight, noise);
-
-            float thinner = 0.0f, wider = 0.0f;
-            float spreadLoose = 0.0f, spreadTight = 0.0f;
-            for (int r = 0; r < juce::jmin (a.ribbons, b.ribbons); ++r)
-            {
-                (b.widthOf (r) < a.widthOf (r) ? thinner : wider) += 1.0f;
-                for (int i = 0; i < a.lengths[(size_t) r]; ++i) spreadLoose += a.rows[(size_t) r][(size_t) i].p.length();
-                for (int i = 0; i < b.lengths[(size_t) r]; ++i) spreadTight += b.rows[(size_t) r][(size_t) i].p.length();
-            }
-            expect (thinner > wider, "TENSION did not thin the ribbons");
-            expect (spreadTight < spreadLoose, "TENSION did not pull the orbits in");
-        }
-
-        beginTest ("Every Evolve operator moves the geometry");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            const auto rest = defaultParams();
-            Frame base;
-            base.build (o, rest, noise);
-
-            struct Case { const char* name; float LiquidOrganism::Params::* field; float minimumShift; };
-            const Case cases[] = {
-                { "BEND",    &LiquidOrganism::Params::bend,    0.05f },
-                { "MELT",    &LiquidOrganism::Params::melt,    0.05f },
-                { "TEAR",    &LiquidOrganism::Params::tear,    0.05f },
-                { "MAGNET",  &LiquidOrganism::Params::magnet,  0.05f },
-                { "SCATTER", &LiquidOrganism::Params::scatter, 0.02f },
-                { "CRUSH",   &LiquidOrganism::Params::crush,   0.01f },
-                { "SURFACE", &LiquidOrganism::Params::surface, 0.0f  },   // SURFACE roughens edges, not positions
-            };
-            for (const auto& c : cases)
-            {
-                auto p = rest;
-                p.*(c.field) = 1.0f;
-                Frame moved;
-                moved.build (o, p, noise);
-                if (c.minimumShift > 0.0f)
-                    expect (moved.shiftFrom (base) > c.minimumShift,
-                            juce::String (c.name) + " did not deform the object");
-            }
-
-            // GRAVITY pulls the whole bundle in or pushes it out.
-            auto light = rest, heavy = rest;
-            light.gravity = 0.0f;
-            heavy.gravity = 1.0f;
-            Frame l, h;
-            l.build (o, light, noise);
-            h.build (o, heavy, noise);
-            float outer = 0.0f, inner = 0.0f;
-            for (int i = 0; i < l.lengths[0]; ++i) outer += l.rows[0][(size_t) i].p.length();
-            for (int i = 0; i < h.lengths[0]; ++i) inner += h.rows[0][(size_t) i].p.length();
-            expect (inner < outer, "GRAVITY did not pull the bundle in");
-        }
-
-        beginTest ("Tear splits a ribbon and the halves drift apart");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            auto whole = defaultParams();
-            auto torn = defaultParams(); torn.tear = 1.0f;
-            std::array<RibbonSample, kBuffer> a {}, b {};
-            // Ribbon 1 is a tear victim (every third from index 1).
-            const int n = o.buildRibbon (1, whole, noise, a.data(), kBuffer);
-            o.buildRibbon (1, torn, noise, b.data(), kBuffer);
-            const int half = n / 2;
-            const float gapBefore = (a[(size_t) half].p - a[(size_t) (half - 1)].p).length();
-            const float gapAfter = (b[(size_t) half].p - b[(size_t) (half - 1)].p).length();
-            expect (gapAfter > gapBefore * 2.0f, "TEAR did not open a gap in the middle of the ribbon");
-        }
-
-        beginTest ("Crush quantises the ribbon onto a coarse lattice");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            auto p = defaultParams(); p.crush = 1.0f;
-            std::array<RibbonSample, kBuffer> row {};
-            const int n = o.buildRibbon (0, p, noise, row.data(), kBuffer);
-            expect (o.isAngular (p), "CRUSH did not ask for angular joins");
-            for (int i = 0; i < n; ++i)
-            {
-                // The lattice at crush = 1 has a step of 1 / 3.4.
-                const float step = 1.0f / 3.4f;
-                const float rx = row[(size_t) i].p.x / step;
-                expect (std::abs (rx - std::round (rx)) < 0.02f, "CRUSH left a position off the lattice");
-            }
-            auto smooth = defaultParams();
-            expect (! o.isAngular (smooth), "the object is angular with CRUSH at zero");
-        }
-
-        beginTest ("Freeze holds the flow: the same flow clock gives the same geometry");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            // FREEZE stops the caller advancing flowTime. Everything that moves the
-            // organism must hang off that clock, so a held flowTime must hold the shape.
-            auto a = defaultParams();
-            auto b = defaultParams();
-            b.time = a.time + 4.0f;             // the wall clock keeps running (wobble, twinkle)
-            Frame fa, fb;
-            fa.build (o, a, noise);
-            fb.build (o, b, noise);
-            expectWithinAbsoluteError (fb.shiftFrom (fa), 0.0f, 0.0f);
-            for (int r = 0; r < fa.ribbons; ++r)
-                expectWithinAbsoluteError (fb.widthOf (r), fa.widthOf (r), 0.0f);
-
-            auto c = defaultParams();
-            c.flowTime = a.flowTime + 4.0f;     // and it must move again once the flow runs
-            Frame fc;
-            fc.build (o, c, noise);
-            expect (fc.shiftFrom (fa) > 0.01f, "the object did not move when the flow ran");
-        }
-
-        beginTest ("The core silhouette is a bounded, deforming blob");
-        {
-            LiquidOrganism o (0x11B0Fu);
-            auto p = defaultParams();
-            float minR = 1.0e9f, maxR = -1.0e9f;
-            for (float a = 0.0f; a < 6.283f; a += 0.02f)
-            {
-                const float r = o.coreProfile (a, p, noise);
-                expect (std::isfinite (r) && r >= 0.5f && r <= 1.6f, "core profile out of range");
-                minR = juce::jmin (minR, r);
-                maxR = juce::jmax (maxR, r);
-            }
-            expect (maxR - minR > 0.02f, "the core is a circle, not an organic mass");
-            expect (std::isfinite (o.coreProfile (std::numeric_limits<float>::quiet_NaN(), p, noise)), "NaN angle broke the core");
-
-            auto flowing = defaultParams();
-            flowing.flowTime = p.flowTime + 6.0f;
-            expect (std::abs (o.coreProfile (1.0f, flowing, noise) - o.coreProfile (1.0f, p, noise)) > 1.0e-4f,
-                    "the core does not deform as the flow runs");
-
-            // FREEZE holds the flow clock, and the core must stop deforming with it.
-            auto frozen = defaultParams();
-            frozen.time = p.time + 6.0f;
-            expectWithinAbsoluteError (o.coreProfile (1.0f, frozen, noise), o.coreProfile (1.0f, p, noise), 0.0f);
-        }
-    }
-};
-
-static LiquidOrganismTests liquidOrganismTests;
-
-//==============================================================================
-class RibbonDepthTests : public juce::UnitTest
-{
-public:
-    RibbonDepthTests() : juce::UnitTest ("Ribbon depth sorting", "visualizer") {}
-
-    void runTest() override
-    {
-        beginTest ("Sorting orders the spans back to front");
-        {
-            std::array<RibbonSpan, 8> spans {};
-            const float z[] = { 0.4f, -0.9f, 0.1f, -0.2f, 1.0f, -1.0f, 0.0f, 0.55f };
-            for (int i = 0; i < 8; ++i) spans[(size_t) i] = { i, 0, 4, z[i], false };
-            LiquidOrganism::sortByDepth (spans.data(), 8);
-            for (int i = 1; i < 8; ++i)
-                expect (spans[(size_t) i].meanZ >= spans[(size_t) (i - 1)].meanZ, "the spans are not ordered by depth");
-        }
-
-        beginTest ("A ribbon crossing behind the core is cut, one crossing at the rim is not");
-        {
-            std::array<RibbonSample, 9> row {};
-            for (int i = 0; i < 9; ++i)
-            {
-                row[(size_t) i].u = (float) i / 8.0f;
-                row[(size_t) i].p = { 0.05f, 0.0f, 0.8f - 0.2f * (float) i };     // passes through z = 0 near the axis
-            }
-            std::array<RibbonSpan, 8> spans {};
-            const int cut = LiquidOrganism::splitByDepth (3, row.data(), 9, false, 0.4f, spans.data(), 8);
-            expectEquals (cut, 2);
-            expect (spans[0].ribbon == 3 && spans[1].ribbon == 3, "the spans lost their ribbon");
-            expect (spans[0].first + spans[0].count - 1 == spans[1].first, "the two runs do not share the crossing sample");
-            expect (spans[0].meanZ > 0.0f && spans[1].meanZ < 0.0f, "the runs are not on opposite sides of the core");
-
-            // The same crossing, but out at the silhouette: no cut, or the strand shows
-            // a blunt end in the middle of a ribbon that should read as continuous.
-            for (int i = 0; i < 9; ++i) row[(size_t) i].p = { 1.1f, 0.0f, 0.8f - 0.2f * (float) i };
-            expectEquals (LiquidOrganism::splitByDepth (3, row.data(), 9, false, 0.4f, spans.data(), 8), 1);
-        }
-
-        beginTest ("Splitting is safe with degenerate input");
-        {
-            std::array<RibbonSample, 4> row {};
-            std::array<RibbonSpan, 4> spans {};
-            expectEquals (LiquidOrganism::splitByDepth (0, nullptr, 4, false, 0.5f, spans.data(), 4), 0);
-            expectEquals (LiquidOrganism::splitByDepth (0, row.data(), 4, false, 0.5f, nullptr, 4), 0);
-            expectEquals (LiquidOrganism::splitByDepth (0, row.data(), 1, false, 0.5f, spans.data(), 4), 0);
-            expectEquals (LiquidOrganism::splitByDepth (0, row.data(), 4, false, 0.5f, spans.data(), 0), 0);
-            LiquidOrganism::sortByDepth (spans.data(), 0);      // must not walk off the front
-        }
-
-        beginTest ("Every sample of a real ribbon ends up in exactly one run");
-        {
-            const ValueNoise noise (0x5EEDA11u);
-            LiquidOrganism o (0x11B0Fu);
-            auto p = defaultParams();
-            p.density = 1.0f;
-            std::array<RibbonSample, kBuffer> row {};
-            std::array<RibbonSpan, 16> spans {};
-            for (int r = 0; r < LiquidOrganism::ribbonCount (p); ++r)
-            {
-                const int n = o.buildRibbon (r, p, noise, row.data(), kBuffer);
-                const int count = LiquidOrganism::splitByDepth (r, row.data(), n, false, 0.5f, spans.data(), 16);
-                expect (count >= 1, "a ribbon produced no spans");
-                int covered = 0;
-                for (int i = 0; i < count; ++i)
-                {
-                    expect (spans[(size_t) i].first >= 0 && spans[(size_t) i].first + spans[(size_t) i].count <= n,
-                            "a span runs off the end of the ribbon");
-                    covered += spans[(size_t) i].count;
-                }
-                // Runs overlap by exactly one sample at each cut.
-                expectEquals (covered, n + count - 1);
-            }
-        }
-    }
-};
-
-static RibbonDepthTests ribbonDepthTests;
-
-//==============================================================================
-class ObjectParticleTests : public juce::UnitTest
-{
-public:
-    ObjectParticleTests() : juce::UnitTest ("Object particles", "visualizer") {}
-
-    void runTest() override
-    {
-        const ValueNoise noise (0x5EEDA11u);
-
-        beginTest ("A seed reproduces both populations");
-        {
-            ParticleSystem a (0xA11CEu), b (0xA11CEu);
-            ParticleSystem::Env e;
-            e.life = 1.0f;
-            for (int frame = 0; frame < 40; ++frame)
-            {
-                e.time += e.dt;
-                e.flowTime += e.dt * 0.4f;
-                a.updateSparkles (e, noise, 60);
-                b.updateSparkles (e, noise, 60);
-                a.updateBubbles (e, noise, 10);
-                b.updateBubbles (e, noise, 10);
-            }
-            for (int i = 0; i < 60; ++i)
-            {
-                expectWithinAbsoluteError (a.sparkleArray()[(size_t) i].p.x, b.sparkleArray()[(size_t) i].p.x, 0.0f);
-                expectWithinAbsoluteError (a.sparkleArray()[(size_t) i].bright, b.sparkleArray()[(size_t) i].bright, 0.0f);
-            }
-        }
-
-        beginTest ("Positions stay bounded for hours, at every extreme, NaN included");
-        {
-            ParticleSystem ps (0xA11CEu);
-            const float nan = std::numeric_limits<float>::quiet_NaN();
-            const float inf = std::numeric_limits<float>::infinity();
-            const float extremes[] = { 0.0f, 1.0f, -5.0f, 1.0e9f, nan, inf, -inf };
-
-            for (float v : extremes)
-            {
-                ParticleSystem::Env e;
-                e.dt = v;
-                e.time = v;
-                e.flowTime = v;
-                e.density = e.decay = e.tension = e.melt = e.scatter = e.life = e.level = e.breathe = v;
-                e.fracture = v;
-                for (int frame = 0; frame < 400; ++frame)
-                {
-                    ps.updateSparkles (e, noise, ParticleSystem::kMaxSparkles);
-                    ps.updateBubbles (e, noise, ParticleSystem::kMaxBubbles);
-                }
-                for (const auto& s : ps.sparkleArray())
-                {
-                    expect (std::isfinite (s.p.x) && std::isfinite (s.p.y) && std::isfinite (s.p.z), "sparkle went non-finite");
-                    expect (std::abs (s.p.x) <= 5.0f && std::abs (s.p.y) <= 5.0f && std::abs (s.p.z) <= 5.0f, "sparkle escaped its box");
-                    expect (s.bright >= 0.0f && s.bright <= 1.0f, "sparkle brightness out of range");
-                }
-                for (const auto& b : ps.bubbleArray())
-                {
-                    expect (std::isfinite (b.p.x) && std::isfinite (b.p.y) && std::isfinite (b.p.z), "bubble went non-finite");
-                    expect (std::abs (b.p.x) <= 4.0f && std::abs (b.p.y) <= 4.0f && std::abs (b.p.z) <= 4.0f, "bubble escaped its box");
-                    expect (std::isfinite (b.scale) && b.scale > 0.0f, "bubble depth scale out of range");
-                }
-            }
-        }
-
-        beginTest ("Counts follow Density and respect their caps");
-        {
-            ParticleSystem::Env quiet, busy;
-            quiet.density = 0.0f; quiet.life = 0.0f;
-            busy.density = 1.0f; busy.life = 1.0f;
-            expect (ParticleSystem::sparkleCount (busy, 999) > ParticleSystem::sparkleCount (quiet, 999), "DENSITY does not add sparkles");
-            expect (ParticleSystem::bubbleCount (busy, 999) > ParticleSystem::bubbleCount (quiet, 999), "DENSITY does not add bubbles");
-            expect (ParticleSystem::sparkleCount (busy, 999) <= ParticleSystem::kMaxSparkles, "sparkle count over the array");
-            expect (ParticleSystem::bubbleCount (busy, 999) <= ParticleSystem::kMaxBubbles, "bubble count over the array");
-            expect (ParticleSystem::sparkleCount (busy, 12) <= 12, "the caller's cap was ignored");
-            expect (ParticleSystem::sparkleCount (busy, 0) >= 4, "a zero cap produced an empty population");
-
-            ParticleSystem::Env broken;
-            broken.density = std::numeric_limits<float>::quiet_NaN();
-            expect (ParticleSystem::sparkleCount (broken, 999) >= 4, "NaN density emptied the volume");
-        }
-
-        beginTest ("A Fracture hit throws the sparkles outward, and they settle back");
-        {
-            ParticleSystem ps (0xA11CEu);
-            ParticleSystem::Env calm;
-            calm.life = 1.0f;
-            for (int frame = 0; frame < 30; ++frame) { calm.time += calm.dt; ps.updateSparkles (calm, noise, 60); }
-            float before = 0.0f;
-            for (int i = 0; i < 60; ++i) before += ps.sparkleArray()[(size_t) i].p.length();
-
-            auto hit = calm;
-            hit.fracture = 1.0f;
-            for (int frame = 0; frame < 30; ++frame) { hit.time += hit.dt; ps.updateSparkles (hit, noise, 60); }
-            float during = 0.0f;
-            for (int i = 0; i < 60; ++i) during += ps.sparkleArray()[(size_t) i].p.length();
-            expect (during > before * 1.1f, "FRACTURE did not throw the sparkles outward");
-
-            for (int frame = 0; frame < 300; ++frame) { calm.time += calm.dt; ps.updateSparkles (calm, noise, 60); }
-            float after = 0.0f;
-            for (int i = 0; i < 60; ++i) after += ps.sparkleArray()[(size_t) i].p.length();
-            expect (after < during, "the burst never settled back");
-        }
-    }
-};
-
-static ObjectParticleTests objectParticleTests;
 
 //==============================================================================
 class PortholeLayoutTests : public juce::UnitTest
@@ -747,3 +194,408 @@ public:
 };
 
 static PortholeLayoutTests portholeLayoutTests;
+
+//==============================================================================
+/**
+    THE VOLUMETRIC FIELD (NodeField).
+
+    The field is the object, so what is tested here is what the object promises:
+    that a seed reproduces it exactly, that nothing it is handed — including a
+    snapshot full of NaNs — can put a point outside a bounded box, and that every
+    engine input it claims to read actually moves something.
+*/
+class NodeFieldTests : public juce::UnitTest
+{
+public:
+    NodeFieldTests() : juce::UnitTest ("ANTI-MATTER field", "Visualizers") {}
+
+    /** A snapshot of a note ringing on a material with a full set of resonators. */
+    static VisualStateSnapshot ringing()
+    {
+        VisualStateSnapshot s;
+        s.density = 0.5f; s.form = 0.3f; s.mass = 0.4f; s.tension = 0.5f; s.decay = 0.5f; s.surface = 0.2f;
+        s.pitchHz = 261.6f;
+        s.numVisualNodes = VisualStateSnapshot::kVisualNodes;
+        s.clusterCount = 4;
+        for (int i = 0; i < s.numVisualNodes; ++i)
+        {
+            s.nodeFrequency[i] = 261.6f * (float) (i + 1);
+            s.nodeEnergy[i] = 0.06f / (float) (i + 1);
+            s.nodePan[i] = (i % 2 == 0 ? 0.4f : -0.4f);
+            s.nodeCluster[i] = (uint8_t) (i % 4);
+        }
+        s.noteId = 7; s.noteVelocity = 0.8f; s.noteMidi = 60; s.noteHeld = true;
+        s.numVisualVoices = 1;
+        s.voicePitchHz[0] = 261.6f; s.voiceEnergy[0] = 0.8f; s.voiceVelocity[0] = 0.8f;
+        s.activeVoices = 1;
+        return s;
+    }
+
+    static NodeField::Anim playing()
+    {
+        NodeField::Anim a;
+        a.dt = 1.0f / 30.0f;
+        a.time = 4.0f; a.flowTime = 2.5f;
+        a.level = 0.4f; a.energy = 0.7f; a.life = 1.0f;
+        a.coreR = 0.3f;
+        return a;
+    }
+
+    /** Runs `frames` frames and returns the field, so state that accumulates is exercised. */
+    static void run (NodeField& f, const VisualStateSnapshot& s, NodeField::Anim a,
+                     const ValueNoise& n, int count, int frames)
+    {
+        for (int i = 0; i < frames; ++i)
+        {
+            a.time += a.dt;
+            a.flowTime += a.dt * 0.5f;
+            f.update (s, a, n, count);
+        }
+    }
+
+    static float meanRadius (const NodeField& f, int count)
+    {
+        if (count <= 0) return 0.0f;
+        float sum = 0.0f;
+        for (int i = 0; i < count; ++i) sum += f.point (i).p.length();
+        return sum / (float) count;
+    }
+
+    static float radiusSpread (const NodeField& f, int count)
+    {
+        if (count <= 0) return 0.0f;
+        const float mean = meanRadius (f, count);
+        float sum = 0.0f;
+        for (int i = 0; i < count; ++i)
+        {
+            const float d = f.point (i).p.length() - mean;
+            sum += d * d;
+        }
+        return std::sqrt (sum / (float) count);
+    }
+
+    static float meanShiftOf (const NodeField& a, const NodeField& b, int count)
+    {
+        if (count <= 0) return 0.0f;
+        float sum = 0.0f;
+        for (int i = 0; i < count; ++i) sum += (a.point (i).p - b.point (i).p).length();
+        return sum / (float) count;
+    }
+
+    static float totalLight (const NodeField& f, int count)
+    {
+        float sum = 0.0f;
+        for (int i = 0; i < count; ++i) sum += f.point (i).bright;
+        return sum;
+    }
+
+    void runTest() override
+    {
+        const ValueNoise noise (0x5EEDA11u);
+        const int count = 512;
+
+        beginTest ("A seed reproduces the field exactly");
+        {
+            NodeField a (0xB0DE5u), b (0xB0DE5u);
+            run (a, ringing(), playing(), noise, count, 20);
+            run (b, ringing(), playing(), noise, count, 20);
+            for (int i = 0; i < count; ++i)
+            {
+                expect (a.point (i).p.x == b.point (i).p.x
+                        && a.point (i).p.y == b.point (i).p.y
+                        && a.point (i).p.z == b.point (i).p.z, "the same seed gave a different position");
+                expect (a.point (i).bright == b.point (i).bright, "the same seed gave a different brightness");
+            }
+            NodeField c (0xB0DE6u);
+            run (c, ringing(), playing(), noise, count, 20);
+            expect (meanShiftOf (a, c, count) > 0.01f, "a different seed produced the same field");
+        }
+
+        beginTest ("Every output is finite and bounded, whatever arrives in the snapshot");
+        {
+            const float nan = std::numeric_limits<float>::quiet_NaN();
+            const float inf = std::numeric_limits<float>::infinity();
+            const float extremes[] = { 0.0f, 1.0f, -1.0f, 0.5f, nan, inf, -inf, 1.0e12f, -1.0e12f };
+
+            for (float v : extremes)
+            {
+                VisualStateSnapshot s = ringing();
+                s.density = s.form = s.mass = s.tension = s.decay = s.surface = v;
+                s.bend = s.melt = s.tear = s.magnet = s.gravity = s.scatter = s.crush = v;
+                s.pitchHz = v;
+                for (int i = 0; i < s.numVisualNodes; ++i)
+                {
+                    s.nodeFrequency[i] = v;
+                    s.nodeEnergy[i] = v;
+                    s.nodePan[i] = v;
+                }
+                for (int k = 0; k < VisualStateSnapshot::kVisualVoices; ++k)
+                {
+                    s.voicePitchHz[k] = v;
+                    s.voiceEnergy[k] = v;
+                    s.voiceVelocity[k] = v;
+                }
+                s.numVisualVoices = VisualStateSnapshot::kVisualVoices;
+                s.noteVelocity = v;
+
+                NodeField::Anim a = playing();
+                a.breathe = v; a.level = v; a.energy = v; a.life = v; a.fracture = v;
+                a.freezeMix = v; a.hueDrift = v; a.coreR = v;
+
+                NodeField f;
+                for (int frame = 0; frame < 12; ++frame)
+                {
+                    a.time += 1.0f / 30.0f;
+                    a.flowTime += 0.02f;
+                    s.noteId += 1;             // a new note every frame: the shock list must not run away
+                    s.fractureHits += 2;
+                    f.update (s, a, noise, count);
+                }
+                for (int i = 0; i < count; ++i)
+                {
+                    const auto& q = f.point (i);
+                    expect (finite (q.p), "a point left the finite numbers");
+                    expect (std::abs (q.p.x) <= 3.0f && std::abs (q.p.y) <= 3.0f && std::abs (q.p.z) <= 3.0f,
+                            "a point escaped its bounding box");
+                    expect (std::isfinite (q.bright) && q.bright >= 0.0f && q.bright <= 3.0f, "brightness left its range");
+                    expect (std::isfinite (q.size) && q.size >= 0.0f && q.size < 0.2f, "size left its range");
+                    expect (std::isfinite (q.hue), "hue left the finite numbers");
+                    expect (std::isfinite (q.white) && q.white >= 0.0f && q.white <= 1.0f, "whiteness left its range");
+                    expect (finite (q.vel), "a velocity left the finite numbers");
+                }
+            }
+        }
+
+        beginTest ("The count is a whole number of swarms and respects its cap");
+        {
+            VisualStateSnapshot s = ringing();
+            for (float d : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
+            {
+                s.density = d;
+                for (int cap : { 128, 900, 2400, NodeField::kMaxPoints })
+                {
+                    const int n = NodeField::pointCount (s, playing(), cap);
+                    expect (n <= cap && n <= NodeField::kMaxPoints, "the point count ignored its cap");
+                    expect (n % NodeField::kSlots == 0, "the swarms were left uneven");
+                    expect (n > 0, "the field emptied itself");
+                }
+            }
+            s.density = 0.0f;
+            const int low = NodeField::pointCount (s, playing(), NodeField::kMaxPoints);
+            s.density = 1.0f;
+            const int high = NodeField::pointCount (s, playing(), NodeField::kMaxPoints);
+            expect (high > low + 500, "Density did not carry the population");
+        }
+
+        beginTest ("A node's frequency sets its radius and its energy sets its brightness");
+        {
+            // Two snapshots differing only in which end of the spectrum carries the energy.
+            auto withEnergyAt = [] (bool low)
+            {
+                VisualStateSnapshot s = ringing();
+                for (int i = 0; i < s.numVisualNodes; ++i)
+                    s.nodeEnergy[i] = low ? (i < 4 ? 0.3f : 0.0005f) : (i >= 28 ? 0.3f : 0.0005f);
+                return s;
+            };
+            NodeField deep, high;
+            run (deep, withEnergyAt (true), playing(), noise, count, 30);
+            run (high, withEnergyAt (false), playing(), noise, count, 30);
+
+            // Brightness-weighted mean radius: energy low in the spectrum lights the
+            // inside of the volume, energy high in it lights the shell.
+            auto litRadius = [] (const NodeField& f, int n)
+            {
+                float w = 0.0f, sum = 0.0f;
+                for (int i = 0; i < n; ++i)
+                {
+                    const float b = f.point (i).bright;
+                    sum += b * f.point (i).p.length();
+                    w += b;
+                }
+                return w > 0.0f ? sum / w : 0.0f;
+            };
+            expect (litRadius (high, count) > litRadius (deep, count) + 0.03f,
+                    "energy high in the spectrum did not light the outside of the volume");
+        }
+
+        beginTest ("A node that falls silent takes its swarm's light with it");
+        {
+            VisualStateSnapshot loud = ringing(), quiet = ringing();
+            for (int i = 0; i < quiet.numVisualNodes; ++i) quiet.nodeEnergy[i] = 0.0f;
+            quiet.voiceEnergy[0] = 0.0f;
+            NodeField a, b;
+            run (a, loud, playing(), noise, count, 40);
+            run (b, quiet, playing(), noise, count, 40);
+            expect (totalLight (a, count) > totalLight (b, count) * 1.6f,
+                    "a silent set of resonators looked the same as a ringing one");
+            expect (totalLight (b, count) > 0.0f, "a silent field went completely dark");
+        }
+
+        beginTest ("Nothing playing still leaves a field that breathes");
+        {
+            VisualStateSnapshot s;          // default: no nodes, no voices, nothing sounding
+            NodeField::Anim a = playing();
+            a.life = 0.0f; a.level = 0.0f; a.energy = 0.0f;
+            NodeField f;
+            run (f, s, a, noise, count, 30);
+            expect (totalLight (f, count) > 0.15f * (float) count, "the idle field is too dark to read");
+            float far = 0.0f;
+            for (int i = 0; i < count; ++i) far = std::max (far, f.point (i).p.length());
+            expect (far > 0.5f, "the idle field collapsed into the middle");
+        }
+
+        beginTest ("Tension draws the shells onto one skin");
+        {
+            VisualStateSnapshot loose = ringing(), tight = ringing();
+            loose.tension = 0.0f; tight.tension = 1.0f;
+            NodeField a, b;
+            run (a, loose, playing(), noise, count, 30);
+            run (b, tight, playing(), noise, count, 30);
+            expect (radiusSpread (b, count) < radiusSpread (a, count) * 0.7f,
+                    "Tension did not tighten the orbits");
+        }
+
+        beginTest ("Mass opens a cavity the field keeps out of");
+        {
+            for (float mass : { 0.0f, 1.0f })
+            {
+                VisualStateSnapshot s = ringing();
+                s.mass = mass;
+                NodeField::Anim a = playing();
+                a.coreR = 0.145f + 0.27f * mass;
+                NodeField f;
+                run (f, s, a, noise, count, 30);
+                float nearest = 10.0f;
+                for (int i = 0; i < count; ++i) nearest = std::min (nearest, f.point (i).p.length());
+                expect (nearest > a.coreR * 0.75f, "a point was left inside the mass");
+            }
+        }
+
+        beginTest ("Every Evolve operator moves the volume");
+        {
+            NodeField rest;
+            run (rest, ringing(), playing(), noise, count, 30);
+
+            struct Op { const char* name; float VisualStateSnapshot::* field; float value; float least; };
+            const Op ops[] = {
+                { "bend",    &VisualStateSnapshot::bend,    1.0f, 0.08f },
+                { "melt",    &VisualStateSnapshot::melt,    1.0f, 0.08f },
+                { "tear",    &VisualStateSnapshot::tear,    1.0f, 0.10f },
+                { "magnet",  &VisualStateSnapshot::magnet,  1.0f, 0.05f },
+                { "gravity", &VisualStateSnapshot::gravity, 0.0f, 0.08f },
+                { "scatter", &VisualStateSnapshot::scatter, 1.0f, 0.08f },
+                { "crush",   &VisualStateSnapshot::crush,   1.0f, 0.02f },
+            };
+            for (const auto& op : ops)
+            {
+                VisualStateSnapshot s = ringing();
+                s.*(op.field) = op.value;
+                NodeField f;
+                run (f, s, playing(), noise, count, 30);
+                const float shift = meanShiftOf (rest, f, count);
+                expect (shift > op.least,
+                        juce::String (op.name) + " barely moved the volume (" + juce::String (shift, 4) + ")");
+            }
+        }
+
+        beginTest ("Freeze holds the flow: the same clock gives the same volume");
+        {
+            VisualStateSnapshot s = ringing();
+            NodeField::Anim a = playing();
+            a.freezeMix = 1.0f;
+            NodeField f;
+            // Long enough for the voice cells to settle, advancing the same `a` the
+            // freeze loop below will use.
+            for (int k = 0; k < 90; ++k)
+            {
+                a.time += a.dt;
+                a.flowTime += a.dt * 0.5f;
+                f.update (s, a, noise, count);
+            }
+            // Now advance the wall clock but not the flow clock, exactly as Freeze does.
+            std::array<Vec3, 512> before {};
+            for (int i = 0; i < count; ++i) before[(size_t) i] = f.point (i).p;
+            for (int k = 0; k < 10; ++k) { a.time += a.dt; f.update (s, a, noise, count); }
+            float moved = 0.0f;
+            for (int i = 0; i < count; ++i) moved = std::max (moved, (f.point (i).p - before[(size_t) i]).length());
+            expect (moved < 0.02f, "the volume kept drifting while frozen");
+        }
+
+        beginTest ("A new note throws a front out through the shells");
+        {
+            VisualStateSnapshot s = ringing();
+            NodeField::Anim a = playing();
+            NodeField f;
+            run (f, s, a, noise, count, 20);
+            const float quiet = totalLight (f, count);
+
+            s.noteId = 8;                   // the event: a change of id, not of envelope
+            s.noteVelocity = 1.0f;
+            a.time += a.dt; f.update (s, a, noise, count);
+            expect (f.shockAmplitude() > 0.3f, "a new note did not start a front");
+
+            float peak = 0.0f;
+            for (int k = 0; k < 12; ++k)
+            {
+                a.time += a.dt; a.flowTime += a.dt * 0.5f;
+                f.update (s, a, noise, count);
+                peak = std::max (peak, totalLight (f, count));
+            }
+            expect (peak > quiet * 1.15f, "the front did not light the volume as it passed");
+
+            // A soft strike must throw a visibly weaker front than a hard one. Both
+            // fields start with nothing sounding so no earlier front is in flight.
+            VisualStateSnapshot ss = ringing(), hs = ringing();
+            ss.noteId = 0; hs.noteId = 0;
+            NodeField soft, hard;
+            NodeField::Anim aa = playing();
+            run (soft, ss, aa, noise, count, 5);
+            run (hard, hs, aa, noise, count, 5);
+            expect (soft.shockAmplitude() < 0.001f, "a front fired without a note");
+            ss.noteId = 9; ss.noteVelocity = 0.15f;
+            hs.noteId = 9; hs.noteVelocity = 1.0f;
+            soft.update (ss, aa, noise, count);
+            hard.update (hs, aa, noise, count);
+            expect (hard.shockAmplitude() > soft.shockAmplitude() * 1.4f,
+                    "a hard strike threw the same front as a soft one");
+        }
+
+        beginTest ("A fragment step is answered one for one");
+        {
+            VisualStateSnapshot s = ringing();
+            NodeField::Anim a = playing();
+            NodeField f;
+            run (f, s, a, noise, count, 10);
+            expect (f.shatterAmount() < 0.01f, "the field was already shattered");
+            s.fractureHits += 1;
+            a.time += a.dt;
+            f.update (s, a, noise, count);
+            expect (f.shatterAmount() > 0.02f, "a fragment step did not scramble the volume");
+            for (int k = 0; k < 40; ++k) { a.time += a.dt; f.update (s, a, noise, count); }
+            expect (f.shatterAmount() < 0.01f, "the shatter never settled");
+        }
+
+        beginTest ("A chord fans the volume into one mass per voice");
+        {
+            VisualStateSnapshot one = ringing(), three = ringing();
+            three.numVisualVoices = 3;
+            three.activeVoices = 3;
+            const float hz[3] = { 261.6f, 329.6f, 392.0f };
+            for (int v = 0; v < 3; ++v)
+            {
+                three.voicePitchHz[v] = hz[v];
+                three.voiceEnergy[v] = 0.8f;
+                three.voiceVelocity[v] = 0.8f;
+            }
+            NodeField a, b;
+            run (a, one, playing(), noise, count, 60);
+            run (b, three, playing(), noise, count, 60);
+            expect (meanShiftOf (a, b, count) > 0.02f, "a chord looked exactly like one note");
+            expect (radiusSpread (b, count) > radiusSpread (a, count) * 1.02f,
+                    "the voices of a chord did not take their own radii");
+            expect (b.voiceCells() == 3, "the field did not see all three voices");
+        }
+    }
+};
+
+static NodeFieldTests nodeFieldTests;

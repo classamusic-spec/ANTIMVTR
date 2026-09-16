@@ -34,7 +34,7 @@ namespace
         bool  trails, wideHalo, smudges;
     };
     constexpr QualityCaps kCaps[3] = {
-        { 3000, 1.00f, true,  true,  true  },
+        { 2600, 1.00f, true,  true,  true  },
         { 2100, 1.00f, true,  false, false },
         {  900, 1.00f, false, false, false },
     };
@@ -364,14 +364,18 @@ void AntiMatterVisualizer::renderWell (juce::Graphics& g, const Frame& f)
     const float Rg = f.port.glassR;
     const auto c = f.centre;
 
-    const auto dish = Theme::panelInset.interpolatedWith (f.space, 0.09f);
+    // Theme::well is the ground the object is seen against — the one token the
+    // chassis reserves for behind the glass. Everything here is that colour shaded
+    // relative to itself, so the interior travels with the theme instead of
+    // assuming one: nothing about this bowl is a literal.
+    const auto dish = Theme::well.interpolatedWith (f.space, 0.11f);
     gradient.clearColours();
     gradient.isRadial = true;
     gradient.point1 = { c.x - Rg * 0.18f, c.y - Rg * 0.22f };
     gradient.point2 = { c.x - Rg * 0.18f + Rg * 1.30f, c.y - Rg * 0.22f };
-    gradient.addColour (0.0, dish.brighter (0.16f));
+    gradient.addColour (0.0, dish.brighter (0.09f));
     gradient.addColour (0.55, dish);
-    gradient.addColour (1.0, dish.darker (0.55f));
+    gradient.addColour (1.0, dish.darker (0.62f));
     g.setGradientFill (gradient);
     g.fillEllipse (c.x - Rg, c.y - Rg, Rg * 2.0f, Rg * 2.0f);
 
@@ -383,8 +387,8 @@ void AntiMatterVisualizer::renderWell (juce::Graphics& g, const Frame& f)
     gradient.isRadial = true;
     gradient.point1 = c;
     gradient.point2 = { c.x + hr, c.y };
-    gradient.addColour (0.0, alpha (glow, 0.055f));
-    gradient.addColour (0.45, alpha (glow, 0.026f));
+    gradient.addColour (0.0, alpha (glow, 0.045f));
+    gradient.addColour (0.45, alpha (glow, 0.020f));
     gradient.addColour (1.0, alpha (glow, 0.0f));
     g.setGradientFill (gradient);
     g.fillEllipse (c.x - hr, c.y - hr, hr * 2.0f, hr * 2.0f);
@@ -434,8 +438,11 @@ void AntiMatterVisualizer::drawCore (juce::Graphics& g, const Frame& f)
     // With nothing playing the cloud is the subject and the mass recedes: a dark
     // hole in an empty volume is the one way this object can look switched off.
     const float present = 0.46f + 0.54f * f.life;
-    const auto deep  = Theme::panelEdge;
-    const auto shell = Theme::panelInset.interpolatedWith (Theme::violet, 0.13f);
+    // The mass is the object's own matter, so it is the well's colour driven down
+    // rather than a chassis token: it has to stay the darkest thing on the page
+    // whichever way the theme goes.
+    const auto deep  = Theme::well.darker (0.75f);
+    const auto shell = Theme::well.brighter (0.10f).interpolatedWith (Theme::violet, 0.16f);
 
     // The volume darkening around the mass: points behind it sink into this.
     const float hr = coreOutlineMax * 1.32f;
@@ -628,8 +635,8 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
         const float* const col = shade.data() + (size_t) (db * kHueBins + hb) * 3;
 
         // A point at the back gives up most of its light to the volume in front of it.
-        const float depthGain = 0.145f + 0.855f * depth01 * depth01 * (0.34f + 0.66f * depth01);
-        const float I = q.bright * 3.55f * gain * depthGain;
+        const float depthGain = 0.220f + 0.780f * depth01 * depth01 * (0.34f + 0.66f * depth01);
+        const float I = q.bright * 3.80f * gain * depthGain;
         const float w = q.white;
         const float cr = (col[0] + (1.0f - col[0]) * w) * I;
         const float cg = (col[1] + (1.0f - col[1]) * w) * I;
@@ -658,9 +665,17 @@ void AntiMatterVisualizer::drawField (juce::Graphics& g, const Frame& f)
         // more, because that is what being deep inside a luminous volume looks like.
         if (f.wideHalo)
         {
-            const float gwv = I * (0.150f - 0.070f * depth01);
-            renderer.splatGlow (bx, by, juce::jlimit (glowFloor, 20.0f * unitPx, rad * 4.0f + 2.2f * I * unitPx),
-                                cr * gwv, cg * gwv, cb * gwv);
+            // The gas does not obey the sparks' depth curve. A point at the back of a
+            // luminous volume is out of focus, not extinguished: its hard light is
+            // buried but its glow still reaches the eye, and that is what keeps a
+            // sparse patch from reading as a handful of dots on black.
+            const float Iglow = q.bright * 3.80f * gain * (0.46f + 0.54f * depthGain);
+            const float gwv = Iglow * (0.150f - 0.070f * depth01);
+            const float gr = (col[0] + (1.0f - col[0]) * w) * gwv;
+            const float gg = (col[1] + (1.0f - col[1]) * w) * gwv;
+            const float gb = (col[2] + (1.0f - col[2]) * w) * gwv;
+            renderer.splatGlow (bx, by, juce::jlimit (glowFloor, 17.0f * unitPx, rad * 4.0f + 2.0f * Iglow * unitPx),
+                                gr, gg, gb);
         }
 
         // ---- the comet tail: a point that is moving fast smears where it came from.

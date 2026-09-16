@@ -358,7 +358,7 @@ public:
         // The vacuum is never black. Even with nothing playing, every point keeps a
         // low luminosity that shimmers on its own clock, so the volume still has a
         // shape, still breathes, and never looks switched off.
-        const float dust = 0.145f + 0.130f * (1.0f - a.life);
+        const float dust = 0.225f + 0.085f * (1.0f - a.life);
 
         for (int i = 0; i < count; ++i)
         {
@@ -409,11 +409,13 @@ public:
             float rough = 0.0f;
             if (roughness > 0.0005f || jitter > 0.0005f)
             {
+                // On the flow clock, not the wall clock: FREEZE has to stop the surface
+                // wobbling as dead as it stops everything else.
                 const float w1 = roughness + jitter;
-                rough = S.sin (q.seed * 1.37f + a.time * 4.3f);
+                rough = S.sin (q.seed * 1.37f + a.flowTime * 9.1f);
                 p.x += rough * w1;
-                p.y += S.sin (q.seed * 2.71f + a.time * 3.7f) * w1;
-                p.z += S.sin (q.seed * 4.93f + a.time * 5.1f) * w1;
+                p.y += S.sin (q.seed * 2.71f + a.flowTime * 7.7f) * w1;
+                p.z += S.sin (q.seed * 4.93f + a.flowTime * 10.6f) * w1;
                 // A rough surface scatters the light as well as the path: the shells
                 // break into glitter instead of staying evenly lit.
                 rough *= surface;
@@ -480,9 +482,9 @@ public:
             if (shatter > 0.004f)
             {
                 const float k = shatter * (0.35f + 0.65f * q.hash);
-                p.x += S.sin (q.seed * 7.1f + a.time * 21.0f) * k;
-                p.y += S.sin (q.seed * 5.3f + a.time * 19.0f) * k;
-                p.z += S.sin (q.seed * 9.7f + a.time * 23.0f) * k;
+                p.x += S.sin (q.seed * 7.1f + a.flowTime * 44.0f) * k;
+                p.y += S.sin (q.seed * 5.3f + a.flowTime * 40.0f) * k;
+                p.z += S.sin (q.seed * 9.7f + a.flowTime * 48.0f) * k;
             }
 
             p *= a.breathe;
@@ -630,11 +632,13 @@ private:
             if (sh.amp <= 0.001f) { sh.amp = 0.0f; continue; }
             sh.r += sh.speed * a.dt * run;
             // The front fades as it expands and dies at the shell; Decay holds it longer.
-            sh.amp *= std::exp (-a.dt * (2.6f - 1.5f * decay));
+            sh.amp *= std::exp (-a.dt * run * (2.6f - 1.5f * decay));
             if (sh.r > 1.9f) sh.amp = 0.0f;
         }
 
-        shatter *= std::exp (-a.dt * 9.0f);
+        // Held by FREEZE with everything else: a front caught mid-flight stays
+        // caught, and the volume it has lifted stays lifted.
+        shatter *= std::exp (-a.dt * run * 9.0f);
         strike  *= std::exp (-a.dt * (3.4f - 2.2f * decay));
     }
 

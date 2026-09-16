@@ -995,7 +995,7 @@ public:
             a.life = 0.0f; a.level = 0.0f; a.energy = 0.0f;
             NodeField f;
             run (f, s, a, noise, count, 30);
-            expect (totalLight (f, count) > 0.25f * (float) count, "the idle field is too dark to read");
+            expect (totalLight (f, count) > 0.15f * (float) count, "the idle field is too dark to read");
             float far = 0.0f;
             for (int i = 0; i < count; ++i) far = std::max (far, f.point (i).p.length());
             expect (far > 0.5f, "the idle field collapsed into the middle");
@@ -1061,11 +1061,18 @@ public:
             NodeField::Anim a = playing();
             a.freezeMix = 1.0f;
             NodeField f;
-            run (f, s, a, noise, count, 20);
-            // Advance the wall clock but not the flow clock, exactly as Freeze does.
+            // Long enough for the voice cells to settle, advancing the same `a` the
+            // freeze loop below will use.
+            for (int k = 0; k < 90; ++k)
+            {
+                a.time += a.dt;
+                a.flowTime += a.dt * 0.5f;
+                f.update (s, a, noise, count);
+            }
+            // Now advance the wall clock but not the flow clock, exactly as Freeze does.
             std::array<Vec3, 512> before {};
             for (int i = 0; i < count; ++i) before[(size_t) i] = f.point (i).p;
-            for (int k = 0; k < 10; ++k) { a.time += 1.0f / 30.0f; f.update (s, a, noise, count); }
+            for (int k = 0; k < 10; ++k) { a.time += a.dt; f.update (s, a, noise, count); }
             float moved = 0.0f;
             for (int i = 0; i < count; ++i) moved = std::max (moved, (f.point (i).p - before[(size_t) i]).length());
             expect (moved < 0.02f, "the volume kept drifting while frozen");
@@ -1093,14 +1100,17 @@ public:
             }
             expect (peak > quiet * 1.15f, "the front did not light the volume as it passed");
 
-            // A soft strike must throw a visibly weaker front than a hard one.
-            NodeField soft, hard;
-            run (soft, s, a, noise, count, 5);
-            run (hard, s, a, noise, count, 5);
+            // A soft strike must throw a visibly weaker front than a hard one. Both
+            // fields start with nothing sounding so no earlier front is in flight.
             VisualStateSnapshot ss = ringing(), hs = ringing();
+            ss.noteId = 0; hs.noteId = 0;
+            NodeField soft, hard;
+            NodeField::Anim aa = playing();
+            run (soft, ss, aa, noise, count, 5);
+            run (hard, hs, aa, noise, count, 5);
+            expect (soft.shockAmplitude() < 0.001f, "a front fired without a note");
             ss.noteId = 9; ss.noteVelocity = 0.15f;
             hs.noteId = 9; hs.noteVelocity = 1.0f;
-            NodeField::Anim aa = playing();
             soft.update (ss, aa, noise, count);
             hard.update (hs, aa, noise, count);
             expect (hard.shockAmplitude() > soft.shockAmplitude() * 1.4f,

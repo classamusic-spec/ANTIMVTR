@@ -111,7 +111,9 @@ public:
         const float alpha = dimmed ? 0.4f : 1.0f;
         const float lit = (isMouseOverOrDragging() ? 1.0f : 0.0f);
 
-        draw::insetSurface (g, track, corner);
+        // A depth slider is a control, not a display: a light capsule cut into the
+        // row, with the destination's colour filling it (SPEC section 3).
+        draw::capsuleTrack (g, track, corner, 1.0f);
 
         const float centre = track.getCentreX();
         const float half = track.getWidth() * 0.5f - 1.0f;
@@ -123,7 +125,7 @@ public:
         {
             const auto bar = juce::Rectangle<float> (juce::jmin (centre, x), track.getY() + 1.0f,
                                                      std::abs (x - centre), track.getHeight() - 2.0f);
-            g.setColour (tint.withAlpha (0.34f * alpha + 0.14f * lit));
+            g.setColour (tint.withAlpha (0.55f * alpha + 0.16f * lit));
             g.fillRoundedRectangle (bar, corner - 1.0f);
             g.setColour (tint.withAlpha (0.85f * alpha));
             g.fillRoundedRectangle (bar.withWidth (juce::jmax (1.5f, bar.getWidth())).removeFromBottom (juce::jmax (1.5f, track.getHeight() * 0.22f)), 1.0f);
@@ -145,7 +147,7 @@ public:
         // Zero tick and value handle.
         g.setColour (Theme::textDim.withAlpha (0.75f * alpha));
         g.fillRect (centre - 0.5f, track.getY() - 1.0f, 1.0f, track.getHeight() + 2.0f);
-        g.setColour (juce::Colours::white.withAlpha ((0.7f + 0.3f * lit) * alpha));
+        g.setColour (Theme::textPrimary.withAlpha ((0.75f + 0.25f * lit) * alpha));
         g.fillRoundedRectangle (x - 1.25f, track.getY() - 1.5f, 2.5f, track.getHeight() + 3.0f, 1.25f);
 
         g.setColour (tint.withAlpha ((0.18f + 0.3f * lit) * alpha));
@@ -214,8 +216,8 @@ public:
         const auto l = ModRowLayout::forRow (getLocalBounds());
 
         // Surface: a graphite row washed with a trace of the destination's colour.
-        juce::ColourGradient surface (Theme::panelInset.interpolatedWith (tint, 0.05f * alpha), b.getX(), b.getY(),
-                                      Theme::panelInset, b.getRight(), b.getY(), false);
+        juce::ColourGradient surface (Theme::panelInset.brighter (0.35f).interpolatedWith (tint, 0.07f * alpha), b.getX(), b.getY(),
+                                      Theme::panelInset.brighter (0.35f), b.getRight(), b.getY(), false);
         g.setGradientFill (surface);
         g.fillRoundedRectangle (b, corner);
         g.setColour (tint.withAlpha (0.10f * alpha + 0.10f * hover));
@@ -235,7 +237,9 @@ public:
         const juce::String sourceText = juce::String (modSourceName (routing.source)).toUpperCase();
         draw::trackedText (g, sourceText, l.source.toFloat(), juce::Justification::centredLeft,
                            draw::fitFont (Theme::labelFontStrong (h), sourceText, (float) l.source.getWidth()),
-                           Theme::amber.withAlpha (alpha));
+                           // Amber at full strength is a pale orange on a light row: the
+                           // modulation colour has to be deepened to carry as lettering.
+                           Theme::amber.darker (0.55f).withAlpha (alpha));
 
         {
             juce::Path p;
@@ -252,7 +256,7 @@ public:
         const auto name = targetName (routing.target);
         draw::trackedText (g, name, l.destination.toFloat(), juce::Justification::centredLeft,
                            draw::fitFont (Theme::labelFont (h), name, (float) l.destination.getWidth()),
-                           tint.interpolatedWith (Theme::textPrimary, 0.35f).withAlpha (alpha));
+                           tint.darker (0.3f).interpolatedWith (Theme::textPrimary, 0.45f).withAlpha (alpha));
 
         draw::trackedText (g, depthText (routing), l.value.toFloat(), juce::Justification::centredRight,
                            Theme::valueFont (h * 0.95f), Theme::textValue.withAlpha (alpha));
@@ -584,7 +588,7 @@ void ModRoutingPanel::paintEmptyState (juce::Graphics& g)
     inner.removeFromTop (unit * 0.5f);
 
     draw::trackedText (g, headline, inner.removeFromTop (unit * 1.6f), juce::Justification::centred,
-                       Theme::labelFontStrong (unit * 0.95f), armed ? Theme::amber : Theme::textSecondary);
+                       Theme::labelFontStrong (unit * 0.95f), armed ? Theme::amber.darker (0.5f) : Theme::textSecondary);
     inner.removeFromTop (unit * 0.5f);
 
     // The three steps share one left edge so they read as a list, not as three centred lines.
@@ -595,11 +599,11 @@ void ModRoutingPanel::paintEmptyState (juce::Graphics& g)
     {
         auto line = listArea_.removeFromTop (unit * 1.7f);
         auto disk = line.removeFromLeft (diskD).withSizeKeepingCentre (diskD, diskD);
-        g.setColour (Theme::amber.withAlpha (0.16f));
+        g.setColour (Theme::amber.withAlpha (0.22f));
         g.fillEllipse (disk);
-        draw::trackedText (g, juce::String (i + 1), disk, juce::Justification::centred, Theme::labelFontStrong (diskD * 0.6f), Theme::amber);
+        draw::trackedText (g, juce::String (i + 1), disk, juce::Justification::centred, Theme::labelFontStrong (diskD * 0.6f), Theme::amber.darker (0.6f));
         draw::trackedText (g, steps[i], line.withTrimmedLeft (unit * 0.7f), juce::Justification::centredLeft,
-                           Theme::captionFont (unit * 0.8f), Theme::textDim);
+                           Theme::captionFont (unit * 0.8f), Theme::textSecondary);
     }
 }
 

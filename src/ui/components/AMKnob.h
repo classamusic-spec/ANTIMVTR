@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AMDrawing.h"
+#include "AMKnobArt.h"
 #include "AMAnimator.h"
 #include "AMModRing.h"
 #include "AMModAssign.h"
@@ -13,44 +14,33 @@ namespace am::ui
 {
 
 /**
-    Concentric geometry of a knob, derived from its square footprint.
+    The ANTI-MATR knob — one piece of hardware in three dresses (SPEC section 2).
 
-    From the rim inwards: the modulation orbit (where AMModRing lives), a
-    clear moat, the value arc, and the sphere body. Keeping the orbit
-    reserved whether or not the knob is modulated means the knob never
-    changes size when a routing is added.
-*/
-struct KnobRings
-{
-    float ringStroke = 1.1f;     ///< stroke of the modulation orbit
-    float trackWidth = 1.4f;     ///< stroke of the value arc
-    juce::Rectangle<float> orbit, arc, body;
+      Style::CappedLit   a matte near-black moulded body with a turned metal cap,
+                         ringed by amber LED dots lit up to the value. The hero.
+      Style::CappedDark  the same body and cap with the ring dark, for dense
+                         clusters where every ring glowing would be noise. The
+                         dots warm as soon as the control is touched or active.
+      Style::Plain       a quiet matte dome with a concentric groove and a notch,
+                         for small and secondary controls.
 
-    /** Builds the geometry for a footprint (the largest centred square is used). */
-    static KnobRings forFootprint (juce::Rectangle<float> footprint, bool hero) noexcept
-    {
-        KnobRings r;
-        const float d = juce::jmin (footprint.getWidth(), footprint.getHeight());
-        const auto square = footprint.withSizeKeepingCentre (d, d);
-        const auto radii = layout::knobRadii (d, hero);
-        r.ringStroke = radii.ringStroke;
-        r.trackWidth = radii.trackWidth;
-        r.orbit = square.withSizeKeepingCentre (radii.orbit, radii.orbit);
-        r.arc   = square.withSizeKeepingCentre (radii.arc, radii.arc);
-        r.body  = square.withSizeKeepingCentre (radii.body, radii.body);
-        return r;
-    }
+    Style::Auto (the default) picks from the knob's role and the size it was
+    given: hero controls are lit, ordinary ones are dark, and anything too small
+    to hold readable dots and a cap goes plain.
 
-    /** Gap in pixels between the outside of the value arc and the middle of the orbit. */
-    float moat() const noexcept { return (orbit.getWidth() - arc.getWidth()) * 0.5f - trackWidth * 0.5f; }
-};
+    What moves, and why it moves:
+      - the cap's sunburst sheen eases behind the value, so turning the knob
+        makes the metal catch the light differently;
+      - hover and drag lift the cap's specular, warm the dots and swap the label
+        for the value;
+      - the dot that has just lit flares and settles;
+      - pressing sinks the body onto a tighter shadow.
+    Nothing here is decoration: every channel carries value, activity,
+    modulation or focus.
 
-/**
-    The ANTI-MATR knob: sphere-like dark base with rim light, a thin value
-    arc in the section accent, a fine white indicator and a soft controlled
-    glow. Hover shows the precise value, double-click resets, shift-drag is
-    fine, right-click opens a context menu. The whole component is the hit
-    target so knobs stay easy to grab at small sizes.
+    Hover shows the precise value, double-click resets, shift-drag is fine,
+    right-click opens a context menu. The whole component is the hit target so
+    knobs stay easy to grab at small sizes.
 
     Attach to a host parameter with juce::AudioProcessorValueTreeState::SliderAttachment.
     modRing() exposes the modulation display (base / range / current).
@@ -59,6 +49,8 @@ class AMKnob : public juce::Slider,
                private juce::ChangeListener
 {
 public:
+    using Style = knobart::Style;
+
     explicit AMKnob (const juce::String& label = {}, juce::Colour accent = Theme::cyan);
     ~AMKnob() override;
 
@@ -66,14 +58,22 @@ public:
     void setAccent (juce::Colour c);
     juce::Colour getAccent() const noexcept { return accent; }
 
-    /** Bipolar knobs draw their arc from the centre. */
+    /** Which body this knob wears. Style::Auto derives it from the role and the size. */
+    void setStyle (Style s);
+    Style getStyle() const noexcept { return style; }
+    /** The style actually drawn, with Auto resolved against the knob's current size. */
+    Style effectiveStyle() const noexcept;
+
+    /** Bipolar knobs light their ring out from the centre. */
     void setBipolar (bool b) { bipolar = b; repaint(); }
 
-    /** Activity 0..1 adds glow (e.g. modulation or audio energy). */
+    /** Activity 0..1 warms the ring (e.g. modulation or audio energy). */
     void setActivity (float a) { if (std::abs (a - activity) > 0.02f) { activity = a; repaint(); } }
+    float getActivity() const noexcept { return activity; }
 
-    /** Larger knobs (hero controls) get a slightly bolder arc and label. */
-    void setHero (bool h) { hero = h; repaint(); }
+    /** Larger knobs (hero controls) get the lit ring and a bolder label. */
+    void setHero (bool h);
+    bool isHero() const noexcept { return hero; }
 
     /** Modulation ring (base value follows the knob automatically). */
     AMModRing& modRing() noexcept { return ring; }
@@ -99,25 +99,56 @@ public:
     void mouseUp (const juce::MouseEvent&) override;
 
     juce::Rectangle<float> knobBounds() const;
-    KnobRings rings() const { return KnobRings::forFootprint (knobBounds(), hero); }
+    /** The concentric geometry actually drawn: modulation orbit, LED ring, body, cap. */
+    knobart::Geometry geometry() const;
     float labelHeight() const;
 
+    /** Everything the modulation orbit needs, read back from the ring. */
+    knobart::ModView modView() const;
+
 private:
+    /**
+        The modulation orbit, drawn over the knob it belongs to.
+
+        It subclasses AMModRing purely to keep that component's data API and its
+        repaint-when-the-data-moves behaviour, and replaces its paint with the
+        pearl-palette art. The range is the one value AMModRing keeps to itself,
+        so the knob caches it on the way through refreshModRing().
+    */
+    class ModOrbit : public AMModRing
+    {
+    public:
+        explicit ModOrbit (AMKnob& k) : knob (k) {}
+        void paint (juce::Graphics& g) override;
+    private:
+        AMKnob& knob;
+    };
+
     void changeListenerCallback (juce::ChangeBroadcaster*) override { repaint(); }
     void showContextMenu();
     float proportion() const;
     bool isAssignTarget() const noexcept;
+    /** The LED at the value, and the run of lit dots around it. */
+    void litRun (const knobart::Geometry& geo, float p, int& head, int& lo, int& hi) const;
 
     juce::String label, labelUpper;
     juce::Colour accent;
     std::optional<Param> modTarget;
+    Style style = Style::Auto;
     bool bipolar = false;
     bool hero = false;
     bool dragging = false;
     float activity = 0.0f;
-    Eased hover;
-    Animator anim { *this, { &hover } };
-    AMModRing ring;
+    float modLo = 0.0f, modHi = 0.0f;
+    bool modHasRange = false;
+    int flareDot = -1;
+
+    Eased hover;   ///< pointer over the control
+    Eased press;   ///< held down
+    Eased sheen;   ///< the cap's highlight, easing behind the value
+    Eased flare;   ///< the dot that has just lit, decaying
+    Animator anim { *this, { &hover, &press, &sheen, &flare }, 0.26f };
+    ModOrbit ring { *this };
 };
 
 } // namespace am::ui

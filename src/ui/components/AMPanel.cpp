@@ -56,13 +56,12 @@ void AMPanel::paintChrome (juce::Graphics& g) const
 
     draw::SlabStyle style;
     // The shadow reaches exactly as far as the margin the slab was inset by, so the
-    // whole of it lands inside the component.
-    style.shadowRadius = layout::panelShadowMargin ((float) getWidth(), (float) getHeight()) * 1.1f;
+    // whole of it lands inside the component. It is the entire reason the slab
+    // looks like glass lying on the chassis rather than a lighter rectangle of it.
+    style.shadowRadius = layout::panelShadowMargin ((float) getWidth(), (float) getHeight());
     draw::raisedSlab (g, b, corner, style);
 
-    // Four screws bolt the slab to the chassis, one inset from each corner.
-    const auto hardware = layout::panelHardware (b.getWidth(), b.getHeight());
-    draw::rivets (g, b, hardware.inset, hardware.radius);
+    // No fasteners: the reference panels are unbolted glass (SPEC section 1).
 
     const auto h = headerBounds().toFloat();
     const float titleH = compact ? juce::jlimit (10.0f, 14.0f, h.getHeight() * 0.5f)
@@ -87,22 +86,14 @@ void AMPanel::paintChrome (juce::Graphics& g) const
         const float lineW = juce::jmin (h.getWidth() * 0.26f, compact ? 40.0f : 84.0f);
         const auto pair = Theme::accentPair (accent);
 
-        // The underline is cut into the slab, then lit in the section colours.
-        g.setColour (juce::Colours::black.withAlpha (0.55f));
-        g.drawLine (h.getX(), lineY + 1.2f, h.getRight(), lineY + 1.2f, 1.0f);
+        // A short bar in the section colour under the title block, and a scribed
+        // hairline carrying on to the right edge of the header.
+        const float thickness = compact ? 1.8f : 2.2f;
+        draw::accentUnderline (g, { h.getX(), lineY, lineW, thickness }, pair.first, pair.second);
+        draw::glowRoundedRect (g, { h.getX(), lineY, lineW, thickness }, thickness * 0.5f, pair.second, 6.0f, 0.30f);
 
-        juce::Path line;
-        line.startNewSubPath (h.getX(), lineY);
-        line.lineTo (h.getX() + lineW, lineY);
-        {
-            juce::ColourGradient grad (pair.first, h.getX(), lineY, pair.second, h.getX() + lineW, lineY, false);
-            g.setGradientFill (grad);
-            g.strokePath (line, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        }
-        draw::glowPath (g, line, pair.second, 1.0f, 7.0f, 0.32f);
-
-        g.setColour (Theme::borderSoft);
-        g.drawLine (h.getX() + lineW, lineY, h.getRight(), lineY, 1.0f);
+        g.setColour (Theme::textPrimary.withAlpha (0.10f));
+        g.drawLine (h.getX() + lineW + 6.0f, lineY + thickness * 0.5f, h.getRight(), lineY + thickness * 0.5f, 1.0f);
     }
 }
 

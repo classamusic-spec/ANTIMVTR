@@ -242,22 +242,11 @@ void AMSourceSelector::paint (juce::Graphics& g)
             auto row = cell.reduced (0.0f, pad);
             const float d = juce::jmin (row.getHeight(), cell.getWidth() * 0.34f);
 
-            // The whole row is the target, so a lit entry reads as a selected list item.
+            // The whole row is the target, so a lit entry reads as a selected list
+            // item: the sidebar pill of SPEC section 3.
             if (on > 0.01f || hv > 0.01f)
-            {
-                const float corner = juce::jlimit (5.0f, 12.0f, row.getHeight() * 0.2f);
-                juce::ColourGradient wash (item.accent.withAlpha (0.18f * on + 0.05f * hv), row.getX(), row.getY(),
-                                           item.accent.withAlpha (0.02f * on), row.getRight(), row.getY(), false);
-                g.setGradientFill (wash);
-                g.fillRoundedRectangle (row, corner);
-                g.setColour (item.accent.withAlpha (0.28f * on + 0.14f * hv));
-                g.drawRoundedRectangle (row.reduced (0.5f), corner, 1.0f);
-                if (on > 0.01f)
-                {
-                    g.setColour (item.accent.withAlpha (0.9f * on));
-                    g.fillRoundedRectangle (row.withWidth (juce::jmax (2.0f, row.getHeight() * 0.05f)), 1.5f);
-                }
-            }
+                draw::sidebarPill (g, row.reduced (pad * 0.5f, 0.0f), juce::jlimit (5.0f, 12.0f, row.getHeight() * 0.24f),
+                                   item.accent, on, hv, pad * 0.5f);
 
             auto inner = row.withTrimmedLeft (juce::jlimit (8.0f, 20.0f, cell.getWidth() * 0.06f));
             circle = inner.removeFromLeft (d).withSizeKeepingCentre (d, d);
@@ -272,9 +261,11 @@ void AMSourceSelector::paint (juce::Graphics& g)
             if (hasCaption)
             {
                 const float capH = juce::jlimit (7.5f, 10.0f, nameH * 0.72f);
+                // The caption carries the section colour, but deepened against the
+                // pale row: the accent at a third of its strength vanished here.
                 draw::trackedText (g, captions[(size_t) i], text, juce::Justification::topLeft,
                                    draw::fitFont (Theme::captionFont (capH), captions[(size_t) i], text.getWidth()),
-                                   item.accent.withAlpha (0.35f + 0.45f * on));
+                                   item.accent.darker (0.35f).interpolatedWith (Theme::textDim, on > 0.5f ? 0.0f : 0.45f));
             }
         }
         else

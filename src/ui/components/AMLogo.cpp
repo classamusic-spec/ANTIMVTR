@@ -48,21 +48,25 @@ void AMLogo::drawWordmark (juce::Graphics& g, juce::Rectangle<float> b, float en
     bar.lineTo (glyphArea.getX() + glyphArea.getWidth() * 0.64f, glyphArea.getY() + capH * 0.68f);
 
     // createStrokedPath clears its destination, so the two strokes are built apart
-    // and joined: one metal shape means one bevel across the whole glyph.
+    // and joined: one engraved shape means one bevel across the whole glyph.
+    //
+    // The wordmark is cut into the pale ground rather than cast in metal (SPEC
+    // section 7). A metal fill runs from a light half to a dark one, and on pearl
+    // its light half is the same value as the chassis — the mark half-disappeared.
     juce::Path metal, barMetal;
     juce::PathStrokeType (stroke, juce::PathStrokeType::mitered, juce::PathStrokeType::butt).createStrokedPath (metal, glyph);
     juce::PathStrokeType (stroke * 0.7f, juce::PathStrokeType::mitered, juce::PathStrokeType::butt).createStrokedPath (barMetal, bar);
     metal.addPath (barMetal);
-    draw::metallicShape (g, metal, Theme::textPrimary, bevel);
+    draw::engravedShape (g, metal, Theme::textPrimary, bevel);
 
     // Small glowing particle beneath the left foot of the Λ.
     const float dotR = juce::jmax (1.4f, titleH * 0.06f);
     const juce::Point<float> dot (glyphArea.getX() + glyphArea.getWidth() * 0.16f, glyphArea.getBottom() + dotR * 2.6f);
-    draw::glowDot (g, dot, dotR, Theme::cyan, 0.6f + 0.4f * energy);
+    draw::glowDot (g, dot, dotR, Theme::blue, 0.6f + 0.4f * energy);
 
-    // The rest of the wordmark, cast in the same metal.
+    // The rest of the wordmark, cut the same way.
     const float trailing = font.getExtraKerningFactor() * font.getHeight() + 2.0f;
-    draw::metallicText (g, rest, titleArea.withLeft (glyphArea.getRight() + gap).withWidth (restW + trailing),
+    draw::engravedText (g, rest, titleArea.withLeft (glyphArea.getRight() + gap).withWidth (restW + trailing),
                         juce::Justification::centredLeft, font, Theme::textPrimary);
 
     if (withTagline)
@@ -70,7 +74,7 @@ void AMLogo::drawWordmark (juce::Graphics& g, juce::Rectangle<float> b, float en
         auto tagArea = b.withTop (titleArea.getBottom() + titleH * 0.05f);
         const float tagH = juce::jlimit (7.0f, 10.0f, tagArea.getHeight() * 0.55f);
         draw::trackedText (g, "SOUND BEYOND MATTER", tagArea.withLeft (glyphArea.getRight() + gap + titleH * 0.04f).withHeight (tagH * 1.5f),
-                           juce::Justification::centredLeft, Theme::captionFont (tagH), Theme::textSecondary);
+                           juce::Justification::centredLeft, Theme::captionFont (tagH), Theme::textDim);
     }
 }
 

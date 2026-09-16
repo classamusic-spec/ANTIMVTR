@@ -74,63 +74,52 @@ void AMOptionList::paint (juce::Graphics& g)
     if (rowH < 6.0f) return;
 
     const float inset = juce::jlimit (1.0f, 3.0f, rowH * 0.07f);
-    const float corner = juce::jlimit (3.0f, 7.0f, rowH * 0.2f);
+    const float corner = juce::jlimit (4.0f, 10.0f, rowH * 0.24f);
     const float fontHeight = juce::jlimit (9.0f, 13.0f, rowH * 0.4f);
     const float textInset = juce::jlimit (9.0f, 18.0f, list.getWidth() * 0.07f);
 
-    // The lit row glides between entries so a change of selection reads as motion.
+    // Each entry is a sidebar pill (SPEC section 3): the selected one is a raised
+    // white slab with the accent down its left edge, and it glides between the rows
+    // so a change of selection reads as motion.
     {
-        auto row = juce::Rectangle<float> (list.getX(), list.getY() + lit.value * rowH, list.getWidth(), rowH).reduced (0.0f, inset);
-        const auto pair = Theme::accentPair (accent);
-        draw::glowRoundedRect (g, row, corner, pair.second, rowH * 0.3f, 0.30f);
-
-        draw::SlabStyle style;
-        style.top    = Theme::panelTop.brighter (0.12f);
-        style.bottom = Theme::panel;
-        style.shadow = 0.45f;
-        style.brush  = 0.5f;
-        draw::raisedSlab (g, row, corner, style);
-
-        juce::ColourGradient wash (pair.first.withAlpha (0.22f), row.getX(), row.getY(),
-                                   pair.second.withAlpha (0.05f), row.getRight(), row.getY(), false);
-        g.setGradientFill (wash);
-        g.fillRoundedRectangle (row, corner);
-        g.setColour (pair.second.withAlpha (0.35f));
-        g.drawRoundedRectangle (row.reduced (0.5f), corner, 1.0f);
-        g.setColour (pair.first);
-        g.fillRoundedRectangle (row.withWidth (juce::jmax (2.0f, rowH * 0.08f)), 1.5f);
+        auto row = juce::Rectangle<float> (list.getX(), list.getY() + lit.value * rowH, list.getWidth(), rowH).reduced (inset, inset);
+        draw::sidebarPill (g, row, corner, accent, 1.0f, 0.0f, inset);
     }
 
     for (int i = 0; i < names.size(); ++i)
     {
-        auto row = juce::Rectangle<float> (list.getX(), list.getY() + (float) i * rowH, list.getWidth(), rowH).reduced (0.0f, inset);
+        auto row = juce::Rectangle<float> (list.getX(), list.getY() + (float) i * rowH, list.getWidth(), rowH).reduced (inset, inset);
         const bool isSelected = i == selected;
         const bool isHovered = i == hovered && ! isSelected;
 
-        if (isHovered)
-        {
-            g.setColour (juce::Colours::white.withAlpha (0.05f));
-            g.fillRoundedRectangle (row, corner);
-            g.setColour (accent.withAlpha (0.18f));
-            g.drawRoundedRectangle (row.reduced (0.5f), corner, 1.0f);
-        }
+        if (isHovered) draw::sidebarPill (g, row, corner, accent, 0.0f, 1.0f, inset);
 
         auto text = row.withTrimmedLeft (textInset).withTrimmedRight (textInset * 0.5f);
+        const auto ink = isSelected ? Theme::textPrimary : (isHovered ? Theme::textPrimary.withAlpha (0.72f) : Theme::textSecondary);
+
+        if (i < (int) icons.size())
+        {
+            const float d = juce::jmin (text.getHeight() * 0.62f, rowH * 0.5f);
+            auto glyph = text.removeFromLeft (d).withSizeKeepingCentre (d, d);
+            Icons::draw (g, icons[(size_t) i], glyph,
+                         isSelected ? accent.interpolatedWith (Theme::textPrimary, 0.3f) : ink, 0.9f);
+            text.removeFromLeft (textInset * 0.6f);
+        }
+
         draw::trackedText (g, names[i], text, juce::Justification::centredLeft,
                            draw::fitFont (isSelected ? Theme::labelFontStrong (fontHeight) : Theme::labelFont (fontHeight), names[i], text.getWidth()),
-                           isSelected ? Theme::textPrimary : (isHovered ? Theme::textSecondary.brighter (0.3f) : Theme::textSecondary));
+                           ink);
     }
 
     auto desc = descriptionBounds();
     if (desc.isEmpty() || selected >= descriptions.size() || descriptions[selected].isEmpty()) return;
 
     desc = desc.reduced (juce::jmin (textInset, desc.getWidth() * 0.1f), desc.getHeight() * 0.1f);
-    g.setColour (Theme::borderSoft);
-    g.drawLine (desc.getX(), desc.getY(), desc.getRight(), desc.getY(), 1.0f);
+    draw::hairline (g, desc.getX(), desc.getY(), desc.getRight(), desc.getY(), 0.06f);
 
     juce::AttributedString text;
     text.append (descriptions[selected], Theme::bodyFont (juce::jlimit (10.0f, 12.5f, desc.getHeight() * 0.26f)),
-                 Theme::textSecondary.brighter (0.12f));
+                 Theme::textSecondary);
     text.setLineSpacing (2.5f);
     juce::TextLayout layout;
     layout.createLayout (text, desc.getWidth());

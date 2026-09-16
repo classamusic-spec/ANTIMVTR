@@ -29,6 +29,8 @@ public:
                                bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
     void drawToggleButton (juce::Graphics& g, juce::ToggleButton& button, bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
     void drawComboBox (juce::Graphics& g, int width, int height, bool isButtonDown, int buttonX, int buttonY, int buttonW, int buttonH, juce::ComboBox& box) override;
+    void fillTextEditorBackground (juce::Graphics& g, int width, int height, juce::TextEditor& editor) override;
+    void drawTextEditorOutline (juce::Graphics& g, int width, int height, juce::TextEditor& editor) override;
     juce::Font getComboBoxFont (juce::ComboBox&) override { return Theme::labelFont (11.0f); }
     juce::Font getLabelFont (juce::Label&) override { return Theme::font (12.0f); }
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override { return Theme::labelFont (juce::jlimit (9.0f, 12.0f, (float) buttonHeight * 0.4f)); }

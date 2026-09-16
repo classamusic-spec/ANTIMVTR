@@ -27,20 +27,10 @@ public:
             auto row = juce::Rectangle<float> (b.getX(), y, b.getWidth(), (float) rowHeight());
             const bool on = entries[(size_t) i].name == selected;
             const bool hv = i == hoverRow;
-            if (on)
-            {
-                juce::ColourGradient grad (Theme::blue.withAlpha (0.18f), row.getX(), row.getY(), Theme::blue.withAlpha (0.0f), row.getRight(), row.getY(), false);
-                g.setGradientFill (grad);
-                g.fillRoundedRectangle (row, 6.0f);
-                juce::Path bar; bar.startNewSubPath (row.getX() + 1.0f, row.getY() + 6.0f); bar.lineTo (row.getX() + 1.0f, row.getBottom() - 6.0f);
-                draw::glowPath (g, bar, Theme::blue, 2.0f, 8.0f, 0.8f);
-            }
-            else if (hv)
-            {
-                g.setColour (juce::Colours::white.withAlpha (0.03f));
-                g.fillRoundedRectangle (row, 6.0f);
-            }
-            const auto col = on ? Theme::textPrimary : (hv ? Theme::textSecondary.brighter (0.4f) : Theme::textSecondary);
+            // Same sidebar pill as the page selectors, so the browser belongs to the
+            // instrument rather than to a dialog.
+            if (on || hv) draw::sidebarPill (g, row.reduced (0.0f, 1.0f), 6.0f, Theme::blue, on ? 1.0f : 0.0f, hv ? 1.0f : 0.0f);
+            const auto col = on ? Theme::textPrimary : (hv ? Theme::textPrimary.withAlpha (0.75f) : Theme::textSecondary);
             draw::trackedText (g, entries[(size_t) i].name, row.withTrimmedLeft (12.0f), juce::Justification::centredLeft, on ? Theme::labelFontStrong (h) : Theme::labelFont (h), col);
             draw::trackedText (g, juce::String (entries[(size_t) i].count), row.withTrimmedRight (8.0f), juce::Justification::centredRight, Theme::valueFont (h), Theme::textDim);
             y += (float) rowHeight();
@@ -371,13 +361,17 @@ void PresetBrowser::resized()
 void PresetBrowser::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
-    g.setColour (Theme::background.withAlpha (0.965f));
+    // A frosted sheet laid over the instrument: the chassis, not a dark scrim, and
+    // no vignette — the page under it should read as out of focus, not switched off.
+    g.setColour (Theme::background.withAlpha (0.972f));
     g.fillRect (b);
-    juce::ColourGradient vignette (juce::Colours::transparentBlack, b.getCentreX(), b.getCentreY(), juce::Colours::black.withAlpha (0.45f), b.getX(), b.getY(), true);
-    g.setGradientFill (vignette);
+    juce::ColourGradient sheet (Theme::backgroundTop.withAlpha (0.85f), b.getCentreX(), b.getY(),
+                                Theme::background.withAlpha (0.85f), b.getCentreX(), b.getBottom(), false);
+    g.setGradientFill (sheet);
     g.fillRect (b);
-    draw::softLight (g, { b.getWidth() * 0.2f, b.getHeight() * 0.1f }, b.getWidth() * 0.35f, Theme::blue, 0.05f);
-    draw::softLight (g, { b.getWidth() * 0.85f, b.getHeight() * 0.9f }, b.getWidth() * 0.3f, Theme::violet, 0.05f);
+    draw::grain (g, b, 0.5f);
+    draw::softLight (g, { b.getWidth() * 0.2f, b.getHeight() * 0.1f }, b.getWidth() * 0.35f, Theme::blue, 0.045f);
+    draw::softLight (g, { b.getWidth() * 0.85f, b.getHeight() * 0.9f }, b.getWidth() * 0.3f, Theme::violet, 0.045f);
 
     const auto h = headerArea.toFloat();
     const float titleH = juce::jlimit (14.0f, 22.0f, h.getHeight() * 0.42f);

@@ -173,48 +173,43 @@ void TopBar::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
 
-    // The seam where the top rail meets the chassis: a cut line with a lit lower lip.
-    g.setColour (juce::Colours::black.withAlpha (0.55f));
-    g.fillRect (b.withTop (b.getBottom() - 2.0f).withHeight (1.0f));
-    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.07f), b.getCentreX(), 0.0f, false);
-    sep.addColour (1.0, juce::Colours::transparentWhite);
-    g.setGradientFill (sep);
-    g.fillRect (b.withTop (b.getBottom() - 1.0f));
-
-    // Preset window: a readout set into a machined bezel, backlit from behind.
-    auto pill = presetArea.toFloat();
-    const float corner = pill.getHeight() * 0.5f;
-    const float bezel = juce::jlimit (2.5f, 6.0f, pill.getHeight() * 0.12f);
-
+    // The seam where the top rail meets the chassis: a fine scribed line, dark with
+    // a lit lip beneath it, fading out toward both ends.
     {
-        auto frame = pill.expanded (bezel);
-        draw::SlabStyle style;
-        style.top    = Theme::panelTop.brighter (0.22f);
-        style.bottom = Theme::panel.darker (0.1f);
-        style.shadow = 0.9f;
-        style.shadowRadius = bezel * 1.2f;
-        style.brush  = 1.0f;
-        draw::raisedSlab (g, frame, corner + bezel, style);
+        juce::ColourGradient sep (juce::Colours::transparentBlack, b.getX(), 0.0f,
+                                  Theme::textPrimary.withAlpha (0.12f), b.getCentreX(), 0.0f, false);
+        sep.addColour (1.0, juce::Colours::transparentBlack);
+        g.setGradientFill (sep);
+        g.fillRect (b.withTop (b.getBottom() - 2.0f).withHeight (1.0f));
+
+        juce::ColourGradient lip (juce::Colours::transparentWhite, b.getX(), 0.0f,
+                                  juce::Colours::white.withAlpha (0.75f), b.getCentreX(), 0.0f, false);
+        lip.addColour (1.0, juce::Colours::transparentWhite);
+        g.setGradientFill (lip);
+        g.fillRect (b.withTop (b.getBottom() - 1.0f));
     }
 
-    draw::insetWell (g, pill, corner, Theme::panelInset, 1.0f);
-    // The backlight behind the glass: brightest at the middle, where the name sits.
+    // Preset window: a light capsule cut into the chassis with the name set across
+    // it. It is not a screen — the dark elements on this instrument are the
+    // displays, and a second black rectangle up here would compete with them.
+    auto pill = presetArea.toFloat();
+    const float corner = pill.getHeight() * 0.5f;
+
+    draw::capsuleTrack (g, pill, corner, 1.0f);
     {
-        juce::ColourGradient back (Theme::blue.withAlpha (0.10f), pill.getCentreX(), pill.getCentreY(),
+        // A whisper of the section colour across the capsule, so the name has a
+        // ground of its own rather than sitting on bare grey.
+        juce::ColourGradient back (Theme::blue.withAlpha (0.055f), pill.getCentreX(), pill.getCentreY(),
                                    Theme::blue.withAlpha (0.0f), pill.getCentreX() + pill.getWidth() * 0.5f, pill.getCentreY(), true);
-        back.addColour (0.5, Theme::blue.withAlpha (0.035f));
+        back.addColour (0.5, Theme::blue.withAlpha (0.02f));
         g.setGradientFill (back);
         g.fillRoundedRectangle (pill.reduced (1.0f), corner - 1.0f);
     }
-    draw::screenGlass (g, pill, corner, 0.9f);
-    g.setColour (juce::Colours::black.withAlpha (0.55f));
-    g.drawRoundedRectangle (pill.reduced (0.4f), corner - 0.4f, 1.0f);
 
     const float h = juce::jlimit (10.0f, 14.0f, pill.getHeight() * 0.36f);
     const auto nameArea = pill.reduced (pill.getHeight() + 4.0f, 0.0f);
     const auto name = processor.currentPresetName().toUpperCase();
     const auto font = draw::fitFont (Theme::titleFont (h), name, nameArea.getWidth());
-    draw::trackedText (g, name, nameArea.translated (0.0f, 1.0f), juce::Justification::centred, font, juce::Colours::black.withAlpha (0.7f));
     draw::trackedText (g, name, nameArea, juce::Justification::centred, font, Theme::textPrimary);
 
     // Tags line
@@ -324,20 +319,35 @@ void NavBar::paint (juce::Graphics& g)
 {
     const auto b = getLocalBounds().toFloat();
 
-    // The seam above the navigation rail, cut the same way as the top one.
-    g.setColour (juce::Colours::black.withAlpha (0.6f));
-    g.fillRect (b.withHeight (1.0f));
-    juce::ColourGradient sep (juce::Colours::transparentWhite, b.getX(), 0.0f, juce::Colours::white.withAlpha (0.08f), b.getCentreX(), 0.0f, false);
-    sep.addColour (1.0, juce::Colours::transparentWhite);
-    g.setGradientFill (sep);
-    g.fillRect (b.withTop (b.getY() + 1.0f).withHeight (1.0f));
+    // A light rail, a shade brighter than the chassis it sits on, held down by a
+    // scribed seam along its top edge (SPEC section 6).
+    {
+        juce::ColourGradient rail (Theme::background.interpolatedWith (juce::Colours::white, 0.34f), b.getCentreX(), b.getY(),
+                                   Theme::background.interpolatedWith (juce::Colours::white, 0.10f), b.getCentreX(), b.getBottom(), false);
+        g.setGradientFill (rail);
+        g.fillRect (b);
+        draw::grain (g, b, 0.45f);
+    }
+    {
+        juce::ColourGradient sep (juce::Colours::transparentBlack, b.getX(), 0.0f,
+                                  Theme::textPrimary.withAlpha (0.13f), b.getCentreX(), 0.0f, false);
+        sep.addColour (1.0, juce::Colours::transparentBlack);
+        g.setGradientFill (sep);
+        g.fillRect (b.withHeight (1.0f));
+
+        juce::ColourGradient lip (juce::Colours::transparentWhite, b.getX(), 0.0f,
+                                  juce::Colours::white.withAlpha (0.8f), b.getCentreX(), 0.0f, false);
+        lip.addColour (1.0, juce::Colours::transparentWhite);
+        g.setGradientFill (lip);
+        g.fillRect (b.withTop (b.getY() + 1.0f).withHeight (1.0f));
+    }
 
     const float h = juce::jlimit (7.5f, 9.5f, b.getHeight() * 0.11f);
     const int pad = juce::jmax (10, getWidth() / 64);
     draw::trackedText (g, "V" + juce::String (ANTIMATR_VERSION_STRING), b.withWidth (120.0f).withTrimmedLeft ((float) pad), juce::Justification::centredLeft, Theme::captionFont (h), Theme::textDim);
 
     auto brand = b.withLeft (b.getRight() - (float) captionWidth - (float) pad).withTrimmedRight ((float) pad);
-    draw::trackedText (g, "INSTRUMENTS", brand.withHeight (b.getHeight() * 0.5f), juce::Justification::bottomRight, Theme::captionFont (h), Theme::textDim);
+    draw::trackedText (g, "INSTRUMENTS", brand.withHeight (b.getHeight() * 0.5f), juce::Justification::bottomRight, Theme::captionFont (h), Theme::textSecondary);
     draw::trackedText (g, "FOR A MORE STRANGE TOMORROW", brand.withTop (b.getCentreY()), juce::Justification::topRight, Theme::captionFont (h), Theme::textDim);
 }
 

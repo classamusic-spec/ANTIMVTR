@@ -27,11 +27,15 @@ namespace
     }
 
     /**
-        Lays a sidebar panel out: the pill list fills the panel, with any footer
-        controls (a MAIN / ADVANCED segment, an OFF / ON switch, a mode stepper)
-        anchored to the bottom of it.
+        Lays a sidebar panel out: the pill list takes the height its rows want from
+        the top, and any footer controls (a MAIN / ADVANCED segment, an OFF / ON
+        switch, a mode stepper) are anchored to the bottom.
+
+        The list spreads its rows over whatever height it is given, so handing it
+        the whole panel would make each pill a slab; it is sized to its content.
     */
-    void layoutSidebar (AMPanel& panel, AMSidebar& list, const std::vector<juce::Component*>& footer, int gap)
+    void layoutSidebar (AMPanel& panel, AMOptionList& list, int rows, bool withDescription,
+                        const std::vector<juce::Component*>& footer, int gap)
     {
         auto c = panel.contentBounds();
         for (auto it = footer.rbegin(); it != footer.rend(); ++it)
@@ -41,7 +45,14 @@ namespace
             (*it)->setBounds (c.removeFromBottom (h));
             c.removeFromBottom (gap / 2);
         }
-        const int want = list.preferredHeight (c.getWidth());
+        // The list spreads its rows over whatever height it has and takes a fifth of
+        // it for the description, so the height is solved for the row size we want
+        // rather than taken from the panel.
+        const int rowH = juce::jlimit (32, 68, juce::roundToInt ((float) c.getWidth() * 0.30f));
+        const int rowsH = juce::jmax (1, rows) * rowH;
+        int want = rowsH;
+        if (withDescription)
+            want = rowsH + juce::roundToInt (juce::jlimit (26.0f, 64.0f, (float) rowsH / 0.8f * 0.2f));
         list.setBounds (c.getHeight() > want ? c.withHeight (want) : c);
     }
 }
@@ -243,7 +254,9 @@ void ParamPanel::resized()
     if (comps.empty()) return;
     const int n = (int) comps.size();
     const int cols = columns > 0 ? columns : layout::gridColumns (n, area.getWidth(), area.getHeight());
-    layoutGrid (area, comps, cols, 2, 2);
+    // The cluster panel on a deep page is much taller than a row of knobs, so the
+    // rows share the slack out between them instead of leaving a dead band at each end.
+    layoutGrid (area, comps, cols, 2, 2, true);
 }
 
 //==============================================================================
@@ -300,16 +313,18 @@ Param SourcePage::modeParam (int source)
 
 SourcePage::SourcePage (AntiMatrProcessor& p)
     : processor (p),
-      sidebar ({ { "Wave", Icon::Wave, "Fractured forms", Theme::violet },
-                 { "Dust", Icon::Dust, "Particle field", Theme::blue },
-                 { "Impact", Icon::Impact, "Strike field", Theme::cyan },
-                 { "Sample", Icon::Sample, "Imported matter", Theme::ivory },
-                 { "Gesture", Icon::Gesture, "Living gesture", Theme::magenta } }, Theme::blue)
+      sidebar ({ "Wave", "Dust", "Impact", "Sample", "Gesture" }, Theme::blue)
 {
     addAndMakeVisible (sidebarPanel);
     addAndMakeVisible (mesh);
     sidebarPanel.addAndMakeVisible (sidebar);
     sidebarPanel.addAndMakeVisible (tabs);
+    sidebar.setIcons ({ Icon::Wave, Icon::Dust, Icon::Impact, Icon::Sample, Icon::Gesture });
+    sidebar.setDescriptions ({ "Wavetables scanned, morphed and stacked in unison.",
+                               "Coloured noise, crackle and impulse clouds.",
+                               "Clicks, plucks, strikes and membrane hits.",
+                               "Any audio as energy, pitched and spread.",
+                               "Bowed, scraped and rubbed excitation." });
     sidebar.setTooltip ("Source: what creates the energy Matter is struck with.");
     tabs.setTooltip ("MAIN: the six controls that shape this source. ADVANCED: everything else it can do.");
     tabs.onChange = [this] (int i) { advanced = i == 1; applyTab(); resized(); };
@@ -383,7 +398,7 @@ void SourcePage::rebuild (int source)
     cluster->setAccent (sourceAccent (currentSource));
     mesh.setAccent (Theme::blue);
     mesh.setTitle (juce::String (names[currentSource]) + "  /  " + juce::String (taglines[currentSource]));
-    sidebar.setAccent (sourceAccent (currentSource));
+    sidebar.setAccent (Theme::blue);
 
     // ADVANCED only exists where a source has more than its six shaping controls, or
     // (GESTURE) a panel of its own behind them.
@@ -429,7 +444,7 @@ void SourcePage::resized()
     const auto cols = pageColumns (area, gap);
 
     sidebarPanel.setBounds (cols.sidebar);
-    layoutSidebar (sidebarPanel, sidebar,
+    layoutSidebar (sidebarPanel, sidebar, 5, true,
                    { &tabs, sourceModeControl != nullptr ? &sourceModeControl->component() : nullptr }, gap);
 
     // A source with a panel of its own takes the middle and the right together.
@@ -480,14 +495,16 @@ void SourcePage::timerCallback()
 //==============================================================================
 ShapePage::ShapePage (AntiMatrProcessor& p)
     : processor (p),
-      sidebar ({ { "Simple", Icon::Shape, "The six macros", Theme::cyan },
-                 { "Advanced", Icon::Settings, "Excitation & output", Theme::blue },
-                 { "Material", Icon::Dna, "Models & topology", Theme::violet } }, Theme::cyan)
+      sidebar ({ "Simple", "Advanced", "Material" }, Theme::cyan)
 {
     addAndMakeVisible (sidebarPanel);
     addAndMakeVisible (lattice);
     addAndMakeVisible (blendPanel);
     sidebarPanel.addAndMakeVisible (sidebar);
+    sidebar.setIcons ({ Icon::Shape, Icon::Settings, Icon::Dna });
+    sidebar.setDescriptions ({ "The six macros that shape the object.",
+                               "Excitation, pitch and output.",
+                               "The two physical models and how their nodes are wired." });
     sidebar.setTooltip ("SIMPLE: the six Matter macros. ADVANCED: excitation, pitch and output. MATERIAL: the two physical models and how their nodes are wired.");
     sidebar.onChange = [this] (int i) { showTab (i); };
 
@@ -552,7 +569,7 @@ void ShapePage::resized()
     const auto cols = pageColumns (area, gap);
 
     sidebarPanel.setBounds (cols.sidebar);
-    layoutSidebar (sidebarPanel, sidebar, {}, gap);
+    layoutSidebar (sidebarPanel, sidebar, 3, true, {}, gap);
 
     auto centre = cols.centre;
     const int blendH = juce::jlimit (74, 116, centre.getHeight() / 7);
@@ -600,9 +617,7 @@ void ShapePage::timerCallback()
 //==============================================================================
 EvolvePage::EvolvePage (AntiMatrProcessor& p)
     : processor (p),
-      sidebar ({ { "Main", Icon::Evolve, "The four operators", Theme::violet },
-                 { "Advanced", Icon::Settings, "Deformation detail", Theme::indigo },
-                 { "Motion", Icon::Swirl, "Gravity & speed", Theme::blue } }, Theme::violet)
+      sidebar ({ "Main", "Advanced", "Motion" }, Theme::violet)
 {
     addAndMakeVisible (sidebarPanel);
     addAndMakeVisible (ribbon);
@@ -610,6 +625,10 @@ EvolvePage::EvolvePage (AntiMatrProcessor& p)
     addChildComponent (magnetPanel);
     addChildComponent (fieldPanel);
     sidebarPanel.addAndMakeVisible (sidebar);
+    sidebar.setIcons ({ Icon::Evolve, Icon::Settings, Icon::Swirl });
+    sidebar.setDescriptions ({ "Bend, melt, tear and magnet.",
+                               "The deformation detail behind the operators.",
+                               "Gravity, scatter and how fast it all moves." });
     sidebar.setTooltip ("MAIN: bend, melt, tear and magnet. ADVANCED: the deformation detail. MOTION: how fast it all moves.");
     sidebar.onChange = [this] (int i) { showTab (i); };
     ribbon.setTitle ("Evolve / deformation");
@@ -718,22 +737,25 @@ void EvolvePage::resized()
     const auto cols = pageColumns (area, gap, 0.155f, 0.325f);
 
     sidebarPanel.setBounds (cols.sidebar);
-    layoutSidebar (sidebarPanel, sidebar, {}, gap);
+    layoutSidebar (sidebarPanel, sidebar, 3, true, {}, gap);
     ribbon.setBounds (cols.centre);
 
     auto right = cols.controls;
     auto layoutField = [this] (juce::Rectangle<int> bounds)
     {
         fieldPanel.setBounds (bounds);
-        // The pad centres a square plot inside whatever it is given, so it is given a
-        // rectangle only as wide as that square plus its axis captions.
+        // The pad centres a square plot inside what it is given, after reserving a band
+        // on its left for the SCATTER caption — so it is shifted half that band left and
+        // the square lands in the middle of the panel rather than right of it.
         auto c = fieldPanel.contentBounds();
-        const int d = juce::jmin (c.getWidth(), c.getHeight());
-        field.setBounds (c.withSizeKeepingCentre (juce::jmin (c.getWidth(), d + d / 6), d));
+        const int caption = juce::jlimit (15, 26, juce::roundToInt ((float) juce::jmin (c.getWidth(), c.getHeight()) * 0.075f));
+        field.setBounds (c.translated (-caption / 2, 0));
     };
     if (current == 0)
     {
-        operatorPanel.setBounds (right.removeFromTop (juce::roundToInt ((float) right.getHeight() * 0.56f)));
+        // The operators need a row of knobs and two sliders and no more; the rest of
+        // the column goes to the field, whose pad is square and wants the height.
+        operatorPanel.setBounds (right.removeFromTop (juce::roundToInt ((float) right.getHeight() * 0.46f)));
         right.removeFromTop (gap);
         layoutField (right);
         auto c = operatorPanel.contentBounds();
@@ -795,15 +817,17 @@ void EvolvePage::timerCallback()
 //==============================================================================
 FracturePage::FracturePage (AntiMatrProcessor& p)
     : processor (p),
-      sidebar ({ { "Main", Icon::Fracture, "Mode & amount", Theme::magenta },
-                 { "Sequencer", Icon::Grid, "Fragment steps", Theme::violet },
-                 { "Fragments", Icon::Shuffle, "Tone & feedback", Theme::cyan } }, Theme::magenta)
+      sidebar ({ "Main", "Sequencer", "Fragments" }, Theme::magenta)
 {
     addAndMakeVisible (sidebarPanel);
     addAndMakeVisible (shards);
     addChildComponent (steps);
     sidebarPanel.addAndMakeVisible (sidebar);
     sidebarPanel.addAndMakeVisible (onOff);
+    sidebar.setIcons ({ Icon::Fracture, Icon::Grid, Icon::Shuffle });
+    sidebar.setDescriptions ({ "The spectral engine: mode, amount and spread.",
+                               "The fragment pattern and how it runs.",
+                               "Fragment count, tone, feedback and decay." });
     sidebar.setTooltip ("MAIN: the spectral engine. SEQUENCER: the fragment pattern. FRAGMENTS: tone, feedback and decay.");
     sidebar.onChange = [this] (int i) { showTab (i); };
     shards.setTitle ("Fracture / shards");
@@ -921,7 +945,7 @@ void FracturePage::resized()
     const auto cols = pageColumns (area, gap);
 
     sidebarPanel.setBounds (cols.sidebar);
-    layoutSidebar (sidebarPanel, sidebar, { &onOff }, gap);
+    layoutSidebar (sidebarPanel, sidebar, 3, true, { &onOff }, gap);
 
     auto centre = cols.centre;
     if (current == 1)
@@ -1001,20 +1025,15 @@ void FracturePage::timerCallback()
 //==============================================================================
 SpacePage::SpacePage (AntiMatrProcessor& p)
     : processor (p),
-      sidebar ({ { "Nebula", Icon::Swirl, "", Theme::violet },
-                 { "Void", Icon::Space, "", juce::Colour (0xff6a6a88) },
-                 { "Chamber", Icon::Grid, "", Theme::amber },
-                 { "Orbit", Icon::Magnet, "", Theme::blue },
-                 { "Dream", Icon::Sparkle, "", Theme::magenta },
-                 { "Machine", Icon::Settings, "", Theme::cyan },
-                 { "Shimmer", Icon::Dna, "", Theme::ivory },
-                 { "Dust", Icon::Dust, "", Theme::textSecondary } }, Theme::ivory)
+      sidebar ({ "Nebula", "Void", "Chamber", "Orbit", "Dream", "Machine", "Shimmer", "Dust" }, Theme::ivory)
 {
     addAndMakeVisible (sidebarPanel);
     addAndMakeVisible (space);
     addAndMakeVisible (macroPanel);
     addAndMakeVisible (enginePanel);
     sidebarPanel.addAndMakeVisible (sidebar);
+    sidebar.setIcons ({ Icon::Swirl, Icon::Space, Icon::Grid, Icon::Magnet,
+                        Icon::Sparkle, Icon::Settings, Icon::Dna, Icon::Dust });
     sidebar.setTooltip ("The environment the sound lives in.");
     space.setTitle ("Space");
 
@@ -1104,7 +1123,7 @@ void SpacePage::resized()
     const auto cols = pageColumns (area, gap, 0.155f, 0.315f);
 
     sidebarPanel.setBounds (cols.sidebar);
-    layoutSidebar (sidebarPanel, sidebar, {}, gap);
+    layoutSidebar (sidebarPanel, sidebar, 8, false, {}, gap);
     space.setBounds (cols.centre);
 
     auto right = cols.controls;
@@ -1137,8 +1156,9 @@ void SpacePage::timerCallback()
 {
     if (! isShowing()) return;
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
-    // The space never looks asleep: it keeps a floor of activity even in silence.
-    space.setEnergy (juce::jlimit (0.22f, 1.0f, vs.rmsL * 3.0f));
+    // The space never looks asleep: it keeps a floor of light even in silence, and
+    // what the instrument is playing brightens it from there.
+    space.setEnergy (0.45f + 0.55f * juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f));
     space.advance (1.0f / 24.0f);
     sidebarPanel.setActivity (vs.spaceActivity * 0.5f);
     macroPanel.setActivity (vs.spaceActivity * 0.5f);

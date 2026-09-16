@@ -277,28 +277,37 @@ struct GridRows
 {
     int cellHeight = 0;
     int top = 0;        ///< y of the first row, relative to the area's top
+    int pitch = 0;      ///< top-to-top distance between rows (cellHeight + gap, plus any share of the slack)
 };
 
-inline GridRows gridRows (int areaHeight, int rows, int cellWidth, int gapY) noexcept
+/**
+    `spread` shares the slack out between the rows instead of leaving it all as a
+    border. A control can never use more height than a little over its own width,
+    so in a panel much taller than its content the centred block leaves a dead
+    band above it and another below; spreading turns those two bands into even
+    air between the rows, which is what a tall cluster panel wants.
+*/
+inline GridRows gridRows (int areaHeight, int rows, int cellWidth, int gapY, bool spread = false) noexcept
 {
     GridRows g;
     if (rows <= 0 || areaHeight <= 0) return g;
-    const int spread  = juce::jmax (1, (areaHeight - gapY * (rows - 1)) / rows);
+    const int even    = juce::jmax (1, (areaHeight - gapY * (rows - 1)) / rows);
     const int natural = juce::jmax (1, juce::roundToInt ((float) juce::jmax (0, cellWidth) * 1.22f) + 12);
-    g.cellHeight = juce::jmin (spread, natural);
-    g.top = juce::jmax (0, (areaHeight - (g.cellHeight * rows + gapY * (rows - 1))) / 2);
+    g.cellHeight = juce::jmin (even, natural);
+    g.pitch = g.cellHeight + gapY;
 
-    // Capping the cell stops the controls stretching, but in a panel much taller than
-    // its contents the slack all collects at the two ends and the panel reads as a
-    // band of knobs with a dead margin above and below it. At most a quarter of a
-    // cell is kept as that margin; the rest is handed back to the rows, which move
-    // apart instead. The controls themselves do not grow — only the air between them.
-    const int border = juce::jmin (g.top, g.cellHeight / 4);
-    if (g.top > border)
+    const int block = g.cellHeight * rows + gapY * (rows - 1);
+    if (spread && rows > 1 && areaHeight > block)
     {
-        g.cellHeight = juce::jmax (g.cellHeight, (areaHeight - border * 2 - gapY * (rows - 1)) / rows);
-        g.top = juce::jmax (0, (areaHeight - (g.cellHeight * rows + gapY * (rows - 1))) / 2);
+        // The slack is shared between every gap there is — one above the first row,
+        // one between each pair, one below the last — so the air is even everywhere
+        // rather than pooling in the middle.
+        const int share = (areaHeight - block) / (rows + 1);
+        g.pitch += share;
+        g.top = juce::jmax (0, (areaHeight - (g.pitch * (rows - 1) + g.cellHeight)) / 2);
+        return g;
     }
+    g.top = juce::jmax (0, (areaHeight - block) / 2);
     return g;
 }
 

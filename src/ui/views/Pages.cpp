@@ -1156,8 +1156,9 @@ void SpacePage::timerCallback()
 {
     if (! isShowing()) return;
     const auto& vs = processor.diagnostics().visualSnapshots.latest();
-    // The space never looks asleep: it keeps a floor of activity even in silence.
-    space.setEnergy (juce::jlimit (0.38f, 1.0f, vs.rmsL * 3.0f));
+    // The space never looks asleep: it keeps a floor of light even in silence, and
+    // what the instrument is playing brightens it from there.
+    space.setEnergy (0.45f + 0.55f * juce::jlimit (0.0f, 1.0f, vs.rmsL * 3.0f));
     space.advance (1.0f / 24.0f);
     sidebarPanel.setActivity (vs.spaceActivity * 0.5f);
     macroPanel.setActivity (vs.spaceActivity * 0.5f);

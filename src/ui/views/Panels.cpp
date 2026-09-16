@@ -48,130 +48,6 @@ namespace
 }
 
 //==============================================================================
-AMSidebar::AMSidebar (std::vector<Item> entries, juce::Colour accentColour)
-    : items (std::move (entries)), accent (accentColour)
-{
-    setWantsKeyboardFocus (false);
-}
-
-juce::Colour AMSidebar::accentFor (int index) const noexcept
-{
-    if (index < 0 || index >= (int) items.size()) return accent;
-    return items[(size_t) index].accent.isTransparent() ? accent : items[(size_t) index].accent;
-}
-
-float AMSidebar::rowHeight() const noexcept
-{
-    const int n = juce::jmax (1, (int) items.size());
-    const float natural = juce::jlimit (30.0f, 72.0f, (float) getWidth() * 0.30f);
-    return juce::jmin (natural, (float) getHeight() / (float) n);
-}
-
-int AMSidebar::preferredHeight (int width) const noexcept
-{
-    const int n = juce::jmax (1, (int) items.size());
-    return juce::roundToInt (juce::jlimit (30.0f, 72.0f, (float) width * 0.30f)) * n;
-}
-
-juce::Rectangle<float> AMSidebar::pillBounds (int index) const
-{
-    const float h = rowHeight();
-    const float total = h * (float) items.size();
-    const float top = juce::jmax (0.0f, ((float) getHeight() - total) * 0.5f);
-    const float pad = juce::jlimit (1.0f, 4.0f, h * 0.07f);
-    return { 0.0f, top + h * (float) index + pad, (float) getWidth(), h - pad * 2.0f };
-}
-
-int AMSidebar::rowAt (juce::Point<int> p) const
-{
-    for (int i = 0; i < (int) items.size(); ++i)
-        if (pillBounds (i).expanded (0.0f, 1.5f).contains (p.toFloat())) return i;
-    return -1;
-}
-
-void AMSidebar::setSelected (int index, juce::NotificationType notify)
-{
-    index = juce::jlimit (0, juce::jmax (0, (int) items.size() - 1), index);
-    if (index == selected) return;
-    selected = index;
-    repaint();
-    if (notify != juce::dontSendNotification && onChange) onChange (selected);
-}
-
-void AMSidebar::mouseDown (const juce::MouseEvent& e)
-{
-    const int r = rowAt (e.getPosition());
-    if (r >= 0 && r != selected) setSelected (r);
-}
-
-void AMSidebar::mouseMove (const juce::MouseEvent& e)
-{
-    const int r = rowAt (e.getPosition());
-    if (r != hovered) { hovered = r; repaint(); }
-}
-
-void AMSidebar::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
-{
-    if (std::abs (wheel.deltaY) < 0.01f) return;
-    setSelected (selected + (wheel.deltaY > 0.0f ? -1 : 1));
-}
-
-void AMSidebar::paint (juce::Graphics& g)
-{
-    if (items.empty() || getWidth() < 8) return;
-    for (int i = 0; i < (int) items.size(); ++i)
-    {
-        const auto pill = pillBounds (i);
-        if (pill.getHeight() < 6.0f) continue;
-        const bool sel = i == selected, hov = i == hovered;
-        const auto tint = accentFor (i);
-        const float radius = juce::jmin (pill.getHeight() * 0.34f, 12.0f);
-
-        if (sel)
-        {
-            draw::contactShadow (g, pill, radius, juce::jmax (4.0f, pill.getHeight() * 0.22f), 0.85f);
-            draw::SlabStyle style;
-            style.top = Theme::panelTop;
-            style.bottom = Theme::panel.brighter (0.25f);
-            style.shadow = 0.0f;
-            style.brush = 0.35f;
-            draw::raisedSlab (g, pill, radius, style);
-            // The accent runs down the left edge of the raised slab.
-            auto bar = pill.withWidth (juce::jmax (2.5f, pill.getHeight() * 0.075f));
-            draw::glowRoundedRect (g, bar, bar.getWidth() * 0.5f, tint, 8.0f, 0.55f);
-            g.setColour (tint);
-            g.fillRoundedRectangle (bar.reduced (0.0f, radius * 0.25f), bar.getWidth() * 0.5f);
-        }
-        else if (hov)
-        {
-            g.setColour (juce::Colours::white.withAlpha (0.55f));
-            g.fillRoundedRectangle (pill, radius);
-            g.setColour (tint.withAlpha (0.22f));
-            g.drawRoundedRectangle (pill.reduced (0.5f), radius, 1.0f);
-        }
-
-        // Glyph, then the label (and its caption when the row is tall enough for two lines).
-        auto row = pill.reduced (juce::jmax (6.0f, pill.getHeight() * 0.22f), 0.0f);
-        const float d = juce::jmin (row.getHeight() * 0.54f, row.getWidth() * 0.32f);
-        auto glyph = row.removeFromLeft (d * 1.35f).withSizeKeepingCentre (d, d);
-        row.removeFromLeft (juce::jmax (3.0f, d * 0.28f));
-        Icons::draw (g, items[(size_t) i].icon, glyph,
-                     sel ? tint : Theme::textDim.interpolatedWith (tint, hov ? 0.45f : 0.0f), sel ? 1.05f : 0.85f);
-
-        const bool twoLine = items[(size_t) i].caption.isNotEmpty() && pill.getHeight() > 30.0f && row.getWidth() > 54.0f;
-        const float labelH = juce::jlimit (9.0f, 13.0f, pill.getHeight() * (twoLine ? 0.26f : 0.30f));
-        auto text = twoLine ? row.removeFromTop (row.getHeight() * 0.56f) : row;
-        draw::trackedText (g, items[(size_t) i].label, text, juce::Justification::centredLeft,
-                           sel ? Theme::labelFontStrong (labelH) : Theme::labelFont (labelH),
-                           sel ? Theme::textPrimary : Theme::textSecondary);
-        if (twoLine)
-            draw::trackedText (g, items[(size_t) i].caption, row, juce::Justification::centredLeft,
-                               Theme::captionFont (juce::jlimit (7.5f, 10.0f, labelH * 0.78f)),
-                               sel ? tint.withAlpha (0.9f) : Theme::textDim.withAlpha (0.8f));
-    }
-}
-
-//==============================================================================
 float PageDisplay::corner() const noexcept
 {
     const auto b = getLocalBounds().toFloat();
@@ -553,7 +429,7 @@ void SpaceDisplay::paintArt (juce::Graphics& g, juce::Rectangle<float> area)
     juce::Path clip;
     clip.addRoundedRectangle (area, corner());
     g.reduceClipRegion (clip);
-    SpaceArt::draw (g, area.expanded (area.getWidth() * 0.15f, area.getHeight() * 0.15f), type, phase, energy, corner());
+    SpaceArt::draw (g, area.expanded (area.getWidth() * 0.26f, area.getHeight() * 0.26f), type, phase, energy, corner());
 }
 
 //==============================================================================
@@ -1004,9 +880,13 @@ void FracturePanel::resized()
     onOff.setBounds (header.removeFromRight (w).withSizeKeepingCentre (w, juce::jlimit (22, 30, header.getHeight() - 8)));
 
     auto area = contentBounds();
-    const int gap = juce::jmax (4, area.getHeight() / 30);
-    auto knobArea = area.removeFromBottom (juce::roundToInt ((float) area.getHeight() * 0.42f));
-    area.removeFromBottom (gap);
+    const int gap = juce::jmax (4, area.getWidth() / 60);
+    // FRACTURE is a wide, shallow strip: stacking the knobs under the spectrum left
+    // them a dozen pixels tall at 1100 x 690. Side by side, each half has the whole
+    // height of the strip — the spectrum on the left, the four controls on the right,
+    // which is the same reading order as every other panel in the instrument.
+    auto knobArea = area.removeFromRight (juce::roundToInt ((float) area.getWidth() * 0.42f));
+    area.removeFromRight (gap);
     spectrum.setBounds (area);
     layoutKnobRow (knobArea, { &knobs[0]->knob, &knobs[1]->knob, &knobs[2]->knob, &knobs[3]->knob });
 }

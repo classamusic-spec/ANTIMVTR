@@ -81,20 +81,20 @@ void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Compo
     layoutGrid (area, v, (n + rows - 1) / rows);
 }
 
-void layoutGrid (juce::Rectangle<int> area, const std::vector<juce::Component*>& comps, int columns, int gapX, int gapY)
+void layoutGrid (juce::Rectangle<int> area, const std::vector<juce::Component*>& comps, int columns, int gapX, int gapY, bool spread)
 {
     const int n = (int) comps.size();
     if (n == 0 || columns <= 0) return;
     const int rows = (n + columns - 1) / columns;
     const int cellW = (area.getWidth() - gapX * (columns - 1)) / columns;
-    // A tall area centres its rows rather than stretching them apart, so the slack
-    // becomes an even border instead of a dead band across the panel's middle.
-    const auto vertical = layout::gridRows (area.getHeight(), rows, cellW, gapY);
+    // A control can never use more height than a little over its own width, so a tall
+    // area either centres its rows or (spread) shares the slack out between them.
+    const auto vertical = layout::gridRows (area.getHeight(), rows, cellW, gapY, spread);
     for (int i = 0; i < n; ++i)
     {
         const int r = i / columns, c = i % columns;
         comps[(size_t) i]->setBounds (area.getX() + c * (cellW + gapX),
-                                      area.getY() + vertical.top + r * (vertical.cellHeight + gapY),
+                                      area.getY() + vertical.top + r * vertical.pitch,
                                       cellW, vertical.cellHeight);
     }
 }

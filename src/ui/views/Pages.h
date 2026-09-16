@@ -108,7 +108,7 @@ private:
 
     AntiMatrProcessor& processor;
     AMPanel sidebarPanel { "Source", "Choose your energy", Theme::blue };
-    AMSidebar sidebar;
+    AMOptionList sidebar;
     std::unique_ptr<juce::ParameterAttachment> selectorAttachment;
     AMSegment tabs { { "Main", "Advanced" }, Theme::blue };
     std::unique_ptr<BoundControl> sourceModeControl;
@@ -147,7 +147,7 @@ private:
 
     AntiMatrProcessor& processor;
     AMPanel sidebarPanel { "Shape", "Matter into sound", Theme::cyan };
-    AMSidebar sidebar;
+    AMOptionList sidebar;
     LatticeDisplay lattice;
     AMPanel blendPanel { "Material Blend", "", Theme::cyan };
     std::unique_ptr<BoundControl> materialA, materialB;
@@ -177,7 +177,7 @@ private:
 
     AntiMatrProcessor& processor;
     AMPanel sidebarPanel { "Evolve", "Movement & change", Theme::violet };
-    AMSidebar sidebar;
+    AMOptionList sidebar;
     RibbonDisplay ribbon;
 
     AMPanel operatorPanel { "Operators", "Bend, melt, tear & magnet", Theme::violet };
@@ -226,7 +226,7 @@ private:
     bool pushing = false;
 
     AMPanel sidebarPanel { "Fracture", "New realities", Theme::magenta };
-    AMSidebar sidebar;
+    AMOptionList sidebar;
     AMSegment onOff { { "Off", "On" }, Theme::magenta };
     std::unique_ptr<juce::ParameterAttachment> onAttachment;
 
@@ -273,7 +273,7 @@ private:
 
     AntiMatrProcessor& processor;
     AMPanel sidebarPanel { "Space", "Place it anywhere", Theme::ivory };
-    AMSidebar sidebar;
+    AMOptionList sidebar;
     std::unique_ptr<juce::ParameterAttachment> typeAttachment;
 
     SpaceDisplay space;

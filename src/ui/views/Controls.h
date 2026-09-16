@@ -51,7 +51,8 @@ private:
 
 /** Lays out components evenly in a row (or grid with `rows`). */
 void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Component*> comps, int rows = 1);
-void layoutGrid (juce::Rectangle<int> area, const std::vector<juce::Component*>& comps, int columns, int gapX = 0, int gapY = 0);
+/** `spread` shares a tall area's slack out between the rows instead of leaving it as a border. */
+void layoutGrid (juce::Rectangle<int> area, const std::vector<juce::Component*>& comps, int columns, int gapX = 0, int gapY = 0, bool spread = false);
 
 /** Returns the choices of a Choice parameter as a StringArray. */
 juce::StringArray paramChoices (Param p);

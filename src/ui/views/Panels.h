@@ -5,62 +5,11 @@
 #include "ui/components/AMWaveView.h"
 #include "ui/components/AMSpaceArt.h"
 #include "ui/components/AMIcons.h"
+#include "ui/components/AMOptionList.h"
 #include "ui/visualizers/SpectrumAnalyzer.h"
 
 namespace am::ui
 {
-
-//==============================================================================
-/**
-    The selector column shared by the SOURCE, SHAPE, EVOLVE, FRACTURE and SPACE
-    pages: a vertical list of pills, each a small glyph and a label. The selected
-    pill is a raised white slab with an accent bar down its left edge and a soft
-    shadow under it; the rest sit flush and quiet.
-
-    TEMPORARY — the chassis owns the reusable sidebar pill primitive. This is a
-    local stand-in so the pages can be laid out to the reference before it lands,
-    and the two want reconciling at merge.
-*/
-class AMSidebar : public juce::Component,
-                  public juce::SettableTooltipClient
-{
-public:
-    struct Item
-    {
-        juce::String label;
-        Icon icon = Icon::Grid;
-        juce::String caption;                  ///< optional second line
-        juce::Colour accent = juce::Colour();  ///< transparent = use the list's accent
-    };
-
-    AMSidebar (std::vector<Item> entries, juce::Colour accentColour);
-
-    void setSelected (int index, juce::NotificationType notify = juce::sendNotification);
-    int  getSelected() const noexcept { return selected; }
-    void setAccent (juce::Colour c) { accent = c; repaint(); }
-    /** Accent of a row (its own, or the list's). */
-    juce::Colour accentFor (int index) const noexcept;
-
-    /** Height the list wants for its rows; owners centre it when the column is taller. */
-    int preferredHeight (int width) const noexcept;
-
-    std::function<void (int)> onChange;
-
-    void paint (juce::Graphics& g) override;
-    void mouseDown (const juce::MouseEvent& e) override;
-    void mouseMove (const juce::MouseEvent& e) override;
-    void mouseExit (const juce::MouseEvent&) override { hovered = -1; repaint(); }
-    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel) override;
-
-private:
-    juce::Rectangle<float> pillBounds (int index) const;
-    float rowHeight() const noexcept;
-    int rowAt (juce::Point<int> p) const;
-
-    std::vector<Item> items;
-    juce::Colour accent;
-    int selected = 0, hovered = -1;
-};
 
 //==============================================================================
 /**
